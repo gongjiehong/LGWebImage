@@ -29,6 +29,10 @@ public struct LGImageCacheType: OptionSet {
     public static let all: LGImageCacheType = {
         return [LGImageCacheType.disk, LGImageCacheType.memory]
     }()
+    
+    public static let `default`: LGImageCacheType = {
+        return LGImageCacheType.all
+    }()
 }
 
 
@@ -50,6 +54,8 @@ public class LGImageCache {
     
     public init(cachePath path: String) {
         let memoryCache = LGMemoryCache()
+        
+        /// 12（小时） * 60（分） * 60（秒）
         memoryCache.ageLimit = 12 * 60 * 60
         
         let diskCache = LGDiskCache(path: path)
@@ -57,11 +63,11 @@ public class LGImageCache {
         self.diskCache = diskCache
     }
     
-    public func setImage(image: UIImage, forKey key: String)  {
-        setImage(image: image, imageData: nil, forKey: key, withType: LGImageCacheType.all)
-    }
-    
-    public func setImage(image: UIImage?, imageData: Data?, forKey key: String, withType type: LGImageCacheType) {
+    public func setImage(image: UIImage?,
+                         imageData: Data? = nil,
+                         forKey key: String,
+                         withType type: LGImageCacheType = LGImageCacheType.default)
+    {
         if (image == nil && imageData == nil) || key.lg_length == 0 {
             return
         }
@@ -116,17 +122,14 @@ public class LGImageCache {
         }
     }
     
-    public func getImage(forKey key: String) -> UIImage? {
-        return getImage(forKey: key, withType: LGImageCacheType.all)
-    }
-    
-    public func getImage(forKey key: String, withType type: LGImageCacheType) -> UIImage? {
+    public func getImage(forKey key: String, withType type: LGImageCacheType = LGImageCacheType.default) -> UIImage?
+    {
         if key.lg_length == 0 {
             return nil
         }
         if type.contains(LGImageCacheType.memory) {
             let imageItem = self.memoryCache?.object(forKey: key)
-            return UIImage(data: (imageItem?.data.asData())!)
+            return imageItem?.data as? UIImage
         }
         if type.contains(LGImageCacheType.disk) {
             if let imageItem = self.diskCache?.object(forKey: key) {
@@ -203,11 +206,7 @@ public class LGImageCache {
         }
     }
     
-    public func removeImage(forKey key: String) {
-        removeImage(forKey: key, withType: LGImageCacheType.all)
-    }
-    
-    public func removeImage(forKey key: String, withType type: LGImageCacheType) {
+    public func removeImage(forKey key: String, withType type: LGImageCacheType = LGImageCacheType.default) {
         if type.contains(LGImageCacheType.memory) {
             self.memoryCache?.removeObject(forKey: key)
         }
@@ -216,11 +215,7 @@ public class LGImageCache {
         }
     }
     
-    public func containsImage(forKey key: String) -> Bool {
-        return containsImage(forKey: key, withType: LGImageCacheType.all)
-    }
-    
-    public func containsImage(forKey key: String, withType type: LGImageCacheType) -> Bool {
+    public func containsImage(forKey key: String, withType type: LGImageCacheType = LGImageCacheType.default) -> Bool {
         if type.contains(LGImageCacheType.memory) {
             return self.memoryCache?.containsObject(forKey: key) == true
         }
@@ -271,9 +266,14 @@ fileprivate extension UIImage {
             scale = UIScreen.main.scale
         }
     
+        if let image = cacheItem.data as? UIImage {
+            return image.lg_imageByDecoded
+        }
+        
         var result: UIImage?
+        
         if isAllowAnimatedImage {
-            result = LGImage(data: cacheItem.data.asData(), scale: scale)
+            result = LGImage.imageWith(data: cacheItem.data.asData(), scale: scale)
             if isDecodeForDisplay {
                 result = result?.lg_imageByDecoded
             }

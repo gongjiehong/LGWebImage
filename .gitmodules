@@ -1,0 +1,3 @@
+[submodule "LGHTTPRequest"]
+	path = LGHTTPRequest
+	url = https://github.com/gongjiehong/LGHTTPRequest.git

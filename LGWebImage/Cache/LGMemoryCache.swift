@@ -113,7 +113,7 @@ public class LGMemoryCache {
         pthread_mutex_lock(&_lock)
         let node = _lru.dic[key]
         if node != nil {
-            node?.time = Int(CACurrentMediaTime())
+            node?.time = CACurrentMediaTime()
             _lru.bringNode(toHead: node)
         }
         pthread_mutex_unlock(&_lock)
@@ -137,32 +137,28 @@ public class LGMemoryCache {
             _lru.totalCost -= node!.cost
             _lru.totalCost += cost
             node?.cost = cost
-            node?.time = Int(now)
+            node?.time = now
             node?.value = toSaveObj
             _lru.bringNode(toHead: node)
         } else {
-            node = LGLinkedMapNode()
-            node?.cost = cost
-            node?.time = Int(now)
-            node?.key = key
-            node?.value = toSaveObj
+            node = LGLinkedMapNode(key: key, value: toSaveObj, cost: cost, time: now)
             _lru.bringNode(toHead: node)
         }
         
         if _lru.totalCount > countLimit {
             _queue.async {
-                _ = node?.classForCoder
+                _ = node?.key
             }
         }
         
         if _lru.releaseAsynchronously {
             let tempQueue = _lru.releaseOnMainThread ? DispatchQueue.main : LGMemoryCacheGetReleaseQueue()
             tempQueue.async {
-                _ = node?.classForCoder
+                _ = node?.key
             }
         } else if _lru.releaseOnMainThread && pthread_main_np() == 0 {
             DispatchQueue.main.async {
-                _ = node?.classForCoder
+                _ = node?.key
             }
         }
         pthread_mutex_unlock(&_lock)
@@ -180,11 +176,11 @@ public class LGMemoryCache {
         if _lru.releaseAsynchronously {
             let tempQueue = _lru.releaseOnMainThread ? DispatchQueue.main : LGMemoryCacheGetReleaseQueue()
             tempQueue.async {
-                _ = node?.classForCoder
+                _ = node?.key
             }
         } else if _lru.releaseOnMainThread && pthread_main_np() == 0 {
             DispatchQueue.main.async {
-                _ = node?.classForCoder
+                _ = node?.key
             }
         }
         pthread_mutex_unlock(&_lock)
@@ -362,15 +358,18 @@ fileprivate extension LGMemoryCache {
     }
 }
 
-fileprivate class LGLinkedMapNode: NSObject {
+fileprivate class LGLinkedMapNode {
     fileprivate var prev: LGLinkedMapNode?
     fileprivate var next: LGLinkedMapNode?
-    fileprivate var key: String = ""
-    fileprivate var value: LGCacheItem = LGCacheItem(data: Data(), extendedData: nil)
-    fileprivate var cost: Int = 0
-    fileprivate var time: Int = 0
-    fileprivate override init() {
-        super.init()
+    fileprivate var key: String
+    fileprivate var value: LGCacheItem
+    fileprivate var cost: Int
+    fileprivate var time: TimeInterval
+    fileprivate init(key: String, value: LGCacheItem, cost: Int = 0, time: TimeInterval = 0.0) {
+        self.key = key
+        self.value = value
+        self.cost = cost
+        self.time = time
     }
     
     deinit {
@@ -408,11 +407,11 @@ fileprivate class LGLinkedMap {
     }
     
     fileprivate func bringNode(toHead node: LGLinkedMapNode?) {
-        if head == node {
+        if head === node {
             return
         }
         
-        if tail == node {
+        if tail === node {
             tail = node?.prev
             tail?.next = nil
         } else {
@@ -439,10 +438,10 @@ fileprivate class LGLinkedMap {
         if node.prev != nil {
             node.prev?.next = node.next
         }
-        if head == node {
+        if head === node {
             head = node.next
         }
-        if tail == node {
+        if tail === node {
             tail = node.prev
         }
     }
@@ -455,7 +454,7 @@ fileprivate class LGLinkedMap {
         dic[tailItem.key] = nil
         totalCost -= tailItem.cost
         totalCount -= 1
-        if head == tail {
+        if head === tail {
             head = nil
             tail = nil
         } else {

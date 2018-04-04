@@ -96,7 +96,7 @@ public class LGDiskCache {
 
     public func containsObject(forKey key: String) -> Bool {
         _ = _lock?.wait(timeout: DispatchTime.distantFuture)
-        let contains = _storage?.itemExists(for: key)
+        let contains = _storage?.itemExists(forKey: key)
         _ = _lock?.signal()
         return contains ?? false
     }
@@ -115,7 +115,7 @@ public class LGDiskCache {
     
     public func object(forKey key: String) -> LGCacheItem? {
         _ = _lock?.wait(timeout: DispatchTime.distantFuture)
-        let item = _storage?.getItem(for: key)
+        let item = _storage?.getItem(forKey: key)
         _ = _lock?.signal()
         if item?.data == nil {
             return nil
@@ -181,7 +181,7 @@ public class LGDiskCache {
             return
         }
         _ = _lock?.wait(timeout: DispatchTime.distantFuture)
-        _ = _storage?.removeItem(for: key)
+        _ = _storage?.removeItem(forKey: key)
         _ = _lock?.signal()
     }
 

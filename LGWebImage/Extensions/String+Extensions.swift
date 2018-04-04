@@ -7,24 +7,28 @@
 //
 
 import Foundation
-import CCommonCrypto
+//import CCommonCrypto
+import LGHTTPRequest
 
 
 // MARK: - just for this framework
 
 extension String {
-    func md5Hash() -> String? {
-        let length = Int(CC_MD5_DIGEST_LENGTH)
-        
-        guard let data = self.data(using: String.Encoding.utf8) else { return nil }
-        
-        let hash = data.withUnsafeBytes { (bytes: UnsafePointer<Data>) -> [UInt8] in
-            var hash: [UInt8] = [UInt8](repeating: 0, count: Int(CC_MD5_DIGEST_LENGTH))
-            CC_MD5(bytes, CC_LONG(data.count), &hash)
-            return hash
-        }
-        
-        return (0..<length).map { String(format: "%02x", hash[$0]) }.joined()
+//    func md5Hash() -> String? {
+//        let length = Int(CC_MD5_DIGEST_LENGTH)
+//
+//        guard let data = self.data(using: String.Encoding.utf8) else { return nil }
+//
+//        let hash = data.withUnsafeBytes { (bytes: UnsafePointer<Data>) -> [UInt8] in
+//            var hash: [UInt8] = [UInt8](repeating: 0, count: Int(CC_MD5_DIGEST_LENGTH))
+//            CC_MD5(bytes, CC_LONG(data.count), &hash)
+//            return hash
+//        }
+//
+//        return (0..<length).map { String(format: "%02x", hash[$0]) }.joined()
+//    }
+    func md5Hash() -> String {
+        return self.md5Hash() ?? ""
     }
     
     var lg_length: Int {

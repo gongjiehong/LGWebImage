@@ -37,6 +37,10 @@ fileprivate struct LGDataStorageConfig {
     static let TrashDirectoryName: String = "trash"
 }
 
+fileprivate enum LGCacheError: Error {
+    case execSqlFailed
+}
+
 
 
 public class LGDataStorage {
@@ -91,6 +95,11 @@ public class LGDataStorage {
         _fileEmptyTrashInBackground()
     }
     
+    public func filePathURL(withFileName filename: String) -> URL {
+        let path = _dataPath! + "/" + filename
+        return URL(fileURLWithPath: path)
+    }
+        
     public func saveItem(item: LGDataStorageItem) -> Bool {
         return _dbSaveWith(key: item.key,
                            value: item.data,
@@ -98,11 +107,7 @@ public class LGDataStorage {
                            extendedData: item.extendedData)
     }
     
-    public func saveItem(with key: String, value: Data) -> Bool {
-        return _dbSaveWith(key: key, value: value, fileName: nil, extendedData: nil)
-    }
-    
-    public func saveItem(with key: String, value: Data, filename: String?, extendedData: Data?) -> Bool {
+    public func saveItem(with key: String, value: Data, filename: String? = nil, extendedData: Data? = nil) -> Bool {
         if key.lg_length == 0 || value.count == 0 {
             return false
         }
@@ -123,7 +128,7 @@ public class LGDataStorage {
             return true
         } else {
             if type != LGDataStorageType.SQLite {
-                let tempFileName = _dbGetFileName(with: key)
+                let tempFileName = _dbGetFileName(withKey: key)
                 if tempFileName != nil {
                     _ = _fileDelete(with: tempFileName!)
                 }
@@ -133,7 +138,7 @@ public class LGDataStorage {
         }
     }
     
-    public func removeItem(for key: String) -> Bool {
+    public func removeItem(forKey key: String) -> Bool {
         if key.lg_length == 0 {
             return false
         }
@@ -142,7 +147,7 @@ public class LGDataStorage {
         
         switch type {
         case .file, .mixed:
-            if let filename = _dbGetFileName(with: key) {
+            if let filename = _dbGetFileName(withKey: key) {
                 _ = _fileDelete(with: filename)
             }
             reslut = _dbDeleteItemWith(key: key)
@@ -155,7 +160,7 @@ public class LGDataStorage {
         return reslut
     }
     
-    public func removeItem(for keys: [String]) -> Bool {
+    public func removeItem(forKeys keys: [String]) -> Bool {
         if keys.count == 0 {
             return false
         }
@@ -164,7 +169,7 @@ public class LGDataStorage {
         
         switch type {
         case .file, .mixed:
-            let filenames = _dbGetFileName(with: keys)
+            let filenames = _dbGetFileName(withKeys: keys)
             for filename in filenames {
                 _ = _fileDelete(with: filename)
             }
@@ -338,7 +343,8 @@ public class LGDataStorage {
         return true
     }
     
-    public func removeAllItems(with progressBlock: ((_ removedCount: Int, _ totlaCount: Int) -> Void)?, endBlock: ((_ error: Bool) -> Void)?) {
+    public func removeAllItems(with progressBlock: ((_ removedCount: Int, _ totlaCount: Int) -> Void)?,
+                               endBlock: ((_ error: Bool) -> Void)?) {
         let total = _dbGetTotalItemCount()
         if total <= 0 {
             if endBlock != nil {
@@ -382,11 +388,11 @@ public class LGDataStorage {
         }
     }
     
-    public func getItem(for key: String) -> LGDataStorageItem? {
+    public func getItem(forKey key: String) -> LGDataStorageItem? {
         if key.lg_length == 0 {
             return nil
         }
-        var item = _dbGetItem(with: key, excludeInlineData: false)
+        var item = _dbGetItem(withKey: key, excludeInlineData: false)
         if item != nil {
             _ = _dbUpdateAccessTimeWith(key: key)
         }
@@ -403,15 +409,15 @@ public class LGDataStorage {
         return item
     }
     
-    public func getItemInfo(for key: String) -> LGDataStorageItem? {
+    public func getItemInfo(forKey key: String) -> LGDataStorageItem? {
         if key.lg_length == 0 {
             return nil
         }
         
-        return _dbGetItem(with: key, excludeInlineData: true)
+        return _dbGetItem(withKey: key, excludeInlineData: true)
     }
     
-    public func getItemValue(for key: String) -> Data? {
+    public func getItemValue(forKey key: String) -> Data? {
         if key.lg_length == 0 {
             return nil
         }
@@ -420,10 +426,10 @@ public class LGDataStorage {
         
         switch type {
         case .SQLite:
-            value = _dbGetValue(with: key)
+            value = _dbGetValue(withKey: key)
             break
         case .file:
-            let filename = _dbGetFileName(with: key)
+            let filename = _dbGetFileName(withKey: key)
             if filename != nil {
                 if let tempValue = _fileRead(with: filename!) {
                     value = tempValue
@@ -437,7 +443,7 @@ public class LGDataStorage {
             }
             break
         case .mixed:
-            if let filename = _dbGetFileName(with: key) {
+            if let filename = _dbGetFileName(withKey: key) {
                 if let tempValue = _fileRead(with: filename) {
                     value = tempValue
                 }
@@ -446,10 +452,8 @@ public class LGDataStorage {
                     value = nil
                 }
             } else {
-                value = _dbGetValue(with: key)
+                value = _dbGetValue(withKey: key)
             }
-            break
-        default:
             break
         }
         if value != nil {
@@ -458,12 +462,12 @@ public class LGDataStorage {
         return value
     }
 
-    public func getItems(for keys: [String]) -> [LGDataStorageItem] {
+    public func getItems(forKeys keys: [String]) -> [LGDataStorageItem] {
         if keys.count == 0 {
             return [LGDataStorageItem]()
         }
         
-        var items = _dbGetItem(with: keys, excludeInlineData: false)
+        var items = _dbGetItem(withKeys: keys, excludeInlineData: false)
         if type == LGDataStorageType.SQLite {
             for index in 0..<items.count {
                 var item = items[index]
@@ -485,15 +489,15 @@ public class LGDataStorage {
         return items
     }
     
-    public func getItemInfo(for keys: [String]) -> [LGDataStorageItem] {
+    public func getItemInfo(forKeys keys: [String]) -> [LGDataStorageItem] {
         if keys.count == 0 {
             return [LGDataStorageItem]()
         }
-        return _dbGetItem(with: keys, excludeInlineData: true)
+        return _dbGetItem(withKeys: keys, excludeInlineData: true)
     }
     
-    public func getItemsValue(for keys: [String]) -> [String: Data] {
-        let items = getItems(for: keys)
+    public func getItemsValue(forKeys keys: [String]) -> [String: Data] {
+        let items = getItems(forKeys: keys)
         var result = [String: Data]()
         
         for item in items {
@@ -503,11 +507,11 @@ public class LGDataStorage {
         return result
     }
 
-    public func itemExists(for key: String) -> Bool {
+    public func itemExists(forKey key: String) -> Bool {
         if key.lg_length == 0 {
             return false
         }
-        return _dbGetItemCount(with: key) > 0
+        return _dbGetItemCount(withKey: key) > 0
     }
     
     public func getItemsCount() -> Int {
@@ -643,13 +647,14 @@ fileprivate extension LGDataStorage {
         }
         
         do {
-            let result = sqlite3_exec(_db!, sql, nil, nil, nil)
-            guard result == SQLITE_OK else {
-                throw LGCacheError.errorWith(code: LGCacheError.ErrorCode.closeDBFailed, description: "close db failed")
+            var error: UnsafeMutablePointer<Int8>? = nil
+            let result = sqlite3_exec(_db!, sql, nil, nil, &error)
+            guard result == SQLITE_OK, error != nil else {
+                throw LGCacheError.execSqlFailed
             }
             return true
-            
         } catch {
+            println("执行SQL语句失败：%@,%@,%@d,%@d", #file, #function, #line, #column)
             return false
         }
     }
@@ -699,7 +704,7 @@ fileprivate extension LGDataStorage {
         }
     }
     
-    fileprivate func _dbSaveWith(key: String, value: Data, fileName: String?, extendedData: Data?) -> Bool {
+    fileprivate func _dbSaveWith(key: String, value: Data, fileName: String? = nil, extendedData: Data? = nil) -> Bool {
         let sql = "insert or replace into manifest (key, filename, size, inline_data, modification_time, last_access_time, extended_data) values (?1, ?2, ?3, ?4, ?5, ?6, ?7);"
         
         let stmt = _dbPrepareStmt(sql: sql)
@@ -917,7 +922,7 @@ fileprivate extension LGDataStorage {
         return item
     }
     
-    fileprivate func _dbGetItem(with key: String, excludeInlineData: Bool) -> LGDataStorageItem? {
+    fileprivate func _dbGetItem(withKey key: String, excludeInlineData: Bool) -> LGDataStorageItem? {
         let sql = excludeInlineData ? "select key, filename, size, modification_time, last_access_time, extended_data from manifest where key = ?1;" : "select key, filename, size, inline_data, modification_time, last_access_time, extended_data from manifest where key = ?1;"
         let stmt = _dbPrepareStmt(sql: sql)
         guard stmt != nil else {
@@ -937,7 +942,7 @@ fileprivate extension LGDataStorage {
         return resultItem
     }
     
-    fileprivate func _dbGetItem(with keys: [String], excludeInlineData: Bool) -> [LGDataStorageItem] {
+    fileprivate func _dbGetItem(withKeys keys: [String], excludeInlineData: Bool) -> [LGDataStorageItem] {
         var resultArray = [LGDataStorageItem]()
         if !_dbCheck() {
             return resultArray
@@ -976,7 +981,7 @@ fileprivate extension LGDataStorage {
         return resultArray
     }
     
-    fileprivate func _dbGetValue(with key: String) -> Data? {
+    fileprivate func _dbGetValue(withKey key: String) -> Data? {
         let sql = "select inline_data from manifest where key = ?1;"
         let stmt: OpaquePointer? = _dbPrepareStmt(sql: sql)
         guard stmt != nil else {
@@ -1003,7 +1008,7 @@ fileprivate extension LGDataStorage {
         
     }
     
-    fileprivate func _dbGetFileName(with key: String) -> String? {
+    fileprivate func _dbGetFileName(withKey key: String) -> String? {
         let sql = "select filename from manifest where key = ?1;"
         let stmt: OpaquePointer? = _dbPrepareStmt(sql: sql)
         guard stmt != nil else {
@@ -1029,7 +1034,7 @@ fileprivate extension LGDataStorage {
         
     }
     
-    fileprivate func _dbGetFileName(with keys: [String]) -> [String] {
+    fileprivate func _dbGetFileName(withKeys keys: [String]) -> [String] {
         if !_dbCheck() {
             return [String]()
         }
@@ -1159,7 +1164,7 @@ fileprivate extension LGDataStorage {
         return resultArray
     }
     
-    fileprivate func _dbGetItemCount(with key: String) -> Int {
+    fileprivate func _dbGetItemCount(withKey key: String) -> Int {
         let sql = "select count(key) from manifest where key = ?1;"
         let stmt = _dbPrepareStmt(sql: sql)
         guard stmt != nil else {

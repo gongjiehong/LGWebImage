@@ -7,14 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		FE144F052074B88000415B4E /* LGHTTPRequest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE144EFB2074B87600415B4E /* LGHTTPRequest.framework */; };
+		FE144F182074BA8100415B4E /* String+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE144F172074BA8100415B4E /* String+Extensions.swift */; };
 		FEB7BA7520735FC000639C13 /* LGWebImage.h in Headers */ = {isa = PBXBuildFile; fileRef = FEB7BA7320735FC000639C13 /* LGWebImage.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		FEB7BA982073602D00639C13 /* LGDiskCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA7C2073602D00639C13 /* LGDiskCache.swift */; };
 		FEB7BA992073602D00639C13 /* LGDataStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA7D2073602D00639C13 /* LGDataStorage.swift */; };
 		FEB7BA9A2073602D00639C13 /* LGMemoryCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA7E2073602D00639C13 /* LGMemoryCache.swift */; };
 		FEB7BA9B2073602D00639C13 /* LGCacheItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA7F2073602D00639C13 /* LGCacheItem.swift */; };
-		FEB7BA9C2073602D00639C13 /* LGCacheError.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA802073602D00639C13 /* LGCacheError.swift */; };
 		FEB7BA9D2073602D00639C13 /* LGCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA812073602D00639C13 /* LGCache.swift */; };
-		FEB7BA9E2073602D00639C13 /* String+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA832073602D00639C13 /* String+Extensions.swift */; };
 		FEB7BA9F2073602D00639C13 /* UIImage+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA842073602D00639C13 /* UIImage+Extensions.swift */; };
 		FEB7BAA02073602E00639C13 /* FileManager+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA852073602D00639C13 /* FileManager+Extensions.swift */; };
 		FEB7BAA12073602E00639C13 /* DebugLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA872073602D00639C13 /* DebugLog.swift */; };
@@ -35,7 +35,41 @@
 		FEB7BAB12073607B00639C13 /* WebP.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FEB7BAB02073607B00639C13 /* WebP.framework */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		FE144EFA2074B87600415B4E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FE144EF52074B87600415B4E /* LGHTTPRequest.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = FE1538301F0C8F75009417E7;
+			remoteInfo = LGHTTPRequest;
+		};
+		FE144EFC2074B87600415B4E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FE144EF52074B87600415B4E /* LGHTTPRequest.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = FE29C9CD1FC3B99C0032EE0D;
+			remoteInfo = LGHTTPRequestTests;
+		};
+		FE144F002074B87600415B4E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FE144EE62074B12A00415B4E /* LGHTTPRequest.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = FE1538301F0C8F75009417E7;
+			remoteInfo = LGHTTPRequest;
+		};
+		FE144F022074B87600415B4E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FE144EE62074B12A00415B4E /* LGHTTPRequest.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = FE29C9CD1FC3B99C0032EE0D;
+			remoteInfo = LGHTTPRequestTests;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		FE144EE62074B12A00415B4E /* LGHTTPRequest.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = LGHTTPRequest.xcodeproj; path = LGHTTPRequest/LGHTTPRequest/LGHTTPRequest.xcodeproj; sourceTree = "<group>"; };
+		FE144EF52074B87600415B4E /* LGHTTPRequest.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = LGHTTPRequest.xcodeproj; path = LGHTTPRequest/LGHTTPRequest/LGHTTPRequest.xcodeproj; sourceTree = "<group>"; };
+		FE144F172074BA8100415B4E /* String+Extensions.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "String+Extensions.swift"; sourceTree = "<group>"; };
 		FEB7BA7020735FC000639C13 /* LGWebImage.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = LGWebImage.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		FEB7BA7320735FC000639C13 /* LGWebImage.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LGWebImage.h; sourceTree = "<group>"; };
 		FEB7BA7420735FC000639C13 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -43,9 +77,7 @@
 		FEB7BA7D2073602D00639C13 /* LGDataStorage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGDataStorage.swift; sourceTree = "<group>"; };
 		FEB7BA7E2073602D00639C13 /* LGMemoryCache.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGMemoryCache.swift; sourceTree = "<group>"; };
 		FEB7BA7F2073602D00639C13 /* LGCacheItem.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGCacheItem.swift; sourceTree = "<group>"; };
-		FEB7BA802073602D00639C13 /* LGCacheError.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGCacheError.swift; sourceTree = "<group>"; };
 		FEB7BA812073602D00639C13 /* LGCache.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGCache.swift; sourceTree = "<group>"; };
-		FEB7BA832073602D00639C13 /* String+Extensions.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "String+Extensions.swift"; sourceTree = "<group>"; };
 		FEB7BA842073602D00639C13 /* UIImage+Extensions.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "UIImage+Extensions.swift"; sourceTree = "<group>"; };
 		FEB7BA852073602D00639C13 /* FileManager+Extensions.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "FileManager+Extensions.swift"; sourceTree = "<group>"; };
 		FEB7BA872073602D00639C13 /* DebugLog.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DebugLog.swift; sourceTree = "<group>"; };
@@ -64,13 +96,6 @@
 		FEB7BA962073602D00639C13 /* LGWebImageURLRequestConvertible.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGWebImageURLRequestConvertible.swift; sourceTree = "<group>"; };
 		FEB7BA972073602D00639C13 /* LGWebImageManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGWebImageManager.swift; sourceTree = "<group>"; };
 		FEB7BAB02073607B00639C13 /* WebP.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebP.framework; path = LGWebImage/WebP.framework; sourceTree = "<group>"; };
-		FEB7BAB42073608E00639C13 /* module.modulemap */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = "sourcecode.module-map"; path = module.modulemap; sourceTree = "<group>"; };
-		FEB7BAB62073608E00639C13 /* module.modulemap */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = "sourcecode.module-map"; path = module.modulemap; sourceTree = "<group>"; };
-		FEB7BAB82073608E00639C13 /* module.modulemap */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = "sourcecode.module-map"; path = module.modulemap; sourceTree = "<group>"; };
-		FEB7BABA2073608E00639C13 /* module.modulemap */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = "sourcecode.module-map"; path = module.modulemap; sourceTree = "<group>"; };
-		FEB7BABC2073608E00639C13 /* module.modulemap */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = "sourcecode.module-map"; path = module.modulemap; sourceTree = "<group>"; };
-		FEB7BABE2073608E00639C13 /* module.modulemap */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = "sourcecode.module-map"; path = module.modulemap; sourceTree = "<group>"; };
-		FEB7BAC02073608E00639C13 /* module.modulemap */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = "sourcecode.module-map"; path = module.modulemap; sourceTree = "<group>"; };
 		FEE49F112073760300EAC3F3 /* Package.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Package.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -79,6 +104,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FE144F052074B88000415B4E /* LGHTTPRequest.framework in Frameworks */,
 				FEB7BAB12073607B00639C13 /* WebP.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -86,13 +112,40 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		FE144EF32074B86600415B4E /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				FE144F012074B87600415B4E /* LGHTTPRequest.framework */,
+				FE144F032074B87600415B4E /* LGHTTPRequestTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		FE144EF62074B87600415B4E /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				FE144EFB2074B87600415B4E /* LGHTTPRequest.framework */,
+				FE144EFD2074B87600415B4E /* LGHTTPRequestTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		FE144F042074B88000415B4E /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		FEB7BA6620735FC000639C13 = {
 			isa = PBXGroup;
 			children = (
 				FEE49F112073760300EAC3F3 /* Package.swift */,
+				FE144EF52074B87600415B4E /* LGHTTPRequest.xcodeproj */,
 				FEB7BAB02073607B00639C13 /* WebP.framework */,
 				FEB7BA7220735FC000639C13 /* LGWebImage */,
 				FEB7BA7120735FC000639C13 /* Products */,
+				FE144F042074B88000415B4E /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -107,7 +160,6 @@
 		FEB7BA7220735FC000639C13 /* LGWebImage */ = {
 			isa = PBXGroup;
 			children = (
-				FEB7BAB22073608E00639C13 /* ModuleMap */,
 				FEB7BA7B2073602D00639C13 /* Cache */,
 				FEB7BA912073602D00639C13 /* Core */,
 				FEB7BA862073602D00639C13 /* DebugLog */,
@@ -126,7 +178,6 @@
 				FEB7BA7D2073602D00639C13 /* LGDataStorage.swift */,
 				FEB7BA7E2073602D00639C13 /* LGMemoryCache.swift */,
 				FEB7BA7F2073602D00639C13 /* LGCacheItem.swift */,
-				FEB7BA802073602D00639C13 /* LGCacheError.swift */,
 				FEB7BA812073602D00639C13 /* LGCache.swift */,
 			);
 			path = Cache;
@@ -135,7 +186,7 @@
 		FEB7BA822073602D00639C13 /* Extensions */ = {
 			isa = PBXGroup;
 			children = (
-				FEB7BA832073602D00639C13 /* String+Extensions.swift */,
+				FE144F172074BA8100415B4E /* String+Extensions.swift */,
 				FEB7BA842073602D00639C13 /* UIImage+Extensions.swift */,
 				FEB7BA852073602D00639C13 /* FileManager+Extensions.swift */,
 			);
@@ -176,76 +227,6 @@
 				FEB7BA972073602D00639C13 /* LGWebImageManager.swift */,
 			);
 			path = Core;
-			sourceTree = "<group>";
-		};
-		FEB7BAB22073608E00639C13 /* ModuleMap */ = {
-			isa = PBXGroup;
-			children = (
-				FEB7BAB32073608E00639C13 /* appletvsimulator */,
-				FEB7BAB52073608E00639C13 /* watchos */,
-				FEB7BAB72073608E00639C13 /* iphoneos */,
-				FEB7BAB92073608E00639C13 /* appletvos */,
-				FEB7BABB2073608E00639C13 /* watchsimulator */,
-				FEB7BABD2073608E00639C13 /* macosx */,
-				FEB7BABF2073608E00639C13 /* iphonesimulator */,
-			);
-			path = ModuleMap;
-			sourceTree = SOURCE_ROOT;
-		};
-		FEB7BAB32073608E00639C13 /* appletvsimulator */ = {
-			isa = PBXGroup;
-			children = (
-				FEB7BAB42073608E00639C13 /* module.modulemap */,
-			);
-			path = appletvsimulator;
-			sourceTree = "<group>";
-		};
-		FEB7BAB52073608E00639C13 /* watchos */ = {
-			isa = PBXGroup;
-			children = (
-				FEB7BAB62073608E00639C13 /* module.modulemap */,
-			);
-			path = watchos;
-			sourceTree = "<group>";
-		};
-		FEB7BAB72073608E00639C13 /* iphoneos */ = {
-			isa = PBXGroup;
-			children = (
-				FEB7BAB82073608E00639C13 /* module.modulemap */,
-			);
-			path = iphoneos;
-			sourceTree = "<group>";
-		};
-		FEB7BAB92073608E00639C13 /* appletvos */ = {
-			isa = PBXGroup;
-			children = (
-				FEB7BABA2073608E00639C13 /* module.modulemap */,
-			);
-			path = appletvos;
-			sourceTree = "<group>";
-		};
-		FEB7BABB2073608E00639C13 /* watchsimulator */ = {
-			isa = PBXGroup;
-			children = (
-				FEB7BABC2073608E00639C13 /* module.modulemap */,
-			);
-			path = watchsimulator;
-			sourceTree = "<group>";
-		};
-		FEB7BABD2073608E00639C13 /* macosx */ = {
-			isa = PBXGroup;
-			children = (
-				FEB7BABE2073608E00639C13 /* module.modulemap */,
-			);
-			path = macosx;
-			sourceTree = "<group>";
-		};
-		FEB7BABF2073608E00639C13 /* iphonesimulator */ = {
-			isa = PBXGroup;
-			children = (
-				FEB7BAC02073608E00639C13 /* module.modulemap */,
-			);
-			path = iphonesimulator;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -304,12 +285,53 @@
 			mainGroup = FEB7BA6620735FC000639C13;
 			productRefGroup = FEB7BA7120735FC000639C13 /* Products */;
 			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = FE144EF62074B87600415B4E /* Products */;
+					ProjectRef = FE144EF52074B87600415B4E /* LGHTTPRequest.xcodeproj */;
+				},
+				{
+					ProductGroup = FE144EF32074B86600415B4E /* Products */;
+					ProjectRef = FE144EE62074B12A00415B4E /* LGHTTPRequest.xcodeproj */;
+				},
+			);
 			projectRoot = "";
 			targets = (
 				FEB7BA6F20735FC000639C13 /* LGWebImage */,
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXReferenceProxy section */
+		FE144EFB2074B87600415B4E /* LGHTTPRequest.framework */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.framework;
+			path = LGHTTPRequest.framework;
+			remoteRef = FE144EFA2074B87600415B4E /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		FE144EFD2074B87600415B4E /* LGHTTPRequestTests.xctest */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.cfbundle;
+			path = LGHTTPRequestTests.xctest;
+			remoteRef = FE144EFC2074B87600415B4E /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		FE144F012074B87600415B4E /* LGHTTPRequest.framework */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.framework;
+			path = LGHTTPRequest.framework;
+			remoteRef = FE144F002074B87600415B4E /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		FE144F032074B87600415B4E /* LGHTTPRequestTests.xctest */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.cfbundle;
+			path = LGHTTPRequestTests.xctest;
+			remoteRef = FE144F022074B87600415B4E /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
 
 /* Begin PBXResourcesBuildPhase section */
 		FEB7BA6E20735FC000639C13 /* Resources */ = {
@@ -330,9 +352,8 @@
 				FEB7BAAF2073602E00639C13 /* LGWebImageManager.swift in Sources */,
 				FEB7BAA12073602E00639C13 /* DebugLog.swift in Sources */,
 				FEB7BAA92073602E00639C13 /* LGAnimatedImage.swift in Sources */,
+				FE144F182074BA8100415B4E /* String+Extensions.swift in Sources */,
 				FEB7BAA62073602E00639C13 /* LGImageCoder.swift in Sources */,
-				FEB7BA9C2073602D00639C13 /* LGCacheError.swift in Sources */,
-				FEB7BA9E2073602D00639C13 /* String+Extensions.swift in Sources */,
 				FEB7BA9D2073602D00639C13 /* LGCache.swift in Sources */,
 				FEB7BA9A2073602D00639C13 /* LGMemoryCache.swift in Sources */,
 				FEB7BAAB2073602E00639C13 /* LGWebImageDownloaderError.swift in Sources */,
