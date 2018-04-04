@@ -1,0 +1,1300 @@
+//
+//  LGDataStorage.swift
+//  LGWebImage
+//
+//  Created by 龚杰洪 on 2017/9/7.
+//  Copyright © 2017年 龚杰洪. All rights reserved.
+//
+
+import Foundation
+import SQLite3
+
+
+public struct LGDataStorageItem {
+    public var key: String
+    public var data: Data
+    public var fileName: String?
+    public var size: Int
+    public var modifyTime: Int
+    public var accessTime: Int
+    public var extendedData: Data?
+}
+
+public enum LGDataStorageType: Int {
+    case file
+    case SQLite
+    case mixed
+}
+
+fileprivate struct LGDataStorageConfig {
+    static let maxErrorRetryCount: Int = 5
+    static let minRetryTimeInterval: TimeInterval = 2.0
+    static let pathLengthMax: Int32 = PATH_MAX - 64
+    static let DBFileName: String = "manifest.sqlite"
+    static let DBShmFileName: String = "manifest.sqlite-shm"
+    static let DBWalFileName: String = "manifest.sqlite-wal"
+    static let DataDirectoryName: String = "data"
+    static let TrashDirectoryName: String = "trash"
+}
+
+
+
+public class LGDataStorage {
+    
+    fileprivate var _trashQueue: DispatchQueue?
+    fileprivate var _path: String?
+    fileprivate var _dbPath: String?
+    fileprivate var _dataPath: String?
+    fileprivate var _trashPath: String?
+    fileprivate var _db: OpaquePointer? = nil
+    fileprivate var _dbStmtCache: [String: OpaquePointer]?
+    fileprivate var _dbLastOpenErrorTime: TimeInterval = 0
+    fileprivate var _dbOpenErrorCount: Int = 0
+    
+
+    
+    
+    public private(set) var path: String
+    public private(set) var type: LGDataStorageType
+    
+    public init(path: String, type: LGDataStorageType) {
+        assert(path.count > 0 && path.count < LGDataStorageConfig.pathLengthMax, "路径不合法")
+        assert(type.rawValue <= LGDataStorageType.mixed.rawValue, "存储数据类型无效")
+        
+        self.path = path
+        self.type = type
+        
+        _path = path
+        _trashPath = path + "/" + LGDataStorageConfig.TrashDirectoryName
+        _dataPath = path + "/" + LGDataStorageConfig.DataDirectoryName
+        _dbPath = path + "/" + LGDataStorageConfig.DBFileName
+        _trashQueue = DispatchQueue(label: "com.LGDataStorage.cache.disk.trash")
+        
+        do {
+            let fileManager = FileManager.default
+            try fileManager.createDirectory(atPath: path, withIntermediateDirectories: true, attributes: nil)
+            try fileManager.createDirectory(atPath: _dataPath!, withIntermediateDirectories: true, attributes: nil)
+            try fileManager.createDirectory(atPath: _trashPath!, withIntermediateDirectories: true, attributes: nil)
+        } catch {
+            println("初始化失败%@,%@,%@d,%@d", #file, #function, #line, #column)
+        }
+        
+        if !_dbOpen() || !_dbInitlalize() {
+            _ = _dbClose()
+            _reset()
+            if !_dbOpen() || !_dbInitlalize() {
+                println("初始化失败%@,%@,%@d,%@d", #file, #function, #line, #column)
+                _ = _dbClose()
+                return
+            }
+        }
+        _fileEmptyTrashInBackground()
+    }
+    
+    public func saveItem(item: LGDataStorageItem) -> Bool {
+        return _dbSaveWith(key: item.key,
+                           value: item.data,
+                           fileName: item.fileName,
+                           extendedData: item.extendedData)
+    }
+    
+    public func saveItem(with key: String, value: Data) -> Bool {
+        return _dbSaveWith(key: key, value: value, fileName: nil, extendedData: nil)
+    }
+    
+    public func saveItem(with key: String, value: Data, filename: String?, extendedData: Data?) -> Bool {
+        if key.lg_length == 0 || value.count == 0 {
+            return false
+        }
+        
+        if type == LGDataStorageType.file && (filename == nil || filename?.lg_length == 0) {
+            return false
+        }
+        
+        if filename != nil && filename!.lg_length > 0 {
+            if !_fileWrite(with: filename!, data: value) {
+                return false
+            }
+            
+            if !_dbSaveWith(key: key, value: value, fileName: filename, extendedData: extendedData) {
+                _ = _fileDelete(with: filename!)
+                return false
+            }
+            return true
+        } else {
+            if type != LGDataStorageType.SQLite {
+                let tempFileName = _dbGetFileName(with: key)
+                if tempFileName != nil {
+                    _ = _fileDelete(with: tempFileName!)
+                }
+            }
+            
+            return _dbSaveWith(key: key, value: value, fileName: filename, extendedData: extendedData)
+        }
+    }
+    
+    public func removeItem(for key: String) -> Bool {
+        if key.lg_length == 0 {
+            return false
+        }
+        
+        var reslut: Bool = false
+        
+        switch type {
+        case .file, .mixed:
+            if let filename = _dbGetFileName(with: key) {
+                _ = _fileDelete(with: filename)
+            }
+            reslut = _dbDeleteItemWith(key: key)
+            break
+        case .SQLite:
+            reslut = _dbDeleteItemWith(key: key)
+            break
+        }
+        
+        return reslut
+    }
+    
+    public func removeItem(for keys: [String]) -> Bool {
+        if keys.count == 0 {
+            return false
+        }
+        
+        var reslut: Bool = false
+        
+        switch type {
+        case .file, .mixed:
+            let filenames = _dbGetFileName(with: keys)
+            for filename in filenames {
+                _ = _fileDelete(with: filename)
+            }
+            reslut = _dbDeleteItemWith(keys: keys)
+            break
+        case .SQLite:
+            reslut = _dbDeleteItemWith(keys: keys)
+            break
+        }
+        
+        return reslut
+    }
+    
+    public func removeItems(lagerThanSize size: Int) -> Bool {
+        if size == Int.max {
+            return true
+        }
+        
+        if size <= 0 {
+            removeAllItems()
+        }
+        
+        switch type {
+        case .SQLite:
+            if _dbDeleteItemsWith(sizeLargerThan: size) {
+                _dbCheckpoint()
+                return true
+            }
+            break
+        default:
+            let filenames = _dbGetFilenames(withSizeLargerThan: size)
+            for filename in filenames {
+                _ = _fileDelete(with: filename)
+            }
+            if _dbDeleteItemsWith(sizeLargerThan: size) {
+                _dbCheckpoint()
+                return true
+            }
+            break
+        }
+        return false
+    }
+    
+    public func removeItems(earlierThanTime time: Int) -> Bool {
+        if time <= 0 {
+            return false
+        }
+        
+        if time == Int.max {
+            return removeAllItems()
+        }
+        switch type {
+        case .SQLite:
+            if _dbDeleteItemsWith(timeEarlierThan: time) {
+                _dbCheckpoint()
+                return true
+            }
+            break
+        default:
+            let filenames = _dbGetFilenames(withTimeEarlierThan: time)
+            for filename in filenames {
+                _ = _fileDelete(with: filename)
+            }
+            if _dbDeleteItemsWith(timeEarlierThan: time) {
+                _dbCheckpoint()
+                return true
+            }
+            break
+        }
+        return false
+    }
+    
+    public func removeItems(toFitSize maxSize: Int) -> Bool {
+        if maxSize == Int.max {
+            return true
+        }
+        
+        if maxSize <= 0 {
+            return removeAllItems()
+        }
+        
+        var total = _dbGetTotalItemSize()
+        var items = [LGDataStorageItem]()
+        var success: Bool = false
+        if total < 0 {
+            return false
+        }
+        if total <= maxSize {
+            return true
+        }
+        
+        repeat {
+            let perCount = 16
+            items = _dbGetItemSizeInfo(orderByTimeAscWithLimit: perCount)
+            for item in items {
+                if total > maxSize {
+                    if item.fileName != nil {
+                        _ = _fileDelete(with: item.fileName!)
+                    }
+                    success = _dbDeleteItemWith(key: item.key)
+                    total -= item.size
+                } else {
+                    break
+                }
+                if !success {
+                    break
+                }
+            }
+        } while total > maxSize && items.count > 0 && success
+        if success {
+            _dbCheckpoint()
+        }
+        return success
+    }
+    
+    public func removeItems(toFitCount maxCount: Int) -> Bool {
+        if maxCount == Int.max {
+            return true
+        }
+        if maxCount <= 0 {
+            return removeAllItems()
+        }
+        
+        var total = _dbGetTotalItemCount()
+        if total < 0 {
+            return false
+        }
+        if total <= maxCount {
+            return true
+        }
+        
+        var items = [LGDataStorageItem]()
+        var success: Bool = false
+        
+        repeat {
+            let perCount = 16
+            items = _dbGetItemSizeInfo(orderByTimeAscWithLimit: perCount)
+            for item in items {
+                if total > maxCount {
+                    if item.fileName != nil {
+                        _ = _fileDelete(with: item.fileName!)
+                    }
+                    success = _dbDeleteItemWith(key: item.key)
+                    total -= item.size
+                } else {
+                    break
+                }
+                if !success {
+                    break
+                }
+            }
+        } while total > maxCount && items.count > 0 && success
+        if success {
+            _dbCheckpoint()
+        }
+        return success
+    }
+    
+    @discardableResult
+    public func removeAllItems() -> Bool {
+        if !_dbClose() {
+            return false
+        }
+        _reset()
+        if !_dbOpen() {
+            return false
+        }
+        if !_dbInitlalize() {
+            return false
+        }
+        return true
+    }
+    
+    public func removeAllItems(with progressBlock: ((_ removedCount: Int, _ totlaCount: Int) -> Void)?, endBlock: ((_ error: Bool) -> Void)?) {
+        let total = _dbGetTotalItemCount()
+        if total <= 0 {
+            if endBlock != nil {
+                endBlock!(total < 0)
+            }
+        }
+        else {
+            var left = total
+            let perCount = 32
+            var items = [LGDataStorageItem]()
+            var success: Bool = false
+            
+            repeat {
+                items = _dbGetItemSizeInfo(orderByTimeAscWithLimit: perCount)
+                for item in items {
+                    if left > 0 {
+                        if item.fileName != nil {
+                            _ = _fileDelete(with: item.fileName!)
+                        }
+                        success = _dbDeleteItemWith(key: item.key)
+                        left -= 1
+                    } else {
+                        break
+                    }
+                    if !success {
+                        break
+                    }
+                    
+                    if progressBlock != nil {
+                        progressBlock!(total - left, total)
+                    }
+                }
+            } while left > 0 && items.count > 0 && success
+            
+            if success {
+                _dbCheckpoint()
+            }
+            if endBlock != nil {
+                endBlock!(!success)
+            }
+        }
+    }
+    
+    public func getItem(for key: String) -> LGDataStorageItem? {
+        if key.lg_length == 0 {
+            return nil
+        }
+        var item = _dbGetItem(with: key, excludeInlineData: false)
+        if item != nil {
+            _ = _dbUpdateAccessTimeWith(key: key)
+        }
+        
+        if item?.fileName != nil {
+            if let value = _fileRead(with: item!.fileName!) {
+                item!.data = value
+            }
+            else {
+                _ = _dbDeleteItemWith(key: key)
+                item = nil
+            }
+        }
+        return item
+    }
+    
+    public func getItemInfo(for key: String) -> LGDataStorageItem? {
+        if key.lg_length == 0 {
+            return nil
+        }
+        
+        return _dbGetItem(with: key, excludeInlineData: true)
+    }
+    
+    public func getItemValue(for key: String) -> Data? {
+        if key.lg_length == 0 {
+            return nil
+        }
+        
+        var value: Data? = nil
+        
+        switch type {
+        case .SQLite:
+            value = _dbGetValue(with: key)
+            break
+        case .file:
+            let filename = _dbGetFileName(with: key)
+            if filename != nil {
+                if let tempValue = _fileRead(with: filename!) {
+                    value = tempValue
+                } else {
+                    _ = _dbDeleteItemWith(key: key)
+                    value = nil
+                }
+            }
+            else {
+                value = nil
+            }
+            break
+        case .mixed:
+            if let filename = _dbGetFileName(with: key) {
+                if let tempValue = _fileRead(with: filename) {
+                    value = tempValue
+                }
+                else {
+                    _ = _dbDeleteItemWith(key: key)
+                    value = nil
+                }
+            } else {
+                value = _dbGetValue(with: key)
+            }
+            break
+        default:
+            break
+        }
+        if value != nil {
+            _ = _dbUpdateAccessTimeWith(key: key)
+        }
+        return value
+    }
+
+    public func getItems(for keys: [String]) -> [LGDataStorageItem] {
+        if keys.count == 0 {
+            return [LGDataStorageItem]()
+        }
+        
+        var items = _dbGetItem(with: keys, excludeInlineData: false)
+        if type == LGDataStorageType.SQLite {
+            for index in 0..<items.count {
+                var item = items[index]
+                if item.fileName != nil {
+                    if let tempValue = _fileRead(with: item.fileName!){
+                        item.data = tempValue
+                    }
+                    else {
+                        _ = _dbDeleteItemWith(key: item.key)
+                        items.remove(at: index)
+                    }
+                }
+            }
+        }
+        
+        if items.count > 0 {
+            _ = _dbUpdateAccessTimeWith(keys: keys)
+        }
+        return items
+    }
+    
+    public func getItemInfo(for keys: [String]) -> [LGDataStorageItem] {
+        if keys.count == 0 {
+            return [LGDataStorageItem]()
+        }
+        return _dbGetItem(with: keys, excludeInlineData: true)
+    }
+    
+    public func getItemsValue(for keys: [String]) -> [String: Data] {
+        let items = getItems(for: keys)
+        var result = [String: Data]()
+        
+        for item in items {
+            result[item.key] = item.data
+        }
+        
+        return result
+    }
+
+    public func itemExists(for key: String) -> Bool {
+        if key.lg_length == 0 {
+            return false
+        }
+        return _dbGetItemCount(with: key) > 0
+    }
+    
+    public func getItemsCount() -> Int {
+        return _dbGetTotalItemCount()
+    }
+    
+    public func getItemsSize() -> Int {
+        return _dbGetTotalItemSize()
+    }
+    
+    deinit {
+        let taskId = UIApplication.shared.beginBackgroundTask {
+            
+        }
+        _dbClose()
+        
+        if taskId != UIBackgroundTaskInvalid {
+            UIApplication.shared.endBackgroundTask(taskId)
+        }
+    }
+    
+    
+}
+
+
+fileprivate let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+
+// MARK: - 数据库私有操作
+fileprivate extension LGDataStorage {
+    fileprivate func _dbOpen() -> Bool {
+        if _db != nil {
+            return true
+        }
+        
+        if _dbPath == nil || _dbPath?.count == 0 {
+            return false
+        }
+        
+        let result = sqlite3_open(_dbPath, &_db)
+        if result == SQLITE_OK {
+            _dbStmtCache = [String: OpaquePointer]()
+            _dbLastOpenErrorTime = 0
+            _dbOpenErrorCount = 0
+            return true
+        }
+        else {
+            _db = nil
+            if _dbStmtCache != nil {
+                _dbStmtCache = nil
+                _dbLastOpenErrorTime = CACurrentMediaTime()
+                _dbOpenErrorCount += 1
+            }
+            
+            /*#file - String - The name of the file in which it appears.
+             
+             #line - Int - The line number on which it appears.
+             
+             #column - Int - The column number in which it begins.
+             
+             #function - String - The name of the declaration in which it appears.
+             */
+            println("初始化sqlite失败%@,%@,%@d,%@d", #file, #function, #line, #column)
+            return false
+        }
+    }
+    
+    @discardableResult
+    fileprivate func _dbClose() -> Bool {
+        if _db == nil {
+            return true
+        }
+        
+        var result: Int32 = 0
+        var retry: Bool = false
+        var stmtFinalized: Bool = false
+        if _dbStmtCache != nil {
+            _dbStmtCache = nil
+        }
+        
+        repeat {
+            retry = false
+            result = sqlite3_close(_db!)
+            if result == SQLITE_BUSY || result == SQLITE_LOCKED {
+                if !stmtFinalized {
+                    stmtFinalized = true
+                    var stmt: OpaquePointer? = sqlite3_next_stmt(_db!, nil)
+                    
+                    while stmt != nil {
+                        stmt = sqlite3_next_stmt(_db!, stmt)
+                        retry = true
+                    }
+                    sqlite3_finalize(stmt) // ??
+                }
+                
+            }
+            else if result != SQLITE_OK {
+                println("关闭数据库连接失败%@,%@,%@d,%@d", #file, #function, #line, #column)
+            }
+        } while retry
+        
+        _db = nil
+        return true
+    }
+    
+    fileprivate func _dbInitlalize() -> Bool {
+        let sql = "pragma journal_mode = wal; pragma synchronous = normal; create table if not exists manifest (key text, filename text, size integer, inline_data blob, modification_time integer, last_access_time integer, extended_data blob, primary key(key)); create index if not exists last_access_time_idx on manifest(last_access_time);"
+        
+        return _dbExecute(sql: sql)
+    }
+    
+    fileprivate func _dbCheck() -> Bool {
+        if _db == nil {
+            if _dbOpenErrorCount < LGDataStorageConfig.maxErrorRetryCount &&
+                CACurrentMediaTime() - _dbLastOpenErrorTime > LGDataStorageConfig.minRetryTimeInterval {
+                return self._dbOpen() && self._dbInitlalize()
+            }
+            else {
+                return false
+            }
+        }
+        else {
+            return true
+        }
+    }
+    
+    fileprivate func _dbExecute(sql: String) -> Bool {
+        if sql.count == 0 {
+            return false
+        }
+        
+        if !self._dbCheck() {
+            return false
+        }
+        
+        do {
+            let result = sqlite3_exec(_db!, sql, nil, nil, nil)
+            guard result == SQLITE_OK else {
+                throw LGCacheError.errorWith(code: LGCacheError.ErrorCode.closeDBFailed, description: "close db failed")
+            }
+            return true
+            
+        } catch {
+            return false
+        }
+    }
+    
+    fileprivate func _dbCheckpoint() {
+        if !_dbCheck() {
+            return
+        }
+        sqlite3_wal_checkpoint(_db!, nil)
+    }
+    
+    fileprivate func _dbPrepareStmt(sql: String) -> OpaquePointer? {
+        if !_dbCheck() || sql.count == 0 || _dbStmtCache == nil {
+            return nil
+        }
+        
+        var stmt = _dbStmtCache![sql]
+        if stmt == nil {
+            let result = sqlite3_prepare_v2(_db!, sql, -1, &stmt, nil)
+            guard result == SQLITE_OK else {
+                return nil
+            }
+            _dbStmtCache![sql] = stmt
+        } else {
+            sqlite3_reset(stmt)
+        }
+        return stmt
+    }
+    
+    fileprivate func _dbJoinedKeys(keys: [String]) -> String {
+        var resultStr = ""
+        let count = keys.count
+        for index in 0..<count {
+            resultStr += "?"
+            if (index + 1) != count {
+                resultStr += ","
+            }
+        }
+        return resultStr
+    }
+    
+    fileprivate func _dbBind(joinedKeys: [String], stmt: OpaquePointer, index: Int) {
+        let count = joinedKeys.count
+        for i in 0..<count {
+            let key = joinedKeys[i]
+            sqlite3_bind_text(stmt, Int32(index + i), key, -1, SQLITE_TRANSIENT)
+        }
+    }
+    
+    fileprivate func _dbSaveWith(key: String, value: Data, fileName: String?, extendedData: Data?) -> Bool {
+        let sql = "insert or replace into manifest (key, filename, size, inline_data, modification_time, last_access_time, extended_data) values (?1, ?2, ?3, ?4, ?5, ?6, ?7);"
+        
+        let stmt = _dbPrepareStmt(sql: sql)
+        println(sqlite3_errmsg(_db))
+        if stmt == nil {
+            return false
+        }
+        
+        let timestmap = Int32(time(nil))
+        sqlite3_bind_text(stmt, 1, key, -1, SQLITE_TRANSIENT)
+        sqlite3_bind_text(stmt, 2, fileName, -1, SQLITE_TRANSIENT)
+        sqlite3_bind_int(stmt, 3, Int32(value.count))
+        if fileName == nil || fileName?.count == 0 {
+            _ = value.withUnsafeBytes { bytes in
+                sqlite3_bind_blob(stmt, 4, bytes, Int32(value.count), SQLITE_TRANSIENT)
+            }
+        }
+        else {
+            sqlite3_bind_blob(stmt, 4, nil, 0, SQLITE_TRANSIENT)
+        }
+        sqlite3_bind_int(stmt, 5, timestmap)
+        sqlite3_bind_int(stmt, 6, timestmap)
+        
+        if extendedData != nil {
+            _ = extendedData!.withUnsafeBytes { bytes in
+                sqlite3_bind_blob(stmt, 7, bytes, Int32(extendedData!.count), SQLITE_TRANSIENT)
+            }
+        }
+        else {
+            sqlite3_bind_blob(stmt, 7, nil, 0, SQLITE_TRANSIENT)
+        }
+
+        let result = sqlite3_step(stmt)
+        println(sqlite3_errmsg(_db))
+        
+        guard result == SQLITE_DONE else {
+            println("插入数据失败%@,%@,%@d,%@d,%d", #file, #function, #line, #column, result)
+            return false
+        }
+        
+        return true
+    }
+    
+    fileprivate func _dbUpdateAccessTimeWith(key: String) -> Bool {
+        let sql = "update manifest set last_access_time = ?1 where key = ?2;"
+        let stmt = _dbPrepareStmt(sql: sql)
+        if stmt == nil {
+            return false
+        }
+        sqlite3_bind_int(stmt, 1, Int32(time(nil)))
+        sqlite3_bind_text(stmt, 2, key, -1, SQLITE_TRANSIENT)
+        
+        let result = sqlite3_step(stmt)
+        guard result == SQLITE_DONE else {
+            println("更新数据失败%@,%@,%@d,%@d,%d", #file, #function, #line, #column, result)
+            return false
+        }
+        return true
+    }
+    
+    fileprivate func _dbUpdateAccessTimeWith(keys: [String]) -> Bool {
+        if !_dbCheck() {
+            return false
+        }
+        let timestmap = Int32(time(nil))
+        let sql = String(format: "update manifest set last_access_time = %d where key in (%@);", timestmap, _dbJoinedKeys(keys: keys))
+        
+        var stmt: OpaquePointer? = nil
+        
+        var result = sqlite3_prepare_v2(_db, sql, -1, &stmt, nil)
+        guard result == SQLITE_OK else {
+            println("准备数据失败%@,%@,%@d,%@d,%d", #file, #function, #line, #column, result)
+            return false
+        }
+        
+        _dbBind(joinedKeys: keys, stmt: stmt!, index: 1)
+        result = sqlite3_step(stmt)
+        
+        guard result == SQLITE_DONE else {
+            println("更新数据失败%@,%@,%@d,%@d,%d", #file, #function, #line, #column, result)
+            return false
+        }
+        return true
+    }
+    
+    fileprivate func _dbDeleteItemWith(key: String) -> Bool {
+        let sql = "delete from manifest where key = ?1;"
+        let stmt = _dbPrepareStmt(sql: sql)
+        if stmt == nil {
+            return false
+        }
+        
+        sqlite3_bind_text(stmt, 1, key, -1, SQLITE_TRANSIENT)
+        let result = sqlite3_step(stmt)
+        guard result == SQLITE_DONE else {
+            println("删除数据失败%@,%@,%@d,%@d,%d", #file, #function, #line, #column, result)
+            return false
+        }
+        
+        return true
+    }
+    
+    fileprivate func _dbDeleteItemWith(keys: [String]) -> Bool {
+        if !_dbCheck() {
+            return false
+        }
+        
+        let sql = String(format: "delete from manifest where key in (%@);", _dbJoinedKeys(keys: keys))
+        
+        var stmt: OpaquePointer? = nil
+        
+        var result = sqlite3_prepare_v2(_db, sql, -1, &stmt, nil)
+        guard result == SQLITE_OK else {
+            return false
+        }
+        
+        _dbBind(joinedKeys: keys, stmt: stmt!, index: 1)
+        
+        result = sqlite3_step(stmt)
+        sqlite3_finalize(stmt)
+        
+        guard result == SQLITE_DONE else {
+            println("删除数据失败%@,%@,%@d,%@d,%d", #file, #function, #line, #column, result)
+            return false
+        }
+        
+        return true
+    }
+    
+    
+    /// 删除超过size大小的记录
+    ///
+    /// - Parameter size: 大小阈值
+    /// - Returns: 是否删除成功
+    fileprivate func _dbDeleteItemsWith(sizeLargerThan size: Int) -> Bool {
+        let sql = "delete from manifest where size > ?1;"
+        let stmt = _dbPrepareStmt(sql: sql)
+        guard stmt != nil else {
+            return false
+        }
+        
+        sqlite3_bind_int(stmt, 1, Int32(size))
+        let result = sqlite3_step(stmt)
+        guard result == SQLITE_OK else {
+            return false
+        }
+        
+        return true
+    }
+    
+    fileprivate func _dbDeleteItemsWith(timeEarlierThan time: Int) -> Bool {
+        let sql = "delete from manifest where last_access_time < ?1;"
+        let stmt = _dbPrepareStmt(sql: sql)
+        guard stmt != nil else {
+            return false
+        }
+        
+        sqlite3_bind_int(stmt, 1, Int32(time))
+        let result = sqlite3_step(stmt)
+        guard result == SQLITE_OK else {
+            return false
+        }
+        
+        return true
+    }
+    
+    fileprivate func _dbGetItem(from stmt: OpaquePointer, excludeInlineData: Bool) -> LGDataStorageItem {
+        var index: Int32 = 0
+        
+        let key = sqlite3_column_text(stmt, index)
+        
+        index += 1
+        let fileName = sqlite3_column_text(stmt, index)
+        
+        index += 1
+        let size = sqlite3_column_int(stmt, index)
+        
+        index += 1
+        let inline_data = excludeInlineData ? nil : sqlite3_column_blob(stmt, index)
+        
+        let inline_data_bytes = excludeInlineData ? 0 : sqlite3_column_bytes(stmt, index)
+        
+        index += 1
+        let modification_time = sqlite3_column_int(stmt, index)
+        
+        index += 1
+        let last_access_time = sqlite3_column_int(stmt, index)
+        
+        index += 1
+        let extended_data = excludeInlineData ? nil : sqlite3_column_blob(stmt, index)
+        
+        let extended_data_bytes = sqlite3_column_bytes(stmt, index)
+        
+        
+        let keyString = (key != nil) ? String(cString: key!) : ""
+        let fileNameString = (fileName != nil) ? String(cString: fileName!) : nil
+        var valueData = Data()
+        if inline_data != nil && inline_data_bytes > 0 {
+            valueData = Data(bytesNoCopy: UnsafeMutableRawPointer(mutating: inline_data!), count: Int(inline_data_bytes), deallocator: .none)
+        }
+        
+        var extendedData: Data? = nil
+        if extended_data != nil && extended_data_bytes > 0 {
+            extendedData = Data(bytesNoCopy: UnsafeMutableRawPointer(mutating: extended_data!), count: Int(extended_data_bytes), deallocator: .none)
+        }
+        
+        let item = LGDataStorageItem(key: keyString,
+                                     data: valueData,
+                                     fileName: fileNameString,
+                                     size: Int(size),
+                                     modifyTime: Int(modification_time),
+                                     accessTime: Int(last_access_time),
+                                     extendedData: extendedData)
+        
+        return item
+    }
+    
+    fileprivate func _dbGetItem(with key: String, excludeInlineData: Bool) -> LGDataStorageItem? {
+        let sql = excludeInlineData ? "select key, filename, size, modification_time, last_access_time, extended_data from manifest where key = ?1;" : "select key, filename, size, inline_data, modification_time, last_access_time, extended_data from manifest where key = ?1;"
+        let stmt = _dbPrepareStmt(sql: sql)
+        guard stmt != nil else {
+            return nil
+        }
+        
+        sqlite3_bind_text(stmt, 1, key, -1, SQLITE_TRANSIENT)
+        var resultItem: LGDataStorageItem? = nil
+        let result = sqlite3_step(stmt)
+        if result == SQLITE_ROW{
+            resultItem = _dbGetItem(from: stmt!, excludeInlineData: excludeInlineData)
+        } else {
+            if result == SQLITE_DONE {
+                println("查询数据失败%@,%@,%@d,%@d,%d", #file, #function, #line, #column, result)
+            }
+        }
+        return resultItem
+    }
+    
+    fileprivate func _dbGetItem(with keys: [String], excludeInlineData: Bool) -> [LGDataStorageItem] {
+        var resultArray = [LGDataStorageItem]()
+        if !_dbCheck() {
+            return resultArray
+        }
+        let sql: String
+        if excludeInlineData {
+            sql = String(format: "select key, filename, size, modification_time, last_access_time, extended_data from manifest where key in (%@);", _dbJoinedKeys(keys: keys))
+        } else {
+            sql = String(format: "select key, filename, size, inline_data, modification_time, last_access_time, extended_data from manifest where key in (%@);", _dbJoinedKeys(keys: keys))
+        }
+        
+        var stmt: OpaquePointer? = nil
+        var result = sqlite3_prepare_v2(_db, sql, -1, &stmt, nil)
+        guard result == SQLITE_OK else {
+            return resultArray
+        }
+        
+        _dbBind(joinedKeys: keys, stmt: stmt!, index: 1)
+        repeat {
+            result = sqlite3_step(stmt)
+            if result == SQLITE_ROW {
+                let item = _dbGetItem(from: stmt!, excludeInlineData: excludeInlineData)
+                resultArray.append(item)
+            }
+            else if result == SQLITE_DONE {
+                break
+            }
+            else {
+                break
+            }
+            
+            
+        } while true
+        
+        sqlite3_finalize(stmt)
+        return resultArray
+    }
+    
+    fileprivate func _dbGetValue(with key: String) -> Data? {
+        let sql = "select inline_data from manifest where key = ?1;"
+        let stmt: OpaquePointer? = _dbPrepareStmt(sql: sql)
+        guard stmt != nil else {
+            return nil
+        }
+        
+        sqlite3_bind_text(stmt!, 1, key, -1, SQLITE_TRANSIENT)
+        
+        let result = sqlite3_step(stmt!)
+        if result == SQLITE_ROW {
+            let inline_data = sqlite3_column_blob(stmt, 0)
+            let inline_data_bytes = sqlite3_column_bytes(stmt!, 0)
+            
+            if inline_data == nil || inline_data_bytes <= 0 {
+                return nil
+            }
+            else {
+                return Data(bytesNoCopy: UnsafeMutableRawPointer(mutating: inline_data!), count: Int(inline_data_bytes), deallocator: .none)
+            }
+        }
+        else {
+            return nil
+        }
+        
+    }
+    
+    fileprivate func _dbGetFileName(with key: String) -> String? {
+        let sql = "select filename from manifest where key = ?1;"
+        let stmt: OpaquePointer? = _dbPrepareStmt(sql: sql)
+        guard stmt != nil else {
+            return nil
+        }
+        
+        sqlite3_bind_text(stmt!, 1, key, -1, SQLITE_TRANSIENT)
+        
+        let result = sqlite3_step(stmt!)
+        if result == SQLITE_ROW {
+            let filename = sqlite3_column_text(stmt, 0)
+            
+            if filename != nil {
+                return String(cString: filename!)
+            }
+            else {
+                return nil
+            }
+        }
+        else {
+            return nil
+        }
+        
+    }
+    
+    fileprivate func _dbGetFileName(with keys: [String]) -> [String] {
+        if !_dbCheck() {
+            return [String]()
+        }
+        let sql = String(format: "select filename from manifest where key in (%@);", _dbJoinedKeys(keys: keys))
+        var stmt: OpaquePointer? = nil
+        var result = sqlite3_prepare_v2(_db, sql, -1, &stmt, nil)
+        guard result == SQLITE_OK else {
+            return [String]()
+        }
+        
+        _dbBind(joinedKeys: keys, stmt: stmt!, index: 1)
+        
+        var resultArray = [String]()
+        repeat {
+            result = sqlite3_step(stmt!)
+            if result == SQLITE_ROW {
+                let filename = sqlite3_column_text(stmt!, 0)
+                if filename != nil {
+                    resultArray.append(String(cString: filename!))
+                }
+            }
+            else {
+                break
+            }
+        } while true
+        sqlite3_finalize(stmt)
+        return resultArray
+    }
+    
+    fileprivate func _dbGetFilenames(withSizeLargerThan size: Int) -> [String] {
+        let sql = "select filename from manifest where size > ?1 and filename is not null;"
+        let stmt = _dbPrepareStmt(sql: sql)
+        guard stmt != nil else {
+            return [String]()
+        }
+        
+        sqlite3_bind_int(stmt!, 1, Int32(size))
+        var resultArray = [String]()
+        repeat {
+            let result = sqlite3_step(stmt!)
+            if result == SQLITE_ROW {
+                let filename = sqlite3_column_text(stmt, 0)
+                if filename != nil {
+                    let name = String(cString: filename!)
+                    resultArray.append(name)
+                }
+                else {
+                    break
+                }
+            }
+            else {
+                break
+            }
+        } while true
+        
+        return resultArray
+    }
+
+    fileprivate func _dbGetFilenames(withTimeEarlierThan time: Int) -> [String] {
+        let sql = "select filename from manifest where last_access_time < ?1 and filename is not null;"
+        let stmt = _dbPrepareStmt(sql: sql)
+        guard stmt != nil else {
+            return [String]()
+        }
+        
+        sqlite3_bind_int(stmt!, 1, Int32(time))
+        var resultArray = [String]()
+        repeat {
+            let result = sqlite3_step(stmt!)
+            if result == SQLITE_ROW {
+                let filename = sqlite3_column_text(stmt, 0)
+                if filename != nil {
+                    let name = String(cString: filename!)
+                    resultArray.append(name)
+                }
+                else {
+                    break
+                }
+            }
+            else {
+                break
+            }
+        } while true
+        
+        return resultArray
+    }
+    
+    fileprivate func _dbGetItemSizeInfo(orderByTimeAscWithLimit count: Int) -> [LGDataStorageItem] {
+        let sql = "select key, filename, size from manifest order by last_access_time asc limit ?1;"
+        let stmt: OpaquePointer? = _dbPrepareStmt(sql: sql)
+        guard stmt != nil else {
+            return [LGDataStorageItem]()
+        }
+        
+        sqlite3_bind_int(stmt!, 1, Int32(count))
+        var resultArray = [LGDataStorageItem]()
+        repeat {
+            let result = sqlite3_step(stmt!)
+            if result == SQLITE_ROW {
+                let key = sqlite3_column_text(stmt!, 0)
+                let filename = sqlite3_column_text(stmt!, 1)
+                let size = sqlite3_column_int(stmt!, 2)
+                
+                if key != nil {
+                    let keyStr = (key != nil ? String(cString: key!) : "")
+                    let filenameStr = (filename != nil ? String(cString: filename!) : nil)
+                    var item = LGDataStorageItem(key: "",
+                                                 data: Data(),
+                                                 fileName: nil,
+                                                 size: 0,
+                                                 modifyTime: 0,
+                                                 accessTime: 0,
+                                                 extendedData: nil)
+                    item.key = keyStr
+                    item.fileName = filenameStr
+                    item.size = Int(size)
+                    resultArray.append(item)
+                }
+                else {
+                    break
+                }
+            }
+            else {
+                break
+            }
+        } while true
+        return resultArray
+    }
+    
+    fileprivate func _dbGetItemCount(with key: String) -> Int {
+        let sql = "select count(key) from manifest where key = ?1;"
+        let stmt = _dbPrepareStmt(sql: sql)
+        guard stmt != nil else {
+            return -1
+        }
+        
+        let result = sqlite3_step(stmt!)
+        
+        guard result == SQLITE_ROW else {
+            return -1
+        }
+        
+        let count = sqlite3_column_int(stmt!, 0)
+        return Int(count)
+    }
+
+    fileprivate func _dbGetTotalItemSize() -> Int {
+        let sql = "select sum(size) from manifest;"
+        let stmt: OpaquePointer? = _dbPrepareStmt(sql: sql)
+        guard stmt != nil else {
+            return -1
+        }
+        
+        let result = sqlite3_step(stmt!)
+        if result == SQLITE_ROW {
+            let size = sqlite3_column_int(stmt, 0)
+            return Int(size)
+        }
+        return -1
+    }
+    
+    fileprivate func _dbGetTotalItemCount() -> Int {
+        let sql = "select count(*) from manifest;"
+        let stmt: OpaquePointer? = _dbPrepareStmt(sql: sql)
+        guard stmt != nil else {
+            return -1
+        }
+        
+        let result = sqlite3_step(stmt!)
+        if result == SQLITE_ROW {
+            let size = sqlite3_column_int(stmt, 0)
+            return Int(size)
+        }
+        return -1
+    }
+}
+
+// MARK: -  文件私有操作
+fileprivate extension LGDataStorage {
+    
+    
+    fileprivate func _fileWrite(with fileName: String, data: Data) -> Bool {
+        let path = _dataPath! + "/" + fileName
+        do {
+            try data.write(to: URL(fileURLWithPath: path))
+        }
+        catch {
+            return false
+        }
+        return true
+    }
+    
+    fileprivate func _fileRead(with fileName: String) -> Data? {
+        let path = _dataPath! + "/" + fileName
+        do {
+            let data = try Data(contentsOf: URL(fileURLWithPath: path))
+            return data
+        }
+        catch {
+            return nil
+        }
+    }
+    
+    fileprivate func _fileDelete(with fileName: String) -> Bool {
+        let path = _dataPath! + "/" + fileName
+        do {
+            try FileManager.default.removeItem(atPath: path)
+            return true
+        }
+        catch {
+            return false
+        }
+    }
+    
+    fileprivate func _fileMoveAllToTrash() -> Bool {
+        let uuid = UUID()
+        let tempPath = _trashPath! + "/" + uuid.uuidString
+        
+        do {
+            try FileManager.default.moveItem(at: URL(fileURLWithPath: _dataPath!),
+                                             to: URL(fileURLWithPath: tempPath))
+            try FileManager.default.createDirectory(at: URL(fileURLWithPath: _dataPath!),
+                                                    withIntermediateDirectories: true,
+                                                    attributes: nil)
+            return true
+        }
+        catch {
+            return false
+        }
+    }
+    
+    fileprivate func _fileEmptyTrashInBackground() {
+        let trashPath = _trashPath!
+        let trashQueue = _trashQueue!
+        trashQueue.async {
+            let fileManager = FileManager.default
+            do {
+                let directoryContents = try fileManager.contentsOfDirectory(atPath: trashPath)
+                for tempPath in directoryContents {
+                    let fullPath = trashPath + "/" + tempPath
+                    try fileManager.removeItem(atPath: fullPath)
+                }
+            }
+            catch {
+                
+            }
+        }
+    }
+    
+    
+    /// 删除所有文件，并在后台清理回收站
+    /// 注意需要确保数据库连接已经关闭
+    fileprivate func _reset() {
+        do {
+            let fileManager = FileManager.default
+            try fileManager.removeItem(atPath: _path! + "/" + LGDataStorageConfig.DBFileName)
+            try fileManager.removeItem(atPath: _path! + "/" + LGDataStorageConfig.DBShmFileName)
+            try fileManager.removeItem(atPath: _path! + "/" + LGDataStorageConfig.DBWalFileName)
+            _ = _fileMoveAllToTrash()
+            _fileEmptyTrashInBackground()
+        }
+        catch {
+            
+        }
+    }
+}
+
+
