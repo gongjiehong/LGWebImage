@@ -96,9 +96,11 @@ public struct LGWebImageOptions: OptionSet {
         return LGWebImageOptions(rawValue: 1 << 14)
     }()
     
-    /// 默认，使用Fade动画，允许后台下载
+    /// 默认，使用Fade动画，允许后台下载，开启渐进加载
     public static let `default`: LGWebImageOptions = {
-        return [LGWebImageOptions.setImageWithFadeAnimation, LGWebImageOptions.allowBackgroundTask]
+        return [LGWebImageOptions.setImageWithFadeAnimation,
+                LGWebImageOptions.allowBackgroundTask,
+                LGWebImageOptions.progressive]
     }()
 }
 

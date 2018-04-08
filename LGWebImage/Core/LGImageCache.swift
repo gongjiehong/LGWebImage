@@ -198,7 +198,7 @@ public class LGImageCache {
     }
 
     public func getImageData(forKey key: String, withBlock block: @escaping (Data?) -> Void) {
-        DispatchQueue.global(qos: DispatchQoS.QoSClass.default).async {
+        DispatchQueue.global(qos: DispatchQoS.QoSClass.userInitiated).async {
             let data = self.diskCache?.object(forKey: key)?.data.asData()
             DispatchQueue.main.async {
                 block(data)
@@ -289,5 +289,5 @@ fileprivate extension UIImage {
     }
 }
 
-fileprivate let lg_imageCacheIOQueue = DispatchQueue.global(qos: DispatchQoS.QoSClass.default)
+fileprivate let lg_imageCacheIOQueue = DispatchQueue.global(qos: DispatchQoS.QoSClass.userInitiated)
 fileprivate let lg_imageCacheDecodeQueue = DispatchQueue.global(qos: DispatchQoS.QoSClass.utility)

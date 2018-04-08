@@ -330,9 +330,9 @@ fileprivate var lg_diskSpaceFree: Int64 {
     }
 }
 
-fileprivate let _globalInstances = NSMapTable<AnyObject, AnyObject>(keyOptions: NSPointerFunctions.Options.strongMemory,
-                                                                    valueOptions: NSPointerFunctions.Options.weakMemory,
-                                                                    capacity: 0)
+fileprivate let _globalInstances = NSMapTable<NSString, LGDiskCache>(keyOptions: .strongMemory,
+                                                                     valueOptions: .weakMemory,
+                                                                     capacity: 0)
 fileprivate let _globalInstancesLock = DispatchSemaphore(value: 1)
 
 fileprivate func _LGDiskCacheGetGlobal(path: String) -> LGDiskCache? {
@@ -340,7 +340,7 @@ fileprivate func _LGDiskCacheGetGlobal(path: String) -> LGDiskCache? {
         return nil
     }
     _ = _globalInstancesLock.wait(timeout: DispatchTime.distantFuture)
-    let cache = _globalInstances.object(forKey: path as AnyObject) as? LGDiskCache
+    let cache = _globalInstances.object(forKey: NSString(string: path))
     _ = _globalInstancesLock.signal()
     return cache
 }
@@ -350,7 +350,7 @@ fileprivate func _LGDiskCacheSetGlobal(cache: LGDiskCache) {
         return
     }
     _ = _globalInstancesLock.wait(timeout: DispatchTime.distantFuture)
-    _globalInstances.setObject(cache, forKey: cache.path as AnyObject)
+    _globalInstances.setObject(cache, forKey: NSString(string: cache.path))
     _ = _globalInstancesLock.signal()
 }
 

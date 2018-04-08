@@ -43,7 +43,7 @@ public class LGCache {
             return
         }
         if memoryCache.containsObject(forKey: key) {
-            DispatchQueue.global(qos: DispatchQoS.QoSClass.default).async {
+            DispatchQueue.global(qos: DispatchQoS.QoSClass.userInitiated).async {
                 tempBlock(key, true)
             }
         } else {
@@ -69,7 +69,7 @@ public class LGCache {
             return
         }
         if let objcet = memoryCache.object(forKey: key) {
-            DispatchQueue.global(qos: DispatchQoS.QoSClass.default).async {
+            DispatchQueue.global(qos: DispatchQoS.QoSClass.userInitiated).async {
                 tempBlock(key, objcet)
             }
         } else {

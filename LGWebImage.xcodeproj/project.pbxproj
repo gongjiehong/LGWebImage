@@ -27,10 +27,8 @@
 		FEB7BAA82073602E00639C13 /* LGAnimatedImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA8F2073602D00639C13 /* LGAnimatedImageView.swift */; };
 		FEB7BAA92073602E00639C13 /* LGAnimatedImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA902073602D00639C13 /* LGAnimatedImage.swift */; };
 		FEB7BAAA2073602E00639C13 /* LGWebImageDefins.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA922073602D00639C13 /* LGWebImageDefins.swift */; };
-		FEB7BAAB2073602E00639C13 /* LGWebImageDownloaderError.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA932073602D00639C13 /* LGWebImageDownloaderError.swift */; };
 		FEB7BAAC2073602E00639C13 /* LGImageCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA942073602D00639C13 /* LGImageCache.swift */; };
 		FEB7BAAD2073602E00639C13 /* LGWebImageDownloadSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA952073602D00639C13 /* LGWebImageDownloadSessionManager.swift */; };
-		FEB7BAAE2073602E00639C13 /* LGWebImageURLRequestConvertible.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA962073602D00639C13 /* LGWebImageURLRequestConvertible.swift */; };
 		FEB7BAAF2073602E00639C13 /* LGWebImageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA972073602D00639C13 /* LGWebImageManager.swift */; };
 		FEB7BAB12073607B00639C13 /* WebP.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FEB7BAB02073607B00639C13 /* WebP.framework */; };
 /* End PBXBuildFile section */
@@ -90,10 +88,8 @@
 		FEB7BA8F2073602D00639C13 /* LGAnimatedImageView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGAnimatedImageView.swift; sourceTree = "<group>"; };
 		FEB7BA902073602D00639C13 /* LGAnimatedImage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGAnimatedImage.swift; sourceTree = "<group>"; };
 		FEB7BA922073602D00639C13 /* LGWebImageDefins.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGWebImageDefins.swift; sourceTree = "<group>"; };
-		FEB7BA932073602D00639C13 /* LGWebImageDownloaderError.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGWebImageDownloaderError.swift; sourceTree = "<group>"; };
 		FEB7BA942073602D00639C13 /* LGImageCache.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGImageCache.swift; sourceTree = "<group>"; };
 		FEB7BA952073602D00639C13 /* LGWebImageDownloadSessionManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGWebImageDownloadSessionManager.swift; sourceTree = "<group>"; };
-		FEB7BA962073602D00639C13 /* LGWebImageURLRequestConvertible.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGWebImageURLRequestConvertible.swift; sourceTree = "<group>"; };
 		FEB7BA972073602D00639C13 /* LGWebImageManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGWebImageManager.swift; sourceTree = "<group>"; };
 		FEB7BAB02073607B00639C13 /* WebP.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebP.framework; path = LGWebImage/WebP.framework; sourceTree = "<group>"; };
 		FEE49F112073760300EAC3F3 /* Package.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Package.swift; sourceTree = "<group>"; };
@@ -220,10 +216,8 @@
 			isa = PBXGroup;
 			children = (
 				FEB7BA922073602D00639C13 /* LGWebImageDefins.swift */,
-				FEB7BA932073602D00639C13 /* LGWebImageDownloaderError.swift */,
 				FEB7BA942073602D00639C13 /* LGImageCache.swift */,
 				FEB7BA952073602D00639C13 /* LGWebImageDownloadSessionManager.swift */,
-				FEB7BA962073602D00639C13 /* LGWebImageURLRequestConvertible.swift */,
 				FEB7BA972073602D00639C13 /* LGWebImageManager.swift */,
 			);
 			path = Core;
@@ -356,14 +350,12 @@
 				FEB7BAA62073602E00639C13 /* LGImageCoder.swift in Sources */,
 				FEB7BA9D2073602D00639C13 /* LGCache.swift in Sources */,
 				FEB7BA9A2073602D00639C13 /* LGMemoryCache.swift in Sources */,
-				FEB7BAAB2073602E00639C13 /* LGWebImageDownloaderError.swift in Sources */,
 				FEB7BA992073602D00639C13 /* LGDataStorage.swift in Sources */,
 				FEB7BA9B2073602D00639C13 /* LGCacheItem.swift in Sources */,
 				FEB7BA982073602D00639C13 /* LGDiskCache.swift in Sources */,
 				FEB7BAAC2073602E00639C13 /* LGImageCache.swift in Sources */,
 				FEB7BAA22073602E00639C13 /* LGImage.swift in Sources */,
 				FEB7BAAA2073602E00639C13 /* LGWebImageDefins.swift in Sources */,
-				FEB7BAAE2073602E00639C13 /* LGWebImageURLRequestConvertible.swift in Sources */,
 				FEB7BA9F2073602D00639C13 /* UIImage+Extensions.swift in Sources */,
 				FEB7BAA02073602E00639C13 /* FileManager+Extensions.swift in Sources */,
 				FEB7BAA32073602E00639C13 /* LGImageCoderError.swift in Sources */,
