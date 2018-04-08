@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import LGHTTPRequest
 
 /// 穷举处理过程中的一些选项
 public struct LGWebImageOptions: OptionSet {
@@ -149,6 +150,9 @@ public var JPEGSOSMarker: Data {
     return Data(bytes: [0xFF, 0xDA])
 }
 
+public typealias LGWebImageTransformBlock = ((UIImage?, URL?) -> UIImage?)
+public typealias LGWebImageCompletionBlock = ((UIImage?, URL?, LGWebImageSourceType, LGWebImageStage?, Error) -> Void)
+public typealias LGWebImageProgressBlock = LGProgressHandler
 
 
 
