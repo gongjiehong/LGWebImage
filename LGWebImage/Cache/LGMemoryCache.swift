@@ -142,7 +142,7 @@ public class LGMemoryCache {
             _lru.bringNode(toHead: node)
         } else {
             node = LGLinkedMapNode(key: key, value: toSaveObj, cost: cost, time: now)
-            _lru.bringNode(toHead: node)
+            _lru.insertNode(atHead: node!)
         }
         
         if _lru.totalCount > countLimit {

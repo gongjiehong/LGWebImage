@@ -11,8 +11,8 @@ import Foundation
 public class LGDiskCache {
     
     fileprivate var _storage: LGDataStorage?
-    fileprivate var _lock: DispatchSemaphore?
-    fileprivate var _queue: DispatchQueue?
+    fileprivate var _lock: DispatchSemaphore
+    fileprivate var _queue: DispatchQueue
 
     /// 缓存的名字
     public var name: String?
@@ -44,6 +44,9 @@ public class LGDiskCache {
         self.path = FileManager.lg_cacheDirectoryPath + "/LGDiskCache"
         self.inlineThreshold = 10240
         
+        _storage = LGDataStorage(path: path, type: LGDataStorageType.mixed)
+        _lock = DispatchSemaphore(value: 1)
+        _queue = DispatchQueue(label: "com.cxylg.cache.disk")
     }
     
     
@@ -65,8 +68,7 @@ public class LGDiskCache {
             type = LGDataStorageType.mixed
         }
         
-        let storage = LGDataStorage(path: path, type: type)
-        _storage = storage
+        _storage = LGDataStorage(path: path, type: type)
         _lock = DispatchSemaphore(value: 1)
         _queue = DispatchQueue(label: "com.cxylg.cache.disk")
         
@@ -95,15 +97,15 @@ public class LGDiskCache {
     }
 
     public func containsObject(forKey key: String) -> Bool {
-        _ = _lock?.wait(timeout: DispatchTime.distantFuture)
+        _ = _lock.wait(timeout: DispatchTime.distantFuture)
         let contains = _storage?.itemExists(forKey: key)
-        _ = _lock?.signal()
+        _ = _lock.signal()
         return contains ?? false
     }
     
     public func containsObject(forKey key: String, withBlock block: ((_ key: String, _ contains: Bool) -> Void)?) {
         if block != nil {
-            _queue?.async { [weak self] in
+            _queue.async { [weak self] in
                 guard let weakSelf = self else {
                     return
                 }
@@ -114,9 +116,9 @@ public class LGDiskCache {
     }
     
     public func object(forKey key: String) -> LGCacheItem? {
-        _ = _lock?.wait(timeout: DispatchTime.distantFuture)
+        _ = _lock.wait(timeout: DispatchTime.distantFuture)
         let item = _storage?.getItem(forKey: key)
-        _ = _lock?.signal()
+        _ = _lock.signal()
         if item?.data == nil {
             return nil
         }
@@ -128,7 +130,7 @@ public class LGDiskCache {
         if block == nil {
             return
         }
-        _queue?.async {[weak self] in
+        _queue.async {[weak self] in
             guard let weakSelf = self else {
                 return
             }
@@ -136,6 +138,16 @@ public class LGDiskCache {
            block!(key, object)
         }
         
+    }
+    
+    public func setObject(withFileURL fileURL: URL, forKey key: String) {
+        if key.lg_length == 0 {
+            return
+        }
+        let filename: String = _filename(for: key)
+        _ = _lock.wait(timeout: DispatchTime.distantFuture)
+        _ = _storage?.saveItem(with: key, fileURL: fileURL, filename: filename, extendedData: nil)
+        _ = _lock.signal()
     }
     
     public func setObject(_ object: LGCacheItem?, forKey key: String) {
@@ -159,13 +171,13 @@ public class LGDiskCache {
                 filename = _filename(for: key)
             }
         }
-        _ = _lock?.wait(timeout: DispatchTime.distantFuture)
+        _ = _lock.wait(timeout: DispatchTime.distantFuture)
         _ = _storage?.saveItem(with: key, value: value!, filename: filename, extendedData: extendedData?.asData())
-        _ = _lock?.signal()
+        _ = _lock.signal()
     }
 
     public func setObject(_ object: LGCacheItem?, forKey key: String, withBlock block: (() -> Void)?) {
-        _queue?.async { [weak self] in
+        _queue.async { [weak self] in
             guard let weakSelf = self else {
                 return
             }
@@ -180,13 +192,13 @@ public class LGDiskCache {
         if key.lg_length == 0 {
             return
         }
-        _ = _lock?.wait(timeout: DispatchTime.distantFuture)
+        _ = _lock.wait(timeout: DispatchTime.distantFuture)
         _ = _storage?.removeItem(forKey: key)
-        _ = _lock?.signal()
+        _ = _lock.signal()
     }
 
     public func removeObject(forKey key: String, withBlock block: ((String) -> Void)?) {
-        _queue?.async { [weak self] in
+        _queue.async { [weak self] in
             guard let weakSelf = self else {
                 return
             }
@@ -198,13 +210,13 @@ public class LGDiskCache {
     }
     
     public func removeAllObjects() {
-        _ = _lock?.wait(timeout: DispatchTime.distantFuture)
+        _ = _lock.wait(timeout: DispatchTime.distantFuture)
         _ = _storage?.removeAllItems()
-        _ = _lock?.signal()
+        _ = _lock.signal()
     }
     
     public func removeAllObjects(withBlock block: (() -> Void)?) {
-        _queue?.async { [weak self] in
+        _queue.async { [weak self] in
             guard let weakSelf = self else {
                 return
             }
@@ -217,28 +229,28 @@ public class LGDiskCache {
     
     public func removeAllObjects(withProgressBlock progressBlock: ((_ removedCount: Int, _ totalCount: Int) -> Void)?,
                                  endBlock: ((_ error: Bool) -> Void)?) {
-        _queue?.async {[weak self] in
+        _queue.async {[weak self] in
             guard let weakSelf = self else {
                 if (endBlock != nil) {
                     endBlock!(true)
                 }
                 return
             }
-            _ = weakSelf._lock?.wait(timeout: DispatchTime.distantFuture)
+            _ = weakSelf._lock.wait(timeout: DispatchTime.distantFuture)
             _ = weakSelf._storage?.removeAllItems(with: progressBlock, endBlock: endBlock)
-            _ = weakSelf._lock?.signal()
+            _ = weakSelf._lock.signal()
         }
     }
     
     public var totalCount: Int {
-        _ = _lock?.wait(timeout: DispatchTime.distantFuture)
+        _ = _lock.wait(timeout: DispatchTime.distantFuture)
         let count = _storage!.getItemsCount()
-        _ = _lock?.signal()
+        _ = _lock.signal()
         return count
     }
     
     public func totalCount(withBlock block: @escaping ((_ totalCount: Int) -> Void)) {
-        _queue?.async { [weak self] in
+        _queue.async { [weak self] in
             guard let weakSelf = self else {
                 return
             }
@@ -248,14 +260,14 @@ public class LGDiskCache {
     }
     
     public var totalCost: Int {
-        _ = _lock?.wait(timeout: DispatchTime.distantFuture)
+        _ = _lock.wait(timeout: DispatchTime.distantFuture)
         let count = _storage!.getItemsSize()
-        _ = _lock?.signal()
+        _ = _lock.signal()
         return count
     }
     
     public func totalCost(withBlock block: @escaping ((_ totalCost: Int) -> Void)) {
-        _queue?.async { [weak self] in
+        _queue.async { [weak self] in
             guard let weakSelf = self else {
                 return
             }
@@ -265,13 +277,13 @@ public class LGDiskCache {
     }
     
     public func trimToCount(_ count: Int) {
-        _ = _lock?.wait(timeout: DispatchTime.distantFuture)
+        _ = _lock.wait(timeout: DispatchTime.distantFuture)
         _trimToCount(countLimit: count)
-        _ = _lock?.signal()
+        _ = _lock.signal()
     }
     
     public func trimToCount(_ count: Int, withBlock block: @escaping (() -> Void)) {
-        _queue?.async { [weak self] in
+        _queue.async { [weak self] in
             guard let weakSelf = self else {
                 return
             }
@@ -281,13 +293,13 @@ public class LGDiskCache {
     }
     
     public func trimToCost(_ cost: Int) {
-        _ = _lock?.wait(timeout: DispatchTime.distantFuture)
+        _ = _lock.wait(timeout: DispatchTime.distantFuture)
         _trimToCost(costLimit: cost)
-        _ = _lock?.signal()
+        _ = _lock.signal()
     }
     
     public func trimToCost(_ cost: Int, withBlock block: @escaping (() -> Void)) {
-        _queue?.async { [weak self] in
+        _queue.async { [weak self] in
             guard let weakSelf = self else {
                 return
             }
@@ -297,19 +309,27 @@ public class LGDiskCache {
     }
     
     public func trimToAge(_ age: Int) {
-        _ = _lock?.wait(timeout: DispatchTime.distantFuture)
+        _ = _lock.wait(timeout: DispatchTime.distantFuture)
         _trimToAge(ageLimit: age)
-        _ = _lock?.signal()
+        _ = _lock.signal()
     }
     
     public func trimToAge(_ age: Int, withBlock block: @escaping (() -> Void)) {
-        _queue?.async { [weak self] in
+        _queue.async { [weak self] in
             guard let weakSelf = self else {
                 return
             }
             weakSelf.trimToAge(age)
             block()
         }
+    }
+    
+    public func filePathForDiskStorage(withKey key: String) -> URL {
+        guard let pathURL = self._storage?.filePathURL(withFileName: _filename(for: key)) else {
+            assert(false, "缓存对象异常")
+            return URL(fileURLWithPath: "")
+        }
+        return pathURL
     }
 
     deinit {
@@ -370,16 +390,16 @@ extension LGDiskCache {
     }
     
     fileprivate func _trimInBackground() {
-        _queue?.async { [weak self] in
+        _queue.async { [weak self] in
             guard let weakSelf = self else {
                 return
             }
-            _ = weakSelf._lock?.wait(timeout: DispatchTime.distantFuture)
+            _ = weakSelf._lock.wait(timeout: DispatchTime.distantFuture)
             weakSelf._trimToCost(costLimit: weakSelf.costLimit)
             weakSelf._trimToCount(countLimit: weakSelf.countLimit)
             weakSelf._trimToAge(ageLimit: weakSelf.ageLimit)
             weakSelf._trimToFreeDiskSpace(targetFreeDiskSpace: weakSelf.freeDiskSpaceLimit)
-            _ = weakSelf._lock?.signal()
+            _ = weakSelf._lock.signal()
         }
     }
     
@@ -455,9 +475,9 @@ extension LGDiskCache {
     }
     
     @objc fileprivate func _appWillBeTerminated() {
-        _ = self._lock?.wait(timeout: DispatchTime.distantFuture)
+        _ = self._lock.wait(timeout: DispatchTime.distantFuture)
         self._storage = nil
-        _ = self._lock?.signal()
+        _ = self._lock.signal()
     }
 }
 

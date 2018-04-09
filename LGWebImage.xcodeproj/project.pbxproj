@@ -30,7 +30,7 @@
 		FEB7BAAC2073602E00639C13 /* LGImageCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA942073602D00639C13 /* LGImageCache.swift */; };
 		FEB7BAAD2073602E00639C13 /* LGWebImageDownloadSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA952073602D00639C13 /* LGWebImageDownloadSessionManager.swift */; };
 		FEB7BAAF2073602E00639C13 /* LGWebImageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA972073602D00639C13 /* LGWebImageManager.swift */; };
-		FEB7BAB12073607B00639C13 /* WebP.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FEB7BAB02073607B00639C13 /* WebP.framework */; };
+		FED3EAC2207B4BDA00AA224F /* WebP.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FED3EAC1207B4BDA00AA224F /* WebP.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -91,7 +91,7 @@
 		FEB7BA942073602D00639C13 /* LGImageCache.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGImageCache.swift; sourceTree = "<group>"; };
 		FEB7BA952073602D00639C13 /* LGWebImageDownloadSessionManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGWebImageDownloadSessionManager.swift; sourceTree = "<group>"; };
 		FEB7BA972073602D00639C13 /* LGWebImageManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGWebImageManager.swift; sourceTree = "<group>"; };
-		FEB7BAB02073607B00639C13 /* WebP.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebP.framework; path = LGWebImage/WebP.framework; sourceTree = "<group>"; };
+		FED3EAC1207B4BDA00AA224F /* WebP.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = WebP.framework; sourceTree = "<group>"; };
 		FEE49F112073760300EAC3F3 /* Package.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Package.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -100,8 +100,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FED3EAC2207B4BDA00AA224F /* WebP.framework in Frameworks */,
 				FE144F052074B88000415B4E /* LGHTTPRequest.framework in Frameworks */,
-				FEB7BAB12073607B00639C13 /* WebP.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -138,7 +138,7 @@
 			children = (
 				FEE49F112073760300EAC3F3 /* Package.swift */,
 				FE144EF52074B87600415B4E /* LGHTTPRequest.xcodeproj */,
-				FEB7BAB02073607B00639C13 /* WebP.framework */,
+				FED3EAC1207B4BDA00AA224F /* WebP.framework */,
 				FEB7BA7220735FC000639C13 /* LGWebImage */,
 				FEB7BA7120735FC000639C13 /* Products */,
 				FE144F042074B88000415B4E /* Frameworks */,
@@ -502,6 +502,7 @@
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/LGWebImage",
+					"$(PROJECT_DIR)",
 				);
 				INFOPLIST_FILE = LGWebImage/Info.plist;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
@@ -541,6 +542,7 @@
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/LGWebImage",
+					"$(PROJECT_DIR)",
 				);
 				INFOPLIST_FILE = LGWebImage/Info.plist;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";

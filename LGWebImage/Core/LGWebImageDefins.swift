@@ -114,7 +114,7 @@ public struct LGWebImageOptions: OptionSet {
 /// - remoteServer: 还在服务器上
 public enum LGWebImageSourceType {
     case none
-    case memoryCacheFase
+    case memoryCacheFast
     case memoryCache
     case diskCache
     case remoteServer
@@ -151,7 +151,7 @@ public var JPEGSOSMarker: Data {
 }
 
 public typealias LGWebImageTransformBlock = ((UIImage?, URL?) -> UIImage?)
-public typealias LGWebImageCompletionBlock = ((UIImage?, URL?, LGWebImageSourceType, LGWebImageStage?, Error) -> Void)
+public typealias LGWebImageCompletionBlock = ((UIImage?, URL?, LGWebImageSourceType, LGWebImageStage, Error?) -> Void)
 public typealias LGWebImageProgressBlock = LGProgressHandler
 
 

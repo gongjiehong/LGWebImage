@@ -54,6 +54,7 @@ public class LGDataStorage {
     fileprivate var _dbStmtCache: [String: OpaquePointer]?
     fileprivate var _dbLastOpenErrorTime: TimeInterval = 0
     fileprivate var _dbOpenErrorCount: Int = 0
+    fileprivate var _needCreateDir: Bool = true
     
 
     
@@ -80,14 +81,14 @@ public class LGDataStorage {
             try fileManager.createDirectory(atPath: _dataPath!, withIntermediateDirectories: true, attributes: nil)
             try fileManager.createDirectory(atPath: _trashPath!, withIntermediateDirectories: true, attributes: nil)
         } catch {
-            println("初始化失败%@,%@,%@d,%@d", #file, #function, #line, #column)
+            println("初始化失败", #file, #function, #line, #column)
         }
         
         if !_dbOpen() || !_dbInitlalize() {
             _ = _dbClose()
             _reset()
             if !_dbOpen() || !_dbInitlalize() {
-                println("初始化失败%@,%@,%@d,%@d", #file, #function, #line, #column)
+                println("初始化失败", #file, #function, #line, #column)
                 _ = _dbClose()
                 return
             }
@@ -135,6 +136,41 @@ public class LGDataStorage {
             }
             
             return _dbSaveWith(key: key, value: value, fileName: filename, extendedData: extendedData)
+        }
+    }
+    
+    public func saveItem(with key: String,
+                         fileURL: URL,
+                         filename: String? = nil,
+                         extendedData: Data? = nil) -> Bool
+    {
+        if key.lg_length == 0 {
+            return false
+        }
+        
+        if type == LGDataStorageType.file && (filename == nil || filename?.lg_length == 0) {
+            return false
+        }
+        
+        if filename != nil && filename!.lg_length > 0 {
+            if !_fileMove(with: filename!, originURL: fileURL) {
+                return false
+            }
+            
+            if !_dbSaveWith(key: key, value: Data(), fileName: filename, extendedData: extendedData) {
+                _ = _fileDelete(with: filename!)
+                return false
+            }
+            return true
+        } else {
+            if type != LGDataStorageType.SQLite {
+                let tempFileName = _dbGetFileName(withKey: key)
+                if tempFileName != nil {
+                    _ = _fileDelete(with: tempFileName!)
+                }
+            }
+            
+            return _dbSaveWith(key: key, value: Data(), fileName: filename, extendedData: extendedData)
         }
     }
     
@@ -573,7 +609,7 @@ fileprivate extension LGDataStorage {
              
              #function - String - The name of the declaration in which it appears.
              */
-            println("初始化sqlite失败%@,%@,%@d,%@d", #file, #function, #line, #column)
+            println("初始化sqlite失败", #file, #function, #line, #column)
             return false
         }
     }
@@ -608,7 +644,7 @@ fileprivate extension LGDataStorage {
                 
             }
             else if result != SQLITE_OK {
-                println("关闭数据库连接失败%@,%@,%@d,%@d", #file, #function, #line, #column)
+                println("关闭数据库连接失败", #file, #function, #line, #column)
             }
         } while retry
         
@@ -649,12 +685,12 @@ fileprivate extension LGDataStorage {
         do {
             var error: UnsafeMutablePointer<Int8>? = nil
             let result = sqlite3_exec(_db!, sql, nil, nil, &error)
-            guard result == SQLITE_OK, error != nil else {
+            guard result == SQLITE_OK, error == nil else {
                 throw LGCacheError.execSqlFailed
             }
             return true
         } catch {
-            println("执行SQL语句失败：%@,%@,%@d,%@d", #file, #function, #line, #column)
+            println("执行SQL语句失败：", #file, #function, #line, #column, sql)
             return false
         }
     }
@@ -708,7 +744,6 @@ fileprivate extension LGDataStorage {
         let sql = "insert or replace into manifest (key, filename, size, inline_data, modification_time, last_access_time, extended_data) values (?1, ?2, ?3, ?4, ?5, ?6, ?7);"
         
         let stmt = _dbPrepareStmt(sql: sql)
-        println(sqlite3_errmsg(_db))
         if stmt == nil {
             return false
         }
@@ -721,8 +756,7 @@ fileprivate extension LGDataStorage {
             _ = value.withUnsafeBytes { bytes in
                 sqlite3_bind_blob(stmt, 4, bytes, Int32(value.count), SQLITE_TRANSIENT)
             }
-        }
-        else {
+        } else {
             sqlite3_bind_blob(stmt, 4, nil, 0, SQLITE_TRANSIENT)
         }
         sqlite3_bind_int(stmt, 5, timestmap)
@@ -738,10 +772,9 @@ fileprivate extension LGDataStorage {
         }
 
         let result = sqlite3_step(stmt)
-        println(sqlite3_errmsg(_db))
         
         guard result == SQLITE_DONE else {
-            println("插入数据失败%@,%@,%@d,%@d,%d", #file, #function, #line, #column, result)
+            println("插入数据失败", #file, #function, #line, #column, result)
             return false
         }
         
@@ -759,7 +792,7 @@ fileprivate extension LGDataStorage {
         
         let result = sqlite3_step(stmt)
         guard result == SQLITE_DONE else {
-            println("更新数据失败%@,%@,%@d,%@d,%d", #file, #function, #line, #column, result)
+            println("更新数据失败", #file, #function, #line, #column, result)
             return false
         }
         return true
@@ -776,7 +809,7 @@ fileprivate extension LGDataStorage {
         
         var result = sqlite3_prepare_v2(_db, sql, -1, &stmt, nil)
         guard result == SQLITE_OK else {
-            println("准备数据失败%@,%@,%@d,%@d,%d", #file, #function, #line, #column, result)
+            println("准备数据失败,%d", #file, #function, #line, #column, result)
             return false
         }
         
@@ -784,7 +817,7 @@ fileprivate extension LGDataStorage {
         result = sqlite3_step(stmt)
         
         guard result == SQLITE_DONE else {
-            println("更新数据失败%@,%@,%@d,%@d,%d", #file, #function, #line, #column, result)
+            println("更新数据失败", #file, #function, #line, #column, result)
             return false
         }
         return true
@@ -800,7 +833,7 @@ fileprivate extension LGDataStorage {
         sqlite3_bind_text(stmt, 1, key, -1, SQLITE_TRANSIENT)
         let result = sqlite3_step(stmt)
         guard result == SQLITE_DONE else {
-            println("删除数据失败%@,%@,%@d,%@d,%d", #file, #function, #line, #column, result)
+            println("删除数据失败", #file, #function, #line, #column, result)
             return false
         }
         
@@ -827,7 +860,7 @@ fileprivate extension LGDataStorage {
         sqlite3_finalize(stmt)
         
         guard result == SQLITE_DONE else {
-            println("删除数据失败%@,%@,%@d,%@d,%d", #file, #function, #line, #column, result)
+            println("删除数据失败", #file, #function, #line, #column, result)
             return false
         }
         
@@ -936,7 +969,7 @@ fileprivate extension LGDataStorage {
             resultItem = _dbGetItem(from: stmt!, excludeInlineData: excludeInlineData)
         } else {
             if result == SQLITE_DONE {
-                println("查询数据失败%@,%@,%@d,%@d,%d", #file, #function, #line, #column, result)
+                println("查询数据失败", #file, #function, #line, #column, result)
             }
         }
         return resultItem
@@ -1246,6 +1279,45 @@ fileprivate extension LGDataStorage {
         }
         catch {
             return false
+        }
+    }
+    
+    fileprivate func _fileMove(with fileName: String, originURL: URL) -> Bool {
+        let path = _dataPath! + "/" + fileName
+        let pathURL = URL(fileURLWithPath: path)
+        
+        // 就是原始路径，直接返回
+        if pathURL == originURL {
+            return true
+        }
+        
+        if _needCreateDir {
+            do {
+                // 如果目标路径的文件夹未事先创建，则直接创建文件夹
+                var isDirectory: ObjCBool = false
+                let dirPath = pathURL.deletingLastPathComponent().absoluteString
+                let dirIsExists = FileManager.default.fileExists(atPath: dirPath,
+                                                                 isDirectory: &isDirectory)
+                if !(isDirectory.boolValue && dirIsExists) {
+                    try FileManager.default.createDirectory(at: pathURL.deletingLastPathComponent(),
+                                                            withIntermediateDirectories: true)
+                }
+                _needCreateDir = false
+                
+                // 拷贝文件到目标路径
+                try FileManager.default.moveItem(at: originURL, to: pathURL)
+                return true
+            } catch {
+                return false
+            }
+        } else {
+            do {
+                // 拷贝文件到目标路径
+                try FileManager.default.moveItem(at: originURL, to: pathURL)
+                return true
+            } catch {
+                return false
+            }
         }
     }
     
