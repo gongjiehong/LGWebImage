@@ -45,7 +45,7 @@ public class LGImageCache {
     public var isAllowAnimatedImage: Bool = true
     public var isDecodeForDisplay: Bool = true
     
-    public static let shared: LGImageCache = {
+    public static let `default`: LGImageCache = {
         var cachePath = FileManager.lg_cacheDirectoryPath
         cachePath += "/com.lgwebimage.caches"
         cachePath += "/images"

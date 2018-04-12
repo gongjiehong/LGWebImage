@@ -15,8 +15,14 @@ class ViewController: UIViewController {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
         
-        LGWebImageManager.default.downloadImageWith(url: "https://dtaw5kick3bfu.cloudfront.net/2794/C9122688-1A7E-B74A-DFC4-323F16D43C43.jpg",
-                                                    options: LGWebImageOptions.default,
+        let imageView1 = UIImageView(frame: CGRect(x: 0, y: 0, width: 320, height: 320))
+        let imageView2 = UIImageView(frame: CGRect(x: 0, y: 320, width: 320, height: 320))
+        
+        self.view.addSubview(imageView1)
+        self.view.addSubview(imageView2)
+        
+        LGWebImageManager.default.downloadImageWith(url: "http://staticfile.cxylg.com/%E6%97%A0%E7%A0%81%E5%A4%A7%E5%9B%BE.jpg",
+                                                    options: LGWebImageOptions.progressive,
                                                     progress:
             { (progress) in
             print(progress.fractionCompleted)
@@ -25,6 +31,9 @@ class ViewController: UIViewController {
                 
             } else {
                 print(image!)
+                DispatchQueue.main.async {
+                    imageView1.image = image
+                }
             }
         }
         LGWebImageManager.default.downloadImageWith(url: "https://isparta.github.io/compare-webp/image/gif_webp/webp/1.webp",
@@ -37,6 +46,9 @@ class ViewController: UIViewController {
                 
             } else {
                 print(image!)
+                DispatchQueue.main.async {
+                    imageView2.image = image
+                }
             }
         }
     }

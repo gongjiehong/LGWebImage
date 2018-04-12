@@ -37,11 +37,6 @@ public struct LGWebImageOptions: OptionSet {
         return LGWebImageOptions(rawValue: 1 << 2)
     }()
     
-    /// 使用URL缓存
-    public static let useURLCache: LGWebImageOptions = {
-        return LGWebImageOptions(rawValue: 1 << 3)
-    }()
-    
     /// 允许后台下载
     public static let allowBackgroundTask: LGWebImageOptions = {
         return LGWebImageOptions(rawValue: 1 << 4)
@@ -50,11 +45,6 @@ public struct LGWebImageOptions: OptionSet {
     /// 在SSL证书无效的情况下允许下载
     public static let allowInvalidSSLCertificates: LGWebImageOptions = {
         return LGWebImageOptions(rawValue: 1 << 5)
-    }()
-    
-    /// 处理cookies
-    public static let handleCookies: LGWebImageOptions = {
-        return LGWebImageOptions(rawValue: 1 << 6)
     }()
     
     /// 刷新图片缓存
@@ -101,7 +91,7 @@ public struct LGWebImageOptions: OptionSet {
     public static let `default`: LGWebImageOptions = {
         return [LGWebImageOptions.setImageWithFadeAnimation,
                 LGWebImageOptions.allowBackgroundTask,
-                LGWebImageOptions.progressive]
+                LGWebImageOptions.progressiveBlur]
     }()
 }
 
@@ -135,12 +125,12 @@ public enum LGWebImageStage {
 public extension TimeInterval {
     
     /// 渐进加载最短0.2S
-    public var minProgressiveTimeInterval: TimeInterval {
+    public static var minProgressiveTimeInterval: TimeInterval {
         return 0.2
     }
     
     /// 渐进模糊加载最短0.4S
-    public var minProgressiveBlurTimeInterval: TimeInterval {
+    public static var minProgressiveBlurTimeInterval: TimeInterval {
         return 0.4
     }
 }
