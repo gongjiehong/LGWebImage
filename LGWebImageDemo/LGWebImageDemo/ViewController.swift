@@ -20,7 +20,7 @@ class ViewController: UIViewController {
         
         self.view.addSubview(imageView1)
         self.view.addSubview(imageView2)
-        
+        print(CACurrentMediaTime())
         LGWebImageManager.default.downloadImageWith(url: "http://staticfile.cxylg.com/%E6%97%A0%E7%A0%81%E5%A4%A7%E5%9B%BE.jpg",
                                                     options: LGWebImageOptions.progressive,
                                                     progress:
@@ -33,24 +33,25 @@ class ViewController: UIViewController {
                 print(image!)
                 DispatchQueue.main.async {
                     imageView1.image = image
+                    print(CACurrentMediaTime())
                 }
             }
         }
-        LGWebImageManager.default.downloadImageWith(url: "https://isparta.github.io/compare-webp/image/gif_webp/webp/1.webp",
-                                                    options: LGWebImageOptions.default,
-                                                    progress:
-            { (progress) in
-                print(progress.fractionCompleted)
-        }) { (image, originUrl, sourceType, stage, error) in
-            if error != nil {
-                
-            } else {
-                print(image!)
-                DispatchQueue.main.async {
-                    imageView2.image = image
-                }
-            }
-        }
+//        LGWebImageManager.default.downloadImageWith(url: "https://isparta.github.io/compare-webp/image/gif_webp/webp/1.webp",
+//                                                    options: LGWebImageOptions.default,
+//                                                    progress:
+//            { (progress) in
+//                print(progress.fractionCompleted)
+//        }) { (image, originUrl, sourceType, stage, error) in
+//            if error != nil {
+//                
+//            } else {
+//                print(image!)
+//                DispatchQueue.main.async {
+//                    imageView2.image = image
+//                }
+//            }
+//        }
     }
 
     override func didReceiveMemoryWarning() {

@@ -14,6 +14,7 @@ public class LGWebImageManager {
     public var cache: LGImageCache
     
     fileprivate var _lock = DispatchSemaphore(value: 1)
+    fileprivate var _recursiveLock = NSRecursiveLock()
     fileprivate var _cacheQueue = DispatchQueue.userInitiated
     fileprivate var _sessionManager: LGURLSessionManager
     
@@ -129,11 +130,11 @@ public class LGWebImageManager {
             if let request = requestContainer.object(forKey: urlNSSString) as? LGDataRequest {
                 targetRequest = request
             } else {
-                let request = LGURLSessionManager.default.request(url,
-                                                    method: LGHTTPMethod.get,
-                                                    parameters: nil,
-                                                    encoding: LGURLEncoding.default,
-                                                    headers: nil)
+                let request = _sessionManager.request(url,
+                                                      method: LGHTTPMethod.get,
+                                                      parameters: nil,
+                                                      encoding: LGURLEncoding.default,
+                                                      headers: nil)
                 targetRequest = request
                 requestContainer.setObject(targetRequest, forKey: urlNSSString)
                 targetRequest.stream { [weak self](data) in
@@ -292,7 +293,6 @@ public class LGWebImageManager {
         _ = _lock.signal()
     }
     
-
     private func addCompletionBlocksToMap(_ targetRequest: LGDataRequest,
                                          completion: @escaping LGWebImageCompletionBlock)
     {
@@ -329,6 +329,11 @@ public class LGWebImageManager {
                                              destinationFileURL: URL,
                                              targetRequest: LGDataRequest)
     {
+        // 图片解码会占用大量内存，如果大于1MB则直接不进行处理
+        if targetRequest.expectedContentLength >= 1024 * 1024 {
+            return
+        }
+        
         let progressive = options.contains(LGWebImageOptions.progressive)
         let progressiveBlur = options.contains(LGWebImageOptions.progressiveBlur)
         
@@ -360,7 +365,7 @@ public class LGWebImageManager {
             if now - progressiveContainer.lastProgressiveDecodeTimestamp < min {
                 return
             }
-            return
+            
             let writedData = try Data(contentsOf: destinationFileURL)
             
             // 不够解码长度
@@ -372,6 +377,7 @@ public class LGWebImageManager {
             if progressiveDecoder == nil {
                 progressiveDecoder = LGImageDecoder(withScale: UIScreen.main.scale)
                 progressiveContainer.progressiveDecoder = progressiveDecoder
+                progressiveContainerMap[targetRequest] = progressiveContainer
             }
             _ = progressiveDecoder?.updateData(data: writedData, final: false)
             
@@ -381,6 +387,7 @@ public class LGWebImageManager {
                 progressiveDecoder?.imageType == LGImageType.other {
                 progressiveDecoder = nil
                 progressiveContainer.progressiveIgnored = true
+                progressiveContainerMap[targetRequest] = progressiveContainer
                 return
             }
             
@@ -390,6 +397,7 @@ public class LGWebImageManager {
                     progressiveDecoder?.imageType == LGImageType.png) {
                     progressiveDecoder = nil
                     progressiveContainer.progressiveIgnored = true
+                    progressiveContainerMap[targetRequest] = progressiveContainer
                     return
                 }
             }
@@ -420,6 +428,7 @@ public class LGWebImageManager {
                                     return
                                 }
                                 progressiveContainer.progressiveDetected = true
+                                progressiveContainerMap[targetRequest] = progressiveContainer
                             }
                             
                         }
@@ -433,6 +442,7 @@ public class LGWebImageManager {
                                                          options: Data.SearchOptions.backwards,
                                                          in: scanRange)
                     progressiveContainer.progressiveScanedLength = writedData.count
+                    progressiveContainerMap[targetRequest] = progressiveContainer
                     if markerRange == nil {return}
                 } else if progressiveDecoder?.imageType == LGImageType.png {
                     if !progressiveContainer.progressiveDetected {
@@ -445,6 +455,7 @@ public class LGWebImageManager {
                             return
                         }
                         progressiveContainer.progressiveDetected = true
+                        progressiveContainerMap[targetRequest] = progressiveContainer
                     }
                 }
                 
@@ -458,6 +469,7 @@ public class LGWebImageManager {
                 }
                 
                 progressiveContainer.progressiveDisplayCount += 1
+                progressiveContainerMap[targetRequest] = progressiveContainer
                 var radius: CGFloat = 32
                 if targetRequest.expectedContentLength > 0 {
                     radius *= 1.0 / (3.0 * CGFloat(writedData.count) / CGFloat(targetRequest.totalBytesReceived) + 0.6) - 0.25

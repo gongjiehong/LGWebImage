@@ -16,8 +16,6 @@
 		FE805A78207B1A4200EC1DD1 /* LGWebImage.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = FE805A75207B1A3800EC1DD1 /* LGWebImage.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		FE805A79207B1A4200EC1DD1 /* LGHTTPRequest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE805A73207B1A3800EC1DD1 /* LGHTTPRequest.framework */; };
 		FE805A7A207B1A4200EC1DD1 /* LGHTTPRequest.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = FE805A73207B1A3800EC1DD1 /* LGHTTPRequest.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		FE805A7C207B1A5300EC1DD1 /* LGHTTPRequest.framework in Resources */ = {isa = PBXBuildFile; fileRef = FE805A73207B1A3800EC1DD1 /* LGHTTPRequest.framework */; };
-		FE805A7D207B1A5300EC1DD1 /* LGWebImage.framework in Resources */ = {isa = PBXBuildFile; fileRef = FE805A75207B1A3800EC1DD1 /* LGWebImage.framework */; };
 		FEBA543A207F7E9100FB30DE /* UINavigationController+MemoryLeak.m in Sources */ = {isa = PBXBuildFile; fileRef = FEBA5423207F7E9100FB30DE /* UINavigationController+MemoryLeak.m */; };
 		FEBA543B207F7E9100FB30DE /* MLeakedObjectProxy.m in Sources */ = {isa = PBXBuildFile; fileRef = FEBA5427207F7E9100FB30DE /* MLeakedObjectProxy.m */; };
 		FEBA543C207F7E9100FB30DE /* UIView+MemoryLeak.m in Sources */ = {isa = PBXBuildFile; fileRef = FEBA5429207F7E9100FB30DE /* UIView+MemoryLeak.m */; };
@@ -225,8 +223,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				FE805A7C207B1A5300EC1DD1 /* LGHTTPRequest.framework in Resources */,
-				FE805A7D207B1A5300EC1DD1 /* LGWebImage.framework in Resources */,
 				FE805A69207B19EA00EC1DD1 /* LaunchScreen.storyboard in Resources */,
 				FE805A66207B19EA00EC1DD1 /* Assets.xcassets in Resources */,
 				FE805A64207B19E900EC1DD1 /* Main.storyboard in Resources */,
