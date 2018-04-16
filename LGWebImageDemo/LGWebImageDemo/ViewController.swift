@@ -8,6 +8,7 @@
 
 import UIKit
 import LGWebImage
+import LGHTTPRequest
 
 class ViewController: UIViewController {
 
@@ -22,13 +23,13 @@ class ViewController: UIViewController {
         self.view.addSubview(imageView2)
         print(CACurrentMediaTime())
         LGWebImageManager.default.downloadImageWith(url: "http://staticfile.cxylg.com/%E6%97%A0%E7%A0%81%E5%A4%A7%E5%9B%BE.jpg",
-                                                    options: LGWebImageOptions.progressive,
+                                                    options: LGWebImageOptions.default,
                                                     progress:
             { (progress) in
             print(progress.fractionCompleted)
         }) { (image, originUrl, sourceType, stage, error) in
             if error != nil {
-                
+
             } else {
                 print(image!)
                 DispatchQueue.main.async {
@@ -37,6 +38,21 @@ class ViewController: UIViewController {
                 }
             }
         }
+        
+//        let request = LGURLSessionManager.default.request("https://isparta.github.io/compare-webp/image/gif_webp/webp/1.webp",
+//                                            method: LGHTTPMethod.get)
+//        request.validate().response { (response) in
+//            print(response)
+//        }
+//        
+//        request.stream { (data) in
+//            print(data)
+//        }
+//        
+//        request.downloadProgress(queue: DispatchQueue.userInteractive) { (progress) in
+//            print(progress)
+//        }
+        
 //        LGWebImageManager.default.downloadImageWith(url: "https://isparta.github.io/compare-webp/image/gif_webp/webp/1.webp",
 //                                                    options: LGWebImageOptions.default,
 //                                                    progress:

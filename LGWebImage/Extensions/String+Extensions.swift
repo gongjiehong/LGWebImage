@@ -27,9 +27,9 @@ extension String {
 //
 //        return (0..<length).map { String(format: "%02x", hash[$0]) }.joined()
 //    }
-    func md5Hash() -> String {
-        return self.md5Hash() ?? ""
-    }
+//    func md5Hash() -> String {
+//        return self.md5Hash() ?? ""
+//    }
     
     var lg_length: Int {
         return self.count

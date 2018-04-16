@@ -37,6 +37,17 @@ public struct LGWebImageOptions: OptionSet {
         return LGWebImageOptions(rawValue: 1 << 2)
     }()
     
+    /// 允许断点续传，注意：本库使用(Range: bytes = *-*)实现（["Range": "bytes=*-*"]），请确定服务器是否支持Range协议
+    /// Range: bytes=0-499 表示第 0-499 字节范围的内容
+    /// Range: bytes=500-999 表示第 500-999 字节范围的内容
+    /// Range: bytes=-500 表示最后 500 字节的内容
+    /// Range: bytes=500- 表示从第 500 字节开始到文件结束部分的内容
+    /// Range: bytes=0-0,-1 表示第一个和最后一个字节
+    /// Range: bytes=500-600,601-999 同时指定几个范围
+    public static let enableBreakpointPass: LGWebImageOptions = {
+        return LGWebImageOptions(rawValue: 1 << 3)
+    }()
+    
     /// 允许后台下载
     public static let allowBackgroundTask: LGWebImageOptions = {
         return LGWebImageOptions(rawValue: 1 << 4)
@@ -45,6 +56,11 @@ public struct LGWebImageOptions: OptionSet {
     /// 在SSL证书无效的情况下允许下载
     public static let allowInvalidSSLCertificates: LGWebImageOptions = {
         return LGWebImageOptions(rawValue: 1 << 5)
+    }()
+    
+    /// 开启大图优化，图片在解压缩时需要消耗大量内存，开启后会将大于1MB的大图进行压缩处理后显示，支持JPG，PNG，ICO等，不支持WEBP，HEIF
+    public static let enableBigPictureOptimization: LGWebImageOptions = {
+        return LGWebImageOptions(rawValue: 1 << 6)
     }()
     
     /// 刷新图片缓存
@@ -91,7 +107,9 @@ public struct LGWebImageOptions: OptionSet {
     public static let `default`: LGWebImageOptions = {
         return [LGWebImageOptions.setImageWithFadeAnimation,
                 LGWebImageOptions.allowBackgroundTask,
-                LGWebImageOptions.progressiveBlur]
+                LGWebImageOptions.progressiveBlur,
+                LGWebImageOptions.enableBreakpointPass,
+                LGWebImageOptions.enableBigPictureOptimization]
     }()
 }
 

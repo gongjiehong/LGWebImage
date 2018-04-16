@@ -18,22 +18,30 @@ public class LGWebImageManager {
     fileprivate var _cacheQueue = DispatchQueue.userInitiated
     fileprivate var _sessionManager: LGURLSessionManager
     
+    private var progressBlocksMap = [LGDataRequest: [LGWebImageProgressBlock]?]()
+    private var completionBlocksMap = [LGDataRequest: [LGWebImageCompletionBlock]?]()
+    private var progressiveContainerMap = [LGDataRequest: LGWebImageProgressiveContainer?]()
+    
+    private let tempDirSuffix = "LGWebImage/TempFile/"
+    
     public init() {
-        requestContainer = NSMapTable<NSString, LGHTTPRequest>(keyOptions: NSPointerFunctions.Options.strongMemory,
+        requestContainer = NSMapTable<NSString, LGHTTPRequest>(keyOptions: NSPointerFunctions.Options.weakMemory,
                                                                valueOptions: NSPointerFunctions.Options.weakMemory)
         cache = LGImageCache.default
         
         _sessionManager = LGURLSessionManager.default
+        
+        createTempFileDirIfNeeded()
     }
     
-
+    
     /// 根据一些选项设置和信任的host进行初始化
     ///
     /// - Parameters:
     ///   - options: 固定设置
     ///   - trustHosts: 信任的host，设置后不会验证SSL有效性
     public init(options: LGWebImageOptions, trustHosts: [String] = []) {
-        requestContainer = NSMapTable<NSString, LGHTTPRequest>(keyOptions: NSPointerFunctions.Options.strongMemory,
+        requestContainer = NSMapTable<NSString, LGHTTPRequest>(keyOptions: NSPointerFunctions.Options.weakMemory,
                                                                valueOptions: NSPointerFunctions.Options.weakMemory)
         cache = LGImageCache.default
         
@@ -55,210 +63,280 @@ public class LGWebImageManager {
         _sessionManager = LGURLSessionManager(configuration: sessionConfig,
                                               delegate: LGURLSessionDelegate(),
                                               serverTrustPolicyManager: sslTrust)
+        
+        createTempFileDirIfNeeded()
     }
     
     public static let `default`: LGWebImageManager = {
         return LGWebImageManager()
     }()
     
-    private var progressBlocksMap = [LGDataRequest: [LGWebImageProgressBlock]]()
-    private var completionBlocksMap = [LGDataRequest: [LGWebImageCompletionBlock]]()
-    private var progressiveContainerMap = [LGDataRequest: LGWebImageProgressiveContainer]()
-    
     public func downloadImageWith(url: LGURLConvertible,
                                   options: LGWebImageOptions,
                                   progress: LGWebImageProgressBlock? = nil,
                                   completion: @escaping LGWebImageCompletionBlock)
     {
-        // 处理忽略下载失败的URL和和名单
-        if options.contains(LGWebImageOptions.ignoreFailedURL) &&
-            LGURLBlackList.default.isContains(url: url)
-        {
-            completion(nil,
-                       nil,
-                       LGWebImageSourceType.memoryCacheFast,
-                       LGWebImageStage.finished,
-                       LGImageDownloadError.urlIsInTheBlackList(url: url))
-            return
-        }
-        
-        
-        do {
-            /**
-             ** 处理菊花
-             */
-            if options.contains(LGWebImageOptions.showNetworkActivity) {
-                networkIndicatorStart()
-            }
-            
-            /**
-             ** 转换url参数为目标类型
-             **/
-            let remoteURL = try url.asURL()
-            let urlString = remoteURL.absoluteString
-            
-            /**
-             ** 根据所需缓存数据类型读取数据
-             **/
-            var cacheType: LGImageCacheType
-            if options.contains(LGWebImageOptions.ignoreDiskCache) {
-                cacheType = LGImageCacheType.memory
-            } else {
-                cacheType = LGImageCacheType.all
-            }
-            if let image = self.cache.getImage(forKey: urlString, withType: cacheType) {
-                completion(image,
-                           remoteURL,
+        _cacheQueue.async { [unowned self] in
+            // 处理忽略下载失败的URL和和名单
+            if options.contains(LGWebImageOptions.ignoreFailedURL) &&
+                LGURLBlackList.default.isContains(url: url)
+            {
+                completion(nil,
+                           nil,
                            LGWebImageSourceType.memoryCacheFast,
                            LGWebImageStage.finished,
-                           nil)
-                networkIndicatorStop()
+                           LGImageDownloadError.urlIsInTheBlackList(url: url))
                 return
             }
             
-            /**
-             ** 组装下载文件的目标路径，这里直接写入缓存的最终路径
-             **/
-            let destinationURL = self.cache.diskCache.filePathForDiskStorage(withKey: urlString)
-
-            /**
-             ** 处理唯一request，保证每个独立URL只处理一次
-             **/
-            let urlNSSString = NSString(string: urlString)
-            _ = self._lock.wait(timeout: DispatchTime.distantFuture)
-            var targetRequest: LGDataRequest
-            if let request = requestContainer.object(forKey: urlNSSString) as? LGDataRequest {
-                targetRequest = request
-            } else {
-                let request = _sessionManager.request(url,
-                                                      method: LGHTTPMethod.get,
-                                                      parameters: nil,
-                                                      encoding: LGURLEncoding.default,
-                                                      headers: nil)
-                targetRequest = request
-                requestContainer.setObject(targetRequest, forKey: urlNSSString)
-                targetRequest.stream { [weak self](data) in
-                    // Write Data
-                    let inputStream = InputStream(data: data)
-                    // 此处需要先创建文件夹，如果未创建文件夹则无法使用stream
-                    guard let outputStream = OutputStream(url: destinationURL,
-                                                          append: true) else { return }
-                    
-                    inputStream.schedule(in: RunLoop.current, forMode: RunLoopMode.defaultRunLoopMode)
-                    outputStream.schedule(in: RunLoop.current, forMode: RunLoopMode.defaultRunLoopMode)
-                    inputStream.open()
-                    outputStream.open()
-                    
-                    while inputStream.hasBytesAvailable && outputStream.hasSpaceAvailable {
-                        var buffer = [UInt8](repeating: 0, count: 1024)
-                        
-                        let bytesRead = inputStream.read(&buffer, maxLength: 1024)
-                        if inputStream.streamError != nil || bytesRead < 0 {
-                            break
-                        }
-                        
-                        let bytesWritten = outputStream.write(&buffer, maxLength: bytesRead)
-                        if outputStream.streamError != nil || bytesWritten < 0 {
-                            break
-                        }
-                        
-                        if bytesRead == 0 && bytesWritten == 0 {
-                            break
-                        }
-                    }
-                    
-                    outputStream.close()
-                    inputStream.close()
-                    outputStream.remove(from: RunLoop.current, forMode: RunLoopMode.defaultRunLoopMode)
-                    inputStream.remove(from: RunLoop.current, forMode: RunLoopMode.defaultRunLoopMode)
-                    
-                    self?.decodeDataToUIImageIfNeeded(data,
-                                                     options: options,
-                                                     destinationFileURL: destinationURL,
-                                                     targetRequest: targetRequest)
+            
+            do {
+                /**
+                 ** 处理菊花
+                 */
+                if options.contains(LGWebImageOptions.showNetworkActivity) {
+                    networkIndicatorStart()
                 }
-            }
-            _ = _lock.signal()
-            
-            /**
-             ** 将进度条回调添加到缓存
-             **/
-            if progress != nil {
-                addProgressBlockToMap(targetRequest, progress: progress!)
-            }
-            
-            /**
-             ** 处理进度回调
-             **/
-            targetRequest.downloadProgress(queue: _cacheQueue)
-            {[weak self](progress) in
-                self?.invokeProgressBlocks(targetRequest, progress: progress)
-            }
-            
-            addCompletionBlocksToMap(targetRequest, completion: completion)
-            
-            // 下载完成结果处理
-            targetRequest.validate().response(queue: _cacheQueue)
-            {[unowned self] (response) in
-                if response.error != nil {
-                    completion(nil, nil, LGWebImageSourceType.none, LGWebImageStage.finished, response.error)
+                
+                /**
+                 ** 转换url参数为目标类型
+                 **/
+                let remoteURL = try url.asURL()
+                let urlString = remoteURL.absoluteString
+                
+                /**
+                 ** 根据所需缓存数据类型读取数据
+                 **/
+                var cacheType: LGImageCacheType
+                if options.contains(LGWebImageOptions.ignoreDiskCache) {
+                    cacheType = LGImageCacheType.memory
                 } else {
-                    if let originURL = response.request?.url
-                    {
-                        // 通过拷贝文件的方式设置磁盘缓存
-                        self.cache.diskCache.setObject(withFileURL: destinationURL,
-                                                       forKey: originURL.absoluteString)
-                        // 缓存中如果有，直接读取并返回
-                        if let image = self.cache.getImage(forKey: originURL.absoluteString) {
-                            completion(image,
-                                       originURL,
-                                       LGWebImageSourceType.memoryCacheFast,
-                                       LGWebImageStage.finished,
-                                       nil)
-                        } else if let image = self.cache.getImage(forKey: originURL.absoluteString,
-                                                                  withType: LGImageCacheType.disk)
-                        {
-                            completion(image,
-                                       originURL,
-                                       LGWebImageSourceType.memoryCacheFast,
-                                       LGWebImageStage.finished,
-                                       nil)
-                        } else {
-                            if options.contains(LGWebImageOptions.ignoreFailedURL) {
-                                LGURLBlackList.default.addURL(url)
+                    cacheType = LGImageCacheType.all
+                }
+                if let image = self.cache.getImage(forKey: urlString, withType: cacheType) {
+                    completion(image,
+                               remoteURL,
+                               LGWebImageSourceType.memoryCacheFast,
+                               LGWebImageStage.finished,
+                               nil)
+                    networkIndicatorStop()
+                    return
+                }
+                
+                /**
+                 ** 组装下载文件的目标路径，这里直接写入缓存的最终路径
+                 **/
+                let destinationURL = self.getDownloadTempPathURL(from: remoteURL)
+                
+                /**
+                 ** 处理唯一request，保证每个独立URL只处理一次
+                 **/
+                let urlNSSString = NSString(string: urlString)
+                var targetRequest: LGDataRequest
+                _ = self._lock.wait(timeout: DispatchTime.distantFuture)
+                if let request = self.requestContainer.object(forKey: urlNSSString) as? LGDataRequest {
+                    targetRequest = request
+                    _ = self._lock.signal()
+                } else {
+                    _ = self._lock.signal()
+                    var header: LGHTTPHeaders = [:]
+                    var resumeData: Data? = nil
+                    
+                    if options.contains(LGWebImageOptions.enableBreakpointPass) {
+                        do {
+                            resumeData = try Data(contentsOf: destinationURL)
+                            if resumeData!.count > 0 {
+                                // 设置header，从指定的位置开始继续往后下载
+                                header["Range"] = "bytes=\(resumeData!.count)-"
                             }
-                            completion(nil,
-                                       originURL,
-                                       LGWebImageSourceType.memoryCacheFast,
-                                       LGWebImageStage.finished,
-                                       LGImageDownloadError.cannotReadFile)
+                        } catch {
+                            
                         }
                     } else {
-                        if options.contains(LGWebImageOptions.ignoreFailedURL) {
-                            LGURLBlackList.default.addURL(url)
+                        do {
+                            try FileManager.default.removeItem(at: destinationURL)
+                        } catch {
+                            
                         }
-                        completion(nil,
-                                   nil,
-                                   LGWebImageSourceType.memoryCacheFast,
-                                   LGWebImageStage.finished,
-                                   LGImageDownloadError.targetURLOrOriginURLInvalid(targetURL: destinationURL,
-                                                                                    originURL: response.request?.url))
                     }
+                    
+                    let request = self._sessionManager.request(url,
+                                                               method: LGHTTPMethod.get,
+                                                               parameters: nil,
+                                                               encoding: LGURLEncoding.default,
+                                                               headers: header)
+                    targetRequest = request
+                    
+                    
+                    var receivedData: Data
+                    if options.contains(LGWebImageOptions.enableBreakpointPass) {
+                        receivedData = resumeData ?? Data()
+                    } else {
+                        receivedData = Data()
+                    }
+                    
+//                    targetRequest = targetRequest.stream(queue: DispatchQueue.userInitiated, closure: { (data) in
+//                        receivedData.append(data)
+//
+//                        // Write Data
+//                        let inputStream = InputStream(data: data)
+//                        // 此处需要先创建文件夹，如果未创建文件夹则无法使用stream
+//                        guard let outputStream = OutputStream(url: destinationURL,
+//                                                              append: true) else { return }
+//
+//                        inputStream.schedule(in: RunLoop.current, forMode: RunLoopMode.defaultRunLoopMode)
+//                        outputStream.schedule(in: RunLoop.current, forMode: RunLoopMode.defaultRunLoopMode)
+//                        inputStream.open()
+//                        outputStream.open()
+//
+//                        while inputStream.hasBytesAvailable && outputStream.hasSpaceAvailable {
+//                            var buffer = [UInt8](repeating: 0, count: 1024)
+//
+//                            let bytesRead = inputStream.read(&buffer, maxLength: 1024)
+//                            if inputStream.streamError != nil || bytesRead < 0 {
+//                                break
+//                            }
+//
+//                            let bytesWritten = outputStream.write(&buffer, maxLength: bytesRead)
+//                            if outputStream.streamError != nil || bytesWritten < 0 {
+//                                break
+//                            }
+//
+//                            if bytesRead == 0 && bytesWritten == 0 {
+//                                break
+//                            }
+//                        }
+//
+//                        inputStream.remove(from: RunLoop.current, forMode: RunLoopMode.defaultRunLoopMode)
+//                        outputStream.remove(from: RunLoop.current, forMode: RunLoopMode.defaultRunLoopMode)
+//
+//                        inputStream.close()
+//                        outputStream.close()
+//
+//
+//                        self.decodeDataToUIImageIfNeeded(receivedData,
+//                                                         options: options,
+//                                                         destinationFileURL: destinationURL,
+//                                                         targetRequest: targetRequest)
+//
+//                    })
+                    
+
+                    /**
+                     ** 处理进度回调
+                     **/
+                    targetRequest = targetRequest.downloadProgress(queue: DispatchQueue.userInitiated)
+                    {[unowned self] (progress) in
+                        self.invokeProgressBlocks(targetRequest, progress: progress)
+                    }
+
+                    // 下载完成结果处理
+                    targetRequest = targetRequest.validate().response(queue: DispatchQueue.userInitiated)
+                    {[unowned self] (response) in
+                        if response.error != nil {
+                            completion(nil, nil, LGWebImageSourceType.none, LGWebImageStage.finished, response.error)
+                        } else {
+                            if let originURL = response.request?.url
+                            {
+                                // 通过拷贝文件的方式设置磁盘缓存
+                                self.cache.diskCache.setObject(withFileURL: destinationURL,
+                                                               forKey: originURL.absoluteString)
+                                // 缓存中如果有，直接读取并返回
+                                if let image = self.cache.getImage(forKey: originURL.absoluteString) {
+                                    completion(image,
+                                               originURL,
+                                               LGWebImageSourceType.memoryCacheFast,
+                                               LGWebImageStage.finished,
+                                               nil)
+                                } else if let image = self.cache.getImage(forKey: originURL.absoluteString,
+                                                                          withType: LGImageCacheType.disk)
+                                {
+                                    completion(image,
+                                               originURL,
+                                               LGWebImageSourceType.memoryCacheFast,
+                                               LGWebImageStage.finished,
+                                               nil)
+                                } else {
+                                    if options.contains(LGWebImageOptions.ignoreFailedURL) {
+                                        LGURLBlackList.default.addURL(url)
+                                    }
+                                    completion(nil,
+                                               originURL,
+                                               LGWebImageSourceType.memoryCacheFast,
+                                               LGWebImageStage.finished,
+                                               LGImageDownloadError.cannotReadFile)
+                                }
+                            } else {
+                                if options.contains(LGWebImageOptions.ignoreFailedURL) {
+                                    LGURLBlackList.default.addURL(url)
+                                }
+                                let originalURL = response.request?.url
+                                let error = LGImageDownloadError.targetURLOrOriginURLInvalid(targetURL: destinationURL,
+                                                                                             originURL: originalURL)
+                                completion(nil,
+                                           nil,
+                                           LGWebImageSourceType.memoryCacheFast,
+                                           LGWebImageStage.finished,
+                                           error)
+                            }
+                        }
+                        self.clearMaps(targetRequest, urlNSSString: urlNSSString)
+                        networkIndicatorStop()
+                    }
+                    
+                    _ = self._lock.wait(timeout: DispatchTime.distantFuture)
+                    self.requestContainer.setObject(targetRequest, forKey: urlNSSString)
+                    _ = self._lock.signal()
                 }
-                _ = self._lock.wait(timeout: DispatchTime.distantFuture)
-                self.progressBlocksMap.removeValue(forKey: targetRequest)
-                self.completionBlocksMap.removeValue(forKey: targetRequest)
-                self.progressiveContainerMap.removeValue(forKey: targetRequest)
-                self.requestContainer.removeObject(forKey: urlNSSString)
-                _ = self._lock.signal()
+                
+                /**
+                 ** 将进度条回调添加到缓存
+                 **/
+                if progress != nil {
+                    self.addProgressBlockToMap(targetRequest, progress: progress!)
+                }
+
+                /**
+                 ** 将完成回调添加到缓存
+                 **/
+                self.addCompletionBlocksToMap(targetRequest, completion: completion)
+            } catch {
+                println(error)
                 networkIndicatorStop()
             }
-        } catch {
-            println(error)
-            networkIndicatorStop()
         }
     }
     
+    
+    /// 为每个需要下载第地址分配一个临时存储文件路径，用于零时存储和断点续传
+    ///
+    /// - Parameter remoteURL: 文件的服务端地址
+    /// - Returns: 文件的零时路径
+    private func getDownloadTempPathURL(from remoteURL: URL) -> URL {
+        let fileName = remoteURL.absoluteString.md5Hash() ?? UUID().uuidString
+        let tempDir = NSTemporaryDirectory() + tempDirSuffix
+        return URL(fileURLWithPath: tempDir + fileName)
+    }
+    
+    
+    /// 如果需要则创建下载临时文件夹
+    private func createTempFileDirIfNeeded() {
+        let tempDir = NSTemporaryDirectory() + tempDirSuffix
+        do {
+            // 如果目标路径的文件夹未事先创建，则直接创建文件夹
+            var isDirectory: ObjCBool = false
+            let dirIsExists = FileManager.default.fileExists(atPath: tempDir,
+                                                             isDirectory: &isDirectory)
+            if !(isDirectory.boolValue && dirIsExists) {
+                try FileManager.default.createDirectory(at: URL(fileURLWithPath: tempDir),
+                                                        withIntermediateDirectories: true)
+            } else {
+                
+            }
+        } catch {
+            
+        }
+    }
     
     /// 将进度条回调添加到缓存
     ///
@@ -267,7 +345,7 @@ public class LGWebImageManager {
     ///   - block: LGWebImageProgressBlock value
     private func addProgressBlockToMap(_ targetRequest: LGDataRequest, progress: @escaping LGWebImageProgressBlock) {
         _ = _lock.wait(timeout: DispatchTime.distantFuture)
-        if var tempArray = progressBlocksMap[targetRequest] {
+        if var tempArray = progressBlocksMap[targetRequest] as? [LGWebImageProgressBlock] {
             tempArray.append(progress)
             progressBlocksMap[targetRequest] = tempArray
         } else {
@@ -283,7 +361,7 @@ public class LGWebImageManager {
     ///   - progress: Progress
     private func invokeProgressBlocks(_ request: LGDataRequest, progress: Progress) {
         _ = _lock.wait(timeout: DispatchTime.distantFuture)
-        if let tempArray = self.progressBlocksMap[request] {
+        if let tempArray = self.progressBlocksMap[request] as? [LGWebImageProgressBlock] {
             if tempArray.count > 0 {
                 for block in tempArray {
                     block(progress)
@@ -294,10 +372,10 @@ public class LGWebImageManager {
     }
     
     private func addCompletionBlocksToMap(_ targetRequest: LGDataRequest,
-                                         completion: @escaping LGWebImageCompletionBlock)
+                                          completion: @escaping LGWebImageCompletionBlock)
     {
         _ = _lock.wait(timeout: DispatchTime.distantFuture)
-        if var tempArray = completionBlocksMap[targetRequest] {
+        if var tempArray = completionBlocksMap[targetRequest] as? [LGWebImageCompletionBlock] {
             tempArray.append(completion)
             completionBlocksMap[targetRequest] = tempArray
         } else {
@@ -305,16 +383,16 @@ public class LGWebImageManager {
         }
         _ = _lock.signal()
     }
-
+    
     private func invokeCompletionBlocks(_ request: LGDataRequest,
-                                       image: UIImage?,
-                                       url: URL?,
-                                       sourceType: LGWebImageSourceType,
-                                       imageStatus: LGWebImageStage,
-                                       error: Error?)
+                                        image: UIImage?,
+                                        url: URL?,
+                                        sourceType: LGWebImageSourceType,
+                                        imageStatus: LGWebImageStage,
+                                        error: Error?)
     {
         _ = _lock.wait(timeout: DispatchTime.distantFuture)
-        if let tempArray = self.completionBlocksMap[request] {
+        if let tempArray = self.completionBlocksMap[request] as? [LGWebImageCompletionBlock] {
             if tempArray.count > 0 {
                 for block in tempArray {
                     block(image, url, sourceType, imageStatus, error)
@@ -322,6 +400,15 @@ public class LGWebImageManager {
             }
         }
         _ = _lock.signal()
+    }
+    
+    private func clearMaps(_ targetRequest: LGDataRequest, urlNSSString: NSString) {
+        _ = self._lock.wait(timeout: DispatchTime.distantFuture)
+        self.requestContainer.removeObject(forKey: urlNSSString)
+        self.progressBlocksMap.removeValue(forKey: targetRequest)
+        self.completionBlocksMap.removeValue(forKey: targetRequest)
+        self.progressiveContainerMap.removeValue(forKey: targetRequest)
+        _ = self._lock.signal()
     }
     
     private func decodeDataToUIImageIfNeeded(_ data: Data,
@@ -341,156 +428,152 @@ public class LGWebImageManager {
             return
         }
         
-        do {
-            var progressiveContainer: LGWebImageProgressiveContainer
-            if let container = progressiveContainerMap[targetRequest] {
-                progressiveContainer = container
-            } else {
-                progressiveContainer = LGWebImageProgressiveContainer()
-                progressiveContainerMap[targetRequest] = progressiveContainer
-            }
-            
-            // 数据足够长且马上要下载完成了，不再继续处理
-            if targetRequest.progress.fractionCompleted > 0.9 {
-                return
-            }
-            
-            // 忽略则不处理
-            var progressiveIgnored: Bool = progressiveContainer.progressiveIgnored
-            
-            if progressiveIgnored == true { return }
-            
-            let min: TimeInterval = progressiveBlur ? .minProgressiveBlurTimeInterval : .minProgressiveTimeInterval
-            let now = CACurrentMediaTime()
-            if now - progressiveContainer.lastProgressiveDecodeTimestamp < min {
-                return
-            }
-            
-            let writedData = try Data(contentsOf: destinationFileURL)
-            
-            // 不够解码长度
-            if data.count <= 16 {
-                return
-            }
-            
-            var progressiveDecoder = progressiveContainer.progressiveDecoder
-            if progressiveDecoder == nil {
-                progressiveDecoder = LGImageDecoder(withScale: UIScreen.main.scale)
-                progressiveContainer.progressiveDecoder = progressiveDecoder
-                progressiveContainerMap[targetRequest] = progressiveContainer
-            }
-            _ = progressiveDecoder?.updateData(data: writedData, final: false)
-            
-            // webp 和其它未知格式无法进行扫描显示
-            if progressiveDecoder?.imageType == LGImageType.unknow ||
-                progressiveDecoder?.imageType == LGImageType.webp ||
-                progressiveDecoder?.imageType == LGImageType.other {
+        var progressiveContainer: LGWebImageProgressiveContainer
+        if let container = progressiveContainerMap[targetRequest] as? LGWebImageProgressiveContainer {
+            progressiveContainer = container
+        } else {
+            progressiveContainer = LGWebImageProgressiveContainer()
+            progressiveContainerMap[targetRequest] = progressiveContainer
+        }
+        
+        // 数据足够长且马上要下载完成了，不再继续处理
+        if targetRequest.progress.fractionCompleted > 0.9 {
+            return
+        }
+        
+        // 忽略则不处理
+        var progressiveIgnored: Bool = progressiveContainer.progressiveIgnored
+        
+        if progressiveIgnored == true { return }
+        
+        let min: TimeInterval = progressiveBlur ? .minProgressiveBlurTimeInterval : .minProgressiveTimeInterval
+        let now = CACurrentMediaTime()
+        if now - progressiveContainer.lastProgressiveDecodeTimestamp < min {
+            return
+        }
+        
+        let writedData = data
+        
+        // 不够解码长度
+        if writedData.count <= 16 {
+            return
+        }
+        
+        var progressiveDecoder = progressiveContainer.progressiveDecoder
+        if progressiveDecoder == nil {
+            progressiveDecoder = LGImageDecoder(withScale: UIScreen.main.scale)
+            progressiveContainer.progressiveDecoder = progressiveDecoder
+            progressiveContainerMap[targetRequest] = progressiveContainer
+        }
+        _ = progressiveDecoder?.updateData(data: writedData, final: false)
+        
+        // webp 和其它未知格式无法进行扫描显示
+        if progressiveDecoder?.imageType == LGImageType.unknow ||
+            progressiveDecoder?.imageType == LGImageType.webp ||
+            progressiveDecoder?.imageType == LGImageType.other {
+            progressiveDecoder = nil
+            progressiveContainer.progressiveIgnored = true
+            progressiveContainerMap[targetRequest] = progressiveContainer
+            return
+        }
+        
+        if progressiveBlur {
+            // 只支持 png & jpg
+            if !(progressiveDecoder?.imageType == LGImageType.jpeg ||
+                progressiveDecoder?.imageType == LGImageType.png) {
                 progressiveDecoder = nil
                 progressiveContainer.progressiveIgnored = true
                 progressiveContainerMap[targetRequest] = progressiveContainer
                 return
             }
-            
-            if progressiveBlur {
-                // 只支持 png & jpg
-                if !(progressiveDecoder?.imageType == LGImageType.jpeg ||
-                    progressiveDecoder?.imageType == LGImageType.png) {
-                    progressiveDecoder = nil
-                    progressiveContainer.progressiveIgnored = true
-                    progressiveContainerMap[targetRequest] = progressiveContainer
-                    return
-                }
+        }
+        
+        
+        if progressiveDecoder?.frameCount == 0 {return}
+        
+        if !progressiveBlur {
+            let frame = progressiveDecoder?.frameAtIndex(index: 0, decodeForDisplay: true)
+            if frame?.image != nil {
+                self.invokeCompletionBlocks(targetRequest,
+                                            image: frame?.image,
+                                            url: targetRequest.request?.url,
+                                            sourceType: LGWebImageSourceType.remoteServer,
+                                            imageStatus: LGWebImageStage.progress,
+                                            error: nil)
             }
-            
-            
-            if progressiveDecoder?.frameCount == 0 {return}
-            
-            if !progressiveBlur {
-                let frame = progressiveDecoder?.frameAtIndex(index: 0, decodeForDisplay: true)
-                if frame?.image != nil {
-                    self.invokeCompletionBlocks(targetRequest,
-                                                image: frame?.image,
-                                                url: targetRequest.request?.url,
-                                                sourceType: LGWebImageSourceType.remoteServer,
-                                                imageStatus: LGWebImageStage.progress,
-                                                error: nil)
-                }
-                return
-            } else {
-                if progressiveDecoder?.imageType == LGImageType.jpeg {
-                    if !progressiveContainer.progressiveDetected {
-                        if let dic = progressiveDecoder?.frameProperties(atIndex: 0) {
-                            let jpeg = dic[kCGImagePropertyJFIFIsProgressive as String] as? [String: Any]
-                            if let isProg = jpeg?[kCGImagePropertyJFIFIsProgressive as String] as? NSNumber {
-                                if !isProg.boolValue {
-                                    progressiveIgnored = true
-                                    progressiveDecoder = nil
-                                    return
-                                }
-                                progressiveContainer.progressiveDetected = true
-                                progressiveContainerMap[targetRequest] = progressiveContainer
+            return
+        } else {
+            if progressiveDecoder?.imageType == LGImageType.jpeg {
+                if !progressiveContainer.progressiveDetected {
+                    if let dic = progressiveDecoder?.frameProperties(atIndex: 0) {
+                        let jpeg = dic[kCGImagePropertyJFIFIsProgressive as String] as? [String: Any]
+                        if let isProg = jpeg?[kCGImagePropertyJFIFIsProgressive as String] as? NSNumber {
+                            if !isProg.boolValue {
+                                progressiveIgnored = true
+                                progressiveDecoder = nil
+                                return
                             }
-                            
+                            progressiveContainer.progressiveDetected = true
+                            progressiveContainerMap[targetRequest] = progressiveContainer
                         }
                         
                     }
-                    let scanLength = writedData.count - progressiveContainer.progressiveScanedLength - 4
-                    if scanLength <= 2 {return}
-                    let endIndex = Data.Index(progressiveContainer.progressiveScanedLength + scanLength)
-                    let scanRange: Range<Data.Index> = Data.Index(progressiveContainer.progressiveScanedLength)..<endIndex
-                    let markerRange = writedData.range(of: JPEGSOSMarker,
-                                                         options: Data.SearchOptions.backwards,
-                                                         in: scanRange)
-                    progressiveContainer.progressiveScanedLength = writedData.count
-                    progressiveContainerMap[targetRequest] = progressiveContainer
-                    if markerRange == nil {return}
-                } else if progressiveDecoder?.imageType == LGImageType.png {
-                    if !progressiveContainer.progressiveDetected {
-                        let dic = progressiveDecoder?.frameProperties(atIndex: 0)
-                        let png = dic?[kCGImagePropertyPNGDictionary as String] as? [String: Any]
-                        let isProg = png?[kCGImagePropertyPNGInterlaceType as String] as? NSNumber
-                        if isProg != nil && !isProg!.boolValue {
-                            progressiveIgnored = true
-                            progressiveDecoder = nil
-                            return
-                        }
-                        progressiveContainer.progressiveDetected = true
-                        progressiveContainerMap[targetRequest] = progressiveContainer
-                    }
+                    
                 }
-                
-                let frame = progressiveDecoder?.frameAtIndex(index: 0, decodeForDisplay: true)
-                guard let image = frame?.image else {
-                    return
-                }
-                
-                if image.cgImage?.lastPixelFilled() == false {
-                    return
-                }
-                
-                progressiveContainer.progressiveDisplayCount += 1
+                let scanLength = writedData.count - progressiveContainer.progressiveScanedLength - 4
+                if scanLength <= 2 {return}
+                let endIndex = Data.Index(progressiveContainer.progressiveScanedLength + scanLength)
+                let scanRange: Range<Data.Index> = Data.Index(progressiveContainer.progressiveScanedLength)..<endIndex
+                let markerRange = writedData.range(of: JPEGSOSMarker,
+                                                   options: Data.SearchOptions.backwards,
+                                                   in: scanRange)
+                progressiveContainer.progressiveScanedLength = writedData.count
                 progressiveContainerMap[targetRequest] = progressiveContainer
-                var radius: CGFloat = 32
-                if targetRequest.expectedContentLength > 0 {
-                    radius *= 1.0 / (3.0 * CGFloat(writedData.count) / CGFloat(targetRequest.totalBytesReceived) + 0.6) - 0.25
-                } else {
-                    radius /= CGFloat(progressiveContainer.progressiveDisplayCount)
-                }
-                let temp = image.lg_imageByBlurRadius(radius,
-                                                      tintColor: nil,
-                                                      tintBlendMode: CGBlendMode.normal,
-                                                      saturation: 1, maskImage: nil)
-                if temp != nil {
-                    self.invokeCompletionBlocks(targetRequest,
-                                                image: temp,
-                                                url: targetRequest.request?.url,
-                                                sourceType: LGWebImageSourceType.remoteServer,
-                                                imageStatus: LGWebImageStage.progress,
-                                                error: nil)
+                if markerRange == nil {return}
+            } else if progressiveDecoder?.imageType == LGImageType.png {
+                if !progressiveContainer.progressiveDetected {
+                    let dic = progressiveDecoder?.frameProperties(atIndex: 0)
+                    let png = dic?[kCGImagePropertyPNGDictionary as String] as? [String: Any]
+                    let isProg = png?[kCGImagePropertyPNGInterlaceType as String] as? NSNumber
+                    if isProg != nil && !isProg!.boolValue {
+                        progressiveIgnored = true
+                        progressiveDecoder = nil
+                        return
+                    }
+                    progressiveContainer.progressiveDetected = true
+                    progressiveContainerMap[targetRequest] = progressiveContainer
                 }
             }
-        } catch {
-            println(error)
+            
+            let frame = progressiveDecoder?.frameAtIndex(index: 0, decodeForDisplay: true)
+            guard let image = frame?.image else {
+                return
+            }
+            
+            if image.cgImage?.lastPixelFilled() == false {
+                return
+            }
+            
+            progressiveContainer.progressiveDisplayCount += 1
+            progressiveContainerMap[targetRequest] = progressiveContainer
+            var radius: CGFloat = 32
+            if targetRequest.expectedContentLength > 0 {
+                radius *= 1.0 / (3.0 * CGFloat(writedData.count) / CGFloat(targetRequest.totalBytesReceived) + 0.6) - 0.25
+            } else {
+                radius /= CGFloat(progressiveContainer.progressiveDisplayCount)
+            }
+            let temp = image.lg_imageByBlurRadius(radius,
+                                                  tintColor: nil,
+                                                  tintBlendMode: CGBlendMode.normal,
+                                                  saturation: 1, maskImage: nil)
+            if temp != nil {
+                self.invokeCompletionBlocks(targetRequest,
+                                            image: temp,
+                                            url: targetRequest.request?.url,
+                                            sourceType: LGWebImageSourceType.remoteServer,
+                                            imageStatus: LGWebImageStage.progress,
+                                            error: nil)
+            }
         }
     }
 }

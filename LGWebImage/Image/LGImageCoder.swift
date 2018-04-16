@@ -26,6 +26,7 @@ import Photos
 /// - gif: gif
 /// - png: png
 /// - webp: webp
+/// - heic: heic
 /// - other: other image format
 public enum LGImageType: Int {
     case unknow = 0
@@ -34,10 +35,10 @@ public enum LGImageType: Int {
     case tiff
     case bmp
     case ico
-    case icns
     case gif
     case png
     case webp
+    case heic
     case other
 }
 
@@ -975,7 +976,6 @@ extension LGImageEncoder {
              LGImageType.tiff,
              LGImageType.bmp,
              LGImageType.ico,
-             LGImageType.icns,
              LGImageType.gif:
             result = _images.count > 0
             break
@@ -1303,9 +1303,9 @@ public func LGGetImageDetectType(data: CFData?) -> LGImageType {
         /*ico*/
     case _four_cc(c1: 0x00, c2: 0x00, c3: 0x01, c4: 0x00), _four_cc(c1: 0x00, c2: 0x00, c3: 0x02, c4: 0x00):
         return LGImageType.ico
-        /*icns*/
-    case _four_cc(c1: 0x69, c2: 0x63, c3: 0x6E, c4: 0x73):
-        return LGImageType.icns
+//        /*icns*/
+//    case _four_cc(c1: 0x69, c2: 0x63, c3: 0x6E, c4: 0x73):
+//        return LGImageType.icns
         /*gif*/
     case _four_cc(c1: 0x47, c2: 0x49, c3: 0x46, c4: 0x38):
         return LGImageType.gif
@@ -1370,9 +1370,9 @@ public func LGImageTypeToUIType(type: LGImageType) -> CFString? {
     case LGImageType.ico:
         result = kUTTypeICO
         break
-    case LGImageType.icns:
-        result = kUTTypeAppleICNS
-        break
+//    case LGImageType.icns:
+//        result = kUTTypeAppleICNS
+//        break
     case LGImageType.tiff:
         result = kUTTypeTIFF
         break
@@ -1411,9 +1411,9 @@ public func LGImageTypeFromUTType(uttype: CFString) -> LGImageType {
     case kUTTypeICO:
         result = LGImageType.ico
         break
-    case kUTTypeAppleICNS:
-        result = LGImageType.icns
-        break
+//    case kUTTypeAppleICNS:
+//        result = LGImageType.icns
+//        break
     case kUTTypePNG:
         result = LGImageType.png
         break
@@ -1440,9 +1440,9 @@ public func LGImageTypeGetExtension(type: LGImageType) -> String? {
     case LGImageType.tiff:
         result = "tiff"
         break
-    case LGImageType.icns:
-        result = "icns"
-        break
+//    case LGImageType.icns:
+//        result = "icns"
+//        break
     case LGImageType.ico:
         result = "ico"
         break
