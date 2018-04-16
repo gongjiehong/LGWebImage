@@ -132,7 +132,7 @@ public class LGWebImageManager {
                  ** 处理唯一request，保证每个独立URL只处理一次
                  **/
                 let urlNSSString = NSString(string: urlString)
-                var targetRequest: LGDataRequest
+                var targetRequest: LGDataRequest?
                 _ = self._lock.wait(timeout: DispatchTime.distantFuture)
                 if let request = self.requestContainer.object(forKey: urlNSSString) as? LGDataRequest {
                     targetRequest = request
@@ -175,63 +175,63 @@ public class LGWebImageManager {
                         receivedData = Data()
                     }
                     
-//                    targetRequest = targetRequest.stream(queue: DispatchQueue.userInitiated, closure: { (data) in
-//                        receivedData.append(data)
-//
-//                        // Write Data
-//                        let inputStream = InputStream(data: data)
-//                        // 此处需要先创建文件夹，如果未创建文件夹则无法使用stream
-//                        guard let outputStream = OutputStream(url: destinationURL,
-//                                                              append: true) else { return }
-//
-//                        inputStream.schedule(in: RunLoop.current, forMode: RunLoopMode.defaultRunLoopMode)
-//                        outputStream.schedule(in: RunLoop.current, forMode: RunLoopMode.defaultRunLoopMode)
-//                        inputStream.open()
-//                        outputStream.open()
-//
-//                        while inputStream.hasBytesAvailable && outputStream.hasSpaceAvailable {
-//                            var buffer = [UInt8](repeating: 0, count: 1024)
-//
-//                            let bytesRead = inputStream.read(&buffer, maxLength: 1024)
-//                            if inputStream.streamError != nil || bytesRead < 0 {
-//                                break
-//                            }
-//
-//                            let bytesWritten = outputStream.write(&buffer, maxLength: bytesRead)
-//                            if outputStream.streamError != nil || bytesWritten < 0 {
-//                                break
-//                            }
-//
-//                            if bytesRead == 0 && bytesWritten == 0 {
-//                                break
-//                            }
-//                        }
-//
-//                        inputStream.remove(from: RunLoop.current, forMode: RunLoopMode.defaultRunLoopMode)
-//                        outputStream.remove(from: RunLoop.current, forMode: RunLoopMode.defaultRunLoopMode)
-//
-//                        inputStream.close()
-//                        outputStream.close()
-//
-//
-//                        self.decodeDataToUIImageIfNeeded(receivedData,
-//                                                         options: options,
-//                                                         destinationFileURL: destinationURL,
-//                                                         targetRequest: targetRequest)
-//
-//                    })
+                    targetRequest = targetRequest?.stream(queue: DispatchQueue.userInitiated, closure: { (data) in
+                        receivedData.append(data)
+
+                        // Write Data
+                        let inputStream = InputStream(data: data)
+                        // 此处需要先创建文件夹，如果未创建文件夹则无法使用stream
+                        guard let outputStream = OutputStream(url: destinationURL,
+                                                              append: true) else { return }
+
+                        inputStream.schedule(in: RunLoop.current, forMode: RunLoopMode.defaultRunLoopMode)
+                        outputStream.schedule(in: RunLoop.current, forMode: RunLoopMode.defaultRunLoopMode)
+                        inputStream.open()
+                        outputStream.open()
+
+                        while inputStream.hasBytesAvailable && outputStream.hasSpaceAvailable {
+                            var buffer = [UInt8](repeating: 0, count: 1024)
+
+                            let bytesRead = inputStream.read(&buffer, maxLength: 1024)
+                            if inputStream.streamError != nil || bytesRead < 0 {
+                                break
+                            }
+
+                            let bytesWritten = outputStream.write(&buffer, maxLength: bytesRead)
+                            if outputStream.streamError != nil || bytesWritten < 0 {
+                                break
+                            }
+
+                            if bytesRead == 0 && bytesWritten == 0 {
+                                break
+                            }
+                        }
+
+                        inputStream.remove(from: RunLoop.current, forMode: RunLoopMode.defaultRunLoopMode)
+                        outputStream.remove(from: RunLoop.current, forMode: RunLoopMode.defaultRunLoopMode)
+
+                        inputStream.close()
+                        outputStream.close()
+
+
+                        self.decodeDataToUIImageIfNeeded(receivedData,
+                                                         options: options,
+                                                         destinationFileURL: destinationURL,
+                                                         targetRequest: targetRequest!)
+
+                    })
                     
 
                     /**
                      ** 处理进度回调
                      **/
-                    targetRequest = targetRequest.downloadProgress(queue: DispatchQueue.userInitiated)
+                    targetRequest = targetRequest!.downloadProgress(queue: DispatchQueue.userInitiated)
                     {[unowned self] (progress) in
-                        self.invokeProgressBlocks(targetRequest, progress: progress)
+                        self.invokeProgressBlocks(targetRequest!, progress: progress)
                     }
 
                     // 下载完成结果处理
-                    targetRequest = targetRequest.validate().response(queue: DispatchQueue.userInitiated)
+                    targetRequest = targetRequest!.validate().response(queue: DispatchQueue.userInitiated)
                     {[unowned self] (response) in
                         if response.error != nil {
                             completion(nil, nil, LGWebImageSourceType.none, LGWebImageStage.finished, response.error)
@@ -280,26 +280,28 @@ public class LGWebImageManager {
                                            error)
                             }
                         }
-                        self.clearMaps(targetRequest, urlNSSString: urlNSSString)
+                        self.clearMaps(targetRequest!, urlNSSString: urlNSSString)
                         networkIndicatorStop()
+                        targetRequest = nil
                     }
                     
                     _ = self._lock.wait(timeout: DispatchTime.distantFuture)
                     self.requestContainer.setObject(targetRequest, forKey: urlNSSString)
                     _ = self._lock.signal()
+                    
                 }
                 
                 /**
                  ** 将进度条回调添加到缓存
                  **/
                 if progress != nil {
-                    self.addProgressBlockToMap(targetRequest, progress: progress!)
+                    self.addProgressBlockToMap(targetRequest!, progress: progress!)
                 }
 
                 /**
                  ** 将完成回调添加到缓存
                  **/
-                self.addCompletionBlocksToMap(targetRequest, completion: completion)
+                self.addCompletionBlocksToMap(targetRequest!, completion: completion)
             } catch {
                 println(error)
                 networkIndicatorStop()
