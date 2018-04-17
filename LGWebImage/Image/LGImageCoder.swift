@@ -177,6 +177,26 @@ public class LGImageDecoder {
         return result
     }
     
+    public func bigPictureCreateThumbnail() -> UIImage? {
+        var result: UIImage? = nil
+        pthread_mutex_lock(&_lock)
+        if self._source != nil {
+            let thumbnailOptions = [kCGImageSourceCreateThumbnailWithTransform: true,
+                                    kCGImageSourceCreateThumbnailFromImageAlways: true,
+                                    kCGImageSourceThumbnailMaxPixelSize: UIScreen.main.bounds.width] as [CFString : Any]
+            if CGImageSourceGetCount(self._source!) > 0 {
+                if let cgImage = CGImageSourceCreateThumbnailAtIndex(self._source!,
+                                                                     0,
+                                                                     thumbnailOptions as CFDictionary)
+                {
+                    result = UIImage(cgImage: cgImage)
+                }
+            }
+        }
+        pthread_mutex_unlock(&_lock)
+        return result
+    }
+    
     public func frameDuration(atIndex index: Int) -> TimeInterval {
         var result: TimeInterval = 0.0
         _ = _framesLock.wait(timeout: DispatchTime.distantFuture)

@@ -29,7 +29,6 @@
 		FEB7BAA92073602E00639C13 /* LGAnimatedImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA902073602D00639C13 /* LGAnimatedImage.swift */; };
 		FEB7BAAA2073602E00639C13 /* LGWebImageDefins.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA922073602D00639C13 /* LGWebImageDefins.swift */; };
 		FEB7BAAC2073602E00639C13 /* LGImageCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA942073602D00639C13 /* LGImageCache.swift */; };
-		FEB7BAAD2073602E00639C13 /* LGWebImageDownloadSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA952073602D00639C13 /* LGWebImageDownloadSessionManager.swift */; };
 		FEB7BAAF2073602E00639C13 /* LGWebImageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA972073602D00639C13 /* LGWebImageManager.swift */; };
 		FED3EAC2207B4BDA00AA224F /* WebP.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FED3EAC1207B4BDA00AA224F /* WebP.framework */; };
 /* End PBXBuildFile section */
@@ -91,7 +90,6 @@
 		FEB7BA902073602D00639C13 /* LGAnimatedImage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGAnimatedImage.swift; sourceTree = "<group>"; };
 		FEB7BA922073602D00639C13 /* LGWebImageDefins.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGWebImageDefins.swift; sourceTree = "<group>"; };
 		FEB7BA942073602D00639C13 /* LGImageCache.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGImageCache.swift; sourceTree = "<group>"; };
-		FEB7BA952073602D00639C13 /* LGWebImageDownloadSessionManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGWebImageDownloadSessionManager.swift; sourceTree = "<group>"; };
 		FEB7BA972073602D00639C13 /* LGWebImageManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGWebImageManager.swift; sourceTree = "<group>"; };
 		FED3EAC1207B4BDA00AA224F /* WebP.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = WebP.framework; sourceTree = "<group>"; };
 		FEE49F112073760300EAC3F3 /* Package.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Package.swift; sourceTree = "<group>"; };
@@ -220,7 +218,6 @@
 			children = (
 				FEB7BA922073602D00639C13 /* LGWebImageDefins.swift */,
 				FEB7BA942073602D00639C13 /* LGImageCache.swift */,
-				FEB7BA952073602D00639C13 /* LGWebImageDownloadSessionManager.swift */,
 				FEB7BA972073602D00639C13 /* LGWebImageManager.swift */,
 			);
 			path = Core;
@@ -345,7 +342,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				FEB7BAAD2073602E00639C13 /* LGWebImageDownloadSessionManager.swift in Sources */,
 				FEB7BAAF2073602E00639C13 /* LGWebImageManager.swift in Sources */,
 				FEB7BAA12073602E00639C13 /* DebugLog.swift in Sources */,
 				FEB7BAA92073602E00639C13 /* LGAnimatedImage.swift in Sources */,
