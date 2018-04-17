@@ -9,38 +9,29 @@
 import Foundation
 import LGHTTPRequest
 
+public typealias LGWebImageCallbackToken = String
+
 public class LGWebImageManager {
     public var requestContainer: NSMapTable<NSString, LGHTTPRequest>
     public var cache: LGImageCache
     
     fileprivate var _lock = DispatchSemaphore(value: 1)
     fileprivate var _recursiveLock = NSRecursiveLock()
-    fileprivate var _cacheQueue = DispatchQueue.userInitiated
+    fileprivate var _cacheQueue = DispatchQueue.utility
     fileprivate var _sessionManager: LGURLSessionManager
     
-    private var progressBlocksMap = [LGDataRequest: [LGWebImageProgressBlock]?]()
-    private var completionBlocksMap = [LGDataRequest: [LGWebImageCompletionBlock]?]()
-    private var progressiveContainerMap = [LGDataRequest: LGWebImageProgressiveContainer?]()
+    private var progressBlocksMap = [LGDataRequest: [LGWebImageCallbackToken: LGWebImageProgressBlock]]()
+    private var completionBlocksMap = [LGDataRequest: [LGWebImageCallbackToken: LGWebImageCompletionBlock]]()
+    private var progressiveContainerMap = [LGDataRequest: LGWebImageProgressiveContainer]()
     
     private let tempDirSuffix = "LGWebImage/TempFile/"
-    
-    public init() {
-        requestContainer = NSMapTable<NSString, LGHTTPRequest>(keyOptions: NSPointerFunctions.Options.weakMemory,
-                                                               valueOptions: NSPointerFunctions.Options.weakMemory)
-        cache = LGImageCache.default
-        
-        _sessionManager = LGURLSessionManager.default
-        
-        createTempFileDirIfNeeded()
-    }
-    
     
     /// 根据一些选项设置和信任的host进行初始化
     ///
     /// - Parameters:
     ///   - options: 固定设置
     ///   - trustHosts: 信任的host，设置后不会验证SSL有效性
-    public init(options: LGWebImageOptions, trustHosts: [String] = []) {
+    public init(options: LGWebImageOptions = LGWebImageOptions.default, trustHosts: [String] = []) {
         requestContainer = NSMapTable<NSString, LGHTTPRequest>(keyOptions: NSPointerFunctions.Options.weakMemory,
                                                                valueOptions: NSPointerFunctions.Options.weakMemory)
         cache = LGImageCache.default
@@ -67,25 +58,27 @@ public class LGWebImageManager {
         createTempFileDirIfNeeded()
     }
     
+    
     public static let `default`: LGWebImageManager = {
         return LGWebImageManager()
     }()
     
     public func downloadImageWith(url: LGURLConvertible,
-                                  options: LGWebImageOptions,
+                                  options: LGWebImageOptions = LGWebImageOptions.default,
                                   progress: LGWebImageProgressBlock? = nil,
-                                  completion: @escaping LGWebImageCompletionBlock)
+                                  completion: LGWebImageCompletionBlock? = nil) -> LGWebImageCallbackToken
     {
-        _cacheQueue.async { [unowned self] in
+        let token = UUID().uuidString + "\(CACurrentMediaTime())"
+        _cacheQueue.sync { [unowned self] in
             // 处理忽略下载失败的URL和和名单
             if options.contains(LGWebImageOptions.ignoreFailedURL) &&
                 LGURLBlackList.default.isContains(url: url)
             {
-                completion(nil,
-                           nil,
-                           LGWebImageSourceType.memoryCacheFast,
-                           LGWebImageStage.finished,
-                           LGImageDownloadError.urlIsInTheBlackList(url: url))
+                completion?(nil,
+                            nil,
+                            LGWebImageSourceType.memoryCacheFast,
+                            LGWebImageStage.finished,
+                            LGImageDownloadError.urlIsInTheBlackList(url: url))
                 return
             }
             
@@ -114,11 +107,11 @@ public class LGWebImageManager {
                     cacheType = LGImageCacheType.all
                 }
                 if let image = self.cache.getImage(forKey: urlString, withType: cacheType) {
-                    completion(image,
-                               remoteURL,
-                               LGWebImageSourceType.memoryCacheFast,
-                               LGWebImageStage.finished,
-                               nil)
+                    completion?(image,
+                                remoteURL,
+                                LGWebImageSourceType.memoryCacheFast,
+                                LGWebImageStage.finished,
+                                nil)
                     networkIndicatorStop()
                     return
                 }
@@ -175,97 +168,113 @@ public class LGWebImageManager {
                         receivedData = Data()
                     }
                     
-                    targetRequest = targetRequest?.stream(queue: DispatchQueue.userInitiated, closure: { (data) in
+                    targetRequest = targetRequest?.stream(closure: {[unowned self] (data) in
                         receivedData.append(data)
-
+                        
                         // Write Data
                         let inputStream = InputStream(data: data)
                         // 此处需要先创建文件夹，如果未创建文件夹则无法使用stream
                         guard let outputStream = OutputStream(url: destinationURL,
                                                               append: true) else { return }
-
+                        
                         inputStream.schedule(in: RunLoop.current, forMode: RunLoopMode.defaultRunLoopMode)
                         outputStream.schedule(in: RunLoop.current, forMode: RunLoopMode.defaultRunLoopMode)
                         inputStream.open()
                         outputStream.open()
-
+                        
                         while inputStream.hasBytesAvailable && outputStream.hasSpaceAvailable {
                             var buffer = [UInt8](repeating: 0, count: 1024)
-
+                            
                             let bytesRead = inputStream.read(&buffer, maxLength: 1024)
                             if inputStream.streamError != nil || bytesRead < 0 {
                                 break
                             }
-
+                            
                             let bytesWritten = outputStream.write(&buffer, maxLength: bytesRead)
                             if outputStream.streamError != nil || bytesWritten < 0 {
                                 break
                             }
-
+                            
                             if bytesRead == 0 && bytesWritten == 0 {
                                 break
                             }
                         }
-
+                        
                         inputStream.remove(from: RunLoop.current, forMode: RunLoopMode.defaultRunLoopMode)
                         outputStream.remove(from: RunLoop.current, forMode: RunLoopMode.defaultRunLoopMode)
-
+                        
                         inputStream.close()
                         outputStream.close()
-
-
+                        
+                        guard let weakTargetRequest = targetRequest else {
+                            return
+                        }
                         self.decodeDataToUIImageIfNeeded(receivedData,
                                                          options: options,
                                                          destinationFileURL: destinationURL,
-                                                         targetRequest: targetRequest!)
-
+                                                         targetRequest: weakTargetRequest)
                     })
-                    
 
                     /**
                      ** 处理进度回调
                      **/
-                    targetRequest = targetRequest!.downloadProgress(queue: DispatchQueue.userInitiated)
+                    targetRequest = targetRequest!.downloadProgress(queue: DispatchQueue.utility)
                     {[unowned self] (progress) in
                         self.invokeProgressBlocks(targetRequest!, progress: progress)
                     }
 
                     // 下载完成结果处理
-                    targetRequest = targetRequest!.validate().response(queue: DispatchQueue.userInitiated)
+                    targetRequest = targetRequest!.validate().response(queue: DispatchQueue.utility)
                     {[unowned self] (response) in
+                        guard let weakTargetRequest = targetRequest else {
+                            return
+                        }
                         if response.error != nil {
-                            completion(nil, nil, LGWebImageSourceType.none, LGWebImageStage.finished, response.error)
+                            self.invokeCompletionBlocks(weakTargetRequest,
+                                                        image: nil,
+                                                        url: nil,
+                                                        sourceType: LGWebImageSourceType.none,
+                                                        imageStatus: LGWebImageStage.finished,
+                                                        error: response.error)
                         } else {
                             if let originURL = response.request?.url
                             {
                                 // 通过拷贝文件的方式设置磁盘缓存
                                 self.cache.diskCache.setObject(withFileURL: destinationURL,
                                                                forKey: originURL.absoluteString)
-                                // 缓存中如果有，直接读取并返回
-                                if let image = self.cache.getImage(forKey: originURL.absoluteString) {
-                                    completion(image,
-                                               originURL,
-                                               LGWebImageSourceType.memoryCacheFast,
-                                               LGWebImageStage.finished,
-                                               nil)
+                                // 首先直接对data进行解码，解码不成功再说后续
+                                if let image = LGImage.imageWith(data: receivedData) {
+                                    self.cache.memoryCache.setObject(LGCacheItem(data: image,
+                                                                                 extendedData: nil),
+                                                                     forKey: originURL.absoluteString,
+                                                                     withCost: image.imageCost)
+                                    self.invokeCompletionBlocks(weakTargetRequest,
+                                                                image: image,
+                                                                url: originURL,
+                                                                sourceType: LGWebImageSourceType.memoryCacheFast,
+                                                                imageStatus: LGWebImageStage.finished,
+                                                                error: nil)
                                 } else if let image = self.cache.getImage(forKey: originURL.absoluteString,
                                                                           withType: LGImageCacheType.disk)
                                 {
-                                    completion(image,
-                                               originURL,
-                                               LGWebImageSourceType.memoryCacheFast,
-                                               LGWebImageStage.finished,
-                                               nil)
+                                    self.invokeCompletionBlocks(weakTargetRequest,
+                                                                image: image,
+                                                                url: originURL,
+                                                                sourceType: LGWebImageSourceType.memoryCacheFast,
+                                                                imageStatus: LGWebImageStage.finished,
+                                                                error: nil)
                                 } else {
                                     if options.contains(LGWebImageOptions.ignoreFailedURL) {
                                         LGURLBlackList.default.addURL(url)
                                     }
-                                    completion(nil,
-                                               originURL,
-                                               LGWebImageSourceType.memoryCacheFast,
-                                               LGWebImageStage.finished,
-                                               LGImageDownloadError.cannotReadFile)
+                                    self.invokeCompletionBlocks(weakTargetRequest,
+                                                                image: nil,
+                                                                url: originURL,
+                                                                sourceType: LGWebImageSourceType.none,
+                                                                imageStatus: LGWebImageStage.finished,
+                                                                error: LGImageDownloadError.cannotReadFile)
                                 }
+                                
                             } else {
                                 if options.contains(LGWebImageOptions.ignoreFailedURL) {
                                     LGURLBlackList.default.addURL(url)
@@ -273,11 +282,12 @@ public class LGWebImageManager {
                                 let originalURL = response.request?.url
                                 let error = LGImageDownloadError.targetURLOrOriginURLInvalid(targetURL: destinationURL,
                                                                                              originURL: originalURL)
-                                completion(nil,
-                                           nil,
-                                           LGWebImageSourceType.memoryCacheFast,
-                                           LGWebImageStage.finished,
-                                           error)
+                                self.invokeCompletionBlocks(weakTargetRequest,
+                                                            image: nil,
+                                                            url: nil,
+                                                            sourceType: LGWebImageSourceType.none,
+                                                            imageStatus: LGWebImageStage.finished,
+                                                            error: error)
                             }
                         }
                         self.clearMaps(targetRequest!, urlNSSString: urlNSSString)
@@ -294,19 +304,23 @@ public class LGWebImageManager {
                 /**
                  ** 将进度条回调添加到缓存
                  **/
-                if progress != nil {
-                    self.addProgressBlockToMap(targetRequest!, progress: progress!)
+                if progress != nil && targetRequest != nil {
+                    self.addProgressBlockToMap(targetRequest!, progress: progress!, callbackToken: token)
                 }
 
                 /**
                  ** 将完成回调添加到缓存
                  **/
-                self.addCompletionBlocksToMap(targetRequest!, completion: completion)
+                if completion != nil && targetRequest != nil {
+                    self.addCompletionBlocksToMap(targetRequest!, completion: completion!, callbackToken: token)
+                }
             } catch {
                 println(error)
                 networkIndicatorStop()
             }
         }
+        
+        return token
     }
     
     
@@ -345,13 +359,16 @@ public class LGWebImageManager {
     /// - Parameters:
     ///   - targetRequest: key
     ///   - block: LGWebImageProgressBlock value
-    private func addProgressBlockToMap(_ targetRequest: LGDataRequest, progress: @escaping LGWebImageProgressBlock) {
+    private func addProgressBlockToMap(_ targetRequest: LGDataRequest,
+                                       progress: @escaping LGWebImageProgressBlock,
+                                       callbackToken: LGWebImageCallbackToken)
+    {
         _ = _lock.wait(timeout: DispatchTime.distantFuture)
-        if var tempArray = progressBlocksMap[targetRequest] as? [LGWebImageProgressBlock] {
-            tempArray.append(progress)
-            progressBlocksMap[targetRequest] = tempArray
+        if var tempDic = progressBlocksMap[targetRequest] {
+            tempDic[callbackToken] = progress
+            progressBlocksMap[targetRequest] = tempDic
         } else {
-            progressBlocksMap[targetRequest] = [progress]
+            progressBlocksMap[targetRequest] = [callbackToken: progress]
         }
         _ = _lock.signal()
     }
@@ -363,9 +380,9 @@ public class LGWebImageManager {
     ///   - progress: Progress
     private func invokeProgressBlocks(_ request: LGDataRequest, progress: Progress) {
         _ = _lock.wait(timeout: DispatchTime.distantFuture)
-        if let tempArray = self.progressBlocksMap[request] as? [LGWebImageProgressBlock] {
-            if tempArray.count > 0 {
-                for block in tempArray {
+        if let tempDic = self.progressBlocksMap[request] {
+            if tempDic.count > 0 {
+                for (_, block) in tempDic {
                     block(progress)
                 }
             }
@@ -374,14 +391,15 @@ public class LGWebImageManager {
     }
     
     private func addCompletionBlocksToMap(_ targetRequest: LGDataRequest,
-                                          completion: @escaping LGWebImageCompletionBlock)
+                                          completion: @escaping LGWebImageCompletionBlock,
+                                          callbackToken: LGWebImageCallbackToken)
     {
         _ = _lock.wait(timeout: DispatchTime.distantFuture)
-        if var tempArray = completionBlocksMap[targetRequest] as? [LGWebImageCompletionBlock] {
-            tempArray.append(completion)
-            completionBlocksMap[targetRequest] = tempArray
+        if var tempDic = completionBlocksMap[targetRequest] {
+            tempDic[callbackToken] = completion
+            completionBlocksMap[targetRequest] = tempDic
         } else {
-            completionBlocksMap[targetRequest] = [completion]
+            completionBlocksMap[targetRequest] = [callbackToken: completion]
         }
         _ = _lock.signal()
     }
@@ -394,9 +412,9 @@ public class LGWebImageManager {
                                         error: Error?)
     {
         _ = _lock.wait(timeout: DispatchTime.distantFuture)
-        if let tempArray = self.completionBlocksMap[request] as? [LGWebImageCompletionBlock] {
-            if tempArray.count > 0 {
-                for block in tempArray {
+        if let tempDic = self.completionBlocksMap[request] {
+            if tempDic.count > 0 {
+                for (_, block) in tempDic {
                     block(image, url, sourceType, imageStatus, error)
                 }
             }
@@ -431,7 +449,7 @@ public class LGWebImageManager {
         }
         
         var progressiveContainer: LGWebImageProgressiveContainer
-        if let container = progressiveContainerMap[targetRequest] as? LGWebImageProgressiveContainer {
+        if let container = progressiveContainerMap[targetRequest] {
             progressiveContainer = container
         } else {
             progressiveContainer = LGWebImageProgressiveContainer()
@@ -577,6 +595,26 @@ public class LGWebImageManager {
                                             error: nil)
             }
         }
+    }
+    
+    public func cancelWith(callbackToken: LGWebImageCallbackToken) {
+        _ = _lock.wait(timeout: DispatchTime.distantFuture)
+        for (key, value) in self.progressBlocksMap {
+            for (token, _) in value {
+                if token == callbackToken {
+                    self.progressBlocksMap[key]?[token] = nil
+                }
+            }
+        }
+        
+        for (key, value) in self.completionBlocksMap {
+            for (token, _) in value {
+                if token == callbackToken {
+                    self.completionBlocksMap[key]?[token] = nil
+                }
+            }
+        }
+        _ = _lock.signal()
     }
 }
 

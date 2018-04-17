@@ -74,18 +74,18 @@ public class LGImageCache {
         if (image == nil && imageData == nil) || key.lg_length == 0 {
             return
         }
-
+        
         if type.contains(LGImageCacheType.memory) {
             if image != nil {
                 if image!.lg_isDecodedForDisplay {
                     self.memoryCache.setObject(LGCacheItem(data: image!, extendedData: nil),
-                                                forKey: key,
-                                                withCost: image!.imageCost)
+                                               forKey: key,
+                                               withCost: image!.imageCost)
                 } else {
                     lg_imageCacheIOQueue.async { [weak self] in
                         self?.memoryCache.setObject(LGCacheItem(data: image!.lg_imageByDecoded, extendedData: nil),
-                                                     forKey: key,
-                                                     withCost: image!.imageCost)
+                                                    forKey: key,
+                                                    withCost: image!.imageCost)
                     }
                 }
             } else if imageData != nil {
@@ -97,8 +97,8 @@ public class LGImageCache {
                                                         isAllowAnimatedImage: weakSelf.isAllowAnimatedImage,
                                                         isDecodeForDisplay: weakSelf.isDecodeForDisplay) {
                         weakSelf.memoryCache.setObject(LGCacheItem(data: newImage, extendedData: nil),
-                                                        forKey: key,
-                                                        withCost: newImage.imageCost)
+                                                       forKey: key,
+                                                       withCost: newImage.imageCost)
                     }
                 }
             }
@@ -142,8 +142,8 @@ public class LGImageCache {
                                               isDecodeForDisplay: isDecodeForDisplay)
                 if image != nil {
                     self.memoryCache.setObject(LGCacheItem(data: image!, extendedData: imageItem.extendedData),
-                                                forKey: key,
-                                                withCost: image!.imageCost)
+                                               forKey: key,
+                                               withCost: image!.imageCost)
                 }
                 return image
             } else {
@@ -180,8 +180,8 @@ public class LGImageCache {
                                               isDecodeForDisplay: self.isDecodeForDisplay)
                     if image != nil {
                         self.memoryCache.setObject(LGCacheItem(data: image!, extendedData: cacheItem.extendedData),
-                                                    forKey: key,
-                                                    withCost: image!.imageCost)
+                                                   forKey: key,
+                                                   withCost: image!.imageCost)
                         DispatchQueue.main.async {
                             block(image, LGImageCacheType.disk)
                         }
@@ -196,11 +196,11 @@ public class LGImageCache {
             }
         }
     }
-
+    
     public func getImageData(forKey key: String) -> Data? {
         return self.diskCache.object(forKey: key)?.data.asData()
     }
-
+    
     public func getImageData(forKey key: String, withBlock block: @escaping (Data?) -> Void) {
         DispatchQueue.global(qos: DispatchQoS.QoSClass.userInitiated).async {
             let data = self.diskCache.object(forKey: key)?.data.asData()
@@ -243,8 +243,8 @@ public class LGImageCache {
     }
 }
 
-fileprivate extension UIImage {
-    fileprivate var imageCost: Int {
+extension UIImage {
+    var imageCost: Int {
         if let cgImage = self.cgImage {
             let height = cgImage.height
             let bytesPerRow = cgImage.bytesPerRow
@@ -258,9 +258,12 @@ fileprivate extension UIImage {
         }
     }
     
-    fileprivate class func imageFrom(cacheItem: LGCacheItem,
-                               isAllowAnimatedImage: Bool,
-                               isDecodeForDisplay: Bool) -> UIImage? {
+    class func imageFrom(cacheItem: LGCacheItem,
+                         isAllowAnimatedImage: Bool,
+                         isDecodeForDisplay: Bool) -> UIImage? {
+        if let image = cacheItem.data as? UIImage {
+            return image.lg_imageByDecoded
+        }
         let scaleData = cacheItem.extendedData
         var scale: CGFloat = 0
         if scaleData != nil {
@@ -268,10 +271,6 @@ fileprivate extension UIImage {
         }
         if scale <= 0 {
             scale = UIScreen.main.scale
-        }
-    
-        if let image = cacheItem.data as? UIImage {
-            return image.lg_imageByDecoded
         }
         
         var result: UIImage?

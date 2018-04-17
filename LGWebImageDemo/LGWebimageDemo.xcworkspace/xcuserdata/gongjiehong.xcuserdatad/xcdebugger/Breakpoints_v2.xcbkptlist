@@ -58,7 +58,7 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "../LGHTTPRequest/LGHTTPRequest/LGHTTPRequest/Core/LGDataRequest.swift"
-            timestampString = "545574896.5921561"
+            timestampString = "545629082.403074"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "46"
@@ -74,12 +74,44 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "../LGHTTPRequest/LGHTTPRequest/LGHTTPRequest/Core/LGURLSessionTaskDelegate.swift"
-            timestampString = "545574896.592249"
+            timestampString = "545629082.403204"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "238"
             endingLineNumber = "238"
-            landmarkName = "urlSession(_:dataTask:didReceive:completionHandler:)"
+            landmarkName = "LGDataTaskDelegate"
+            landmarkType = "3">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../LGWebImage/Core/LGWebImageManager.swift"
+            timestampString = "545629082.4033"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "131"
+            endingLineNumber = "131"
+            landmarkName = "downloadImageWith(url:options:progress:completion:)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../LGWebImage/Core/LGWebImageManager.swift"
+            timestampString = "545629082.403897"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "134"
+            endingLineNumber = "134"
+            landmarkName = "downloadImageWith(url:options:progress:completion:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
