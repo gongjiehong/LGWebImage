@@ -371,10 +371,6 @@ fileprivate class LGLinkedMapNode {
         self.cost = cost
         self.time = time
     }
-    
-    deinit {
-        println(String(format: "LGLinkedMapNode deinit in %@", Thread.current))
-    }
 }
 
 fileprivate class LGLinkedMap {

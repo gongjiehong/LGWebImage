@@ -33,7 +33,6 @@ public func LGDeviceMemoryFree() -> UInt64 {
     
     let pointer = UnsafeMutablePointer(&vmStat)
     pointer.withMemoryRebound(to: integer_t.self, capacity: 60) {
-        print($0.pointee)
         kern = host_statistics(hostPort, HOST_VM_INFO, $0, &hostSize)
     }
     if kern != KERN_SUCCESS {

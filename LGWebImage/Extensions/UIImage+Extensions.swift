@@ -41,7 +41,7 @@ extension CGRect {
                 }
                 toCalcSize.width *= scale
                 toCalcSize.height *= scale
-                result.size = size
+                result.size = toCalcSize
                 result.origin = CGPoint(x: center.x - toCalcSize.width * 0.5, y: center.y - toCalcSize.height * 0.5)
             }
             break
@@ -564,13 +564,15 @@ extension UIImage {
         if clips {
             if let context = UIGraphicsGetCurrentContext() {
                 context.saveGState()
-                context.addRect(drawRect)
+                context.addRect(rect)
                 context.clip()
                 self.draw(in: drawRect)
                 context.restoreGState()
             } else {
                 self.draw(in: drawRect)
             }
+        } else {
+            self.draw(in: drawRect)
         }
     }
     

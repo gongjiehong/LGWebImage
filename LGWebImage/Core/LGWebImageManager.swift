@@ -25,7 +25,11 @@ public class LGWebImageManager {
     fileprivate var _lock = DispatchSemaphore(value: 1)
     
     /// 同步处理队列
-    fileprivate var _cacheQueue = DispatchQueue.utility
+    fileprivate var _cacheQueue = DispatchQueue(label: "com.LGWebImageManager.cacheQueue",
+                                                qos: DispatchQoS.utility,
+                                                attributes: DispatchQueue.Attributes.concurrent,
+                                                autoreleaseFrequency: DispatchQueue.AutoreleaseFrequency.inherit,
+                                                target: DispatchQueue.utility)
     
     /// 下载URLSession管理器
     fileprivate var _sessionManager: LGURLSessionManager
@@ -91,7 +95,7 @@ public class LGWebImageManager {
                                   completion: LGWebImageCompletionBlock? = nil) -> LGWebImageCallbackToken
     {
         let token = UUID().uuidString + "\(CACurrentMediaTime())"
-        _cacheQueue.sync { [unowned self] in
+        _cacheQueue.async(flags: DispatchWorkItemFlags.barrier) { [unowned self] in
             // 处理忽略下载失败的URL和和名单
             if options.contains(LGWebImageOptions.ignoreFailedURL) &&
                 LGURLBlackList.default.isContains(url: url)
@@ -305,17 +309,24 @@ public class LGWebImageManager {
                                     do {
                                         let decoder = try LGImageDecoder(withData: receivedData,
                                                                          scale: UIScreen.main.scale)
-                                        if let image = decoder.bigPictureCreateThumbnail() {
-                                            self.cache.setImage(image: image, forKey: originURL.absoluteString)
-                                            self.invokeCompletionBlocks(weakTargetRequest,
-                                                                        image: image,
-                                                                        url: originURL,
-                                                                        sourceType: .memoryCacheFast,
-                                                                        imageStatus: .finished,
-                                                                        error: nil)
+                                        if decoder.imageType == LGImageType.jpeg ||
+                                            decoder.imageType == LGImageType.png
+                                        {
+                                            if let image = decoder.bigPictureCreateThumbnail() {
+                                                self.cache.setImage(image: image, forKey: originURL.absoluteString)
+                                                self.invokeCompletionBlocks(weakTargetRequest,
+                                                                            image: image,
+                                                                            url: originURL,
+                                                                            sourceType: .memoryCacheFast,
+                                                                            imageStatus: .finished,
+                                                                            error: nil)
+                                            } else {
+                                                checkNormalImage()
+                                            }
                                         } else {
-                                           checkNormalImage()
+                                            checkNormalImage()
                                         }
+                                        
                                     } catch {
                                        checkNormalImage()
                                     }
@@ -676,23 +687,25 @@ public class LGWebImageManager {
     ///
     /// - Parameter callbackToken: 某次请求对应的token
     public func cancelWith(callbackToken: LGWebImageCallbackToken) {
-        _ = _lock.wait(timeout: DispatchTime.distantFuture)
-        for (key, value) in self.progressBlocksMap {
-            for (token, _) in value {
-                if token == callbackToken {
-                    self.progressBlocksMap[key]?[token] = nil
+        _cacheQueue.async(flags: DispatchWorkItemFlags.barrier) { [unowned self] in
+            _ = self._lock.wait(timeout: DispatchTime.distantFuture)
+            for (key, value) in self.progressBlocksMap {
+                for (token, _) in value {
+                    if token == callbackToken {
+                        self.progressBlocksMap[key]?[token] = nil
+                    }
                 }
             }
-        }
-        
-        for (key, value) in self.completionBlocksMap {
-            for (token, _) in value {
-                if token == callbackToken {
-                    self.completionBlocksMap[key]?[token] = nil
+            
+            for (key, value) in self.completionBlocksMap {
+                for (token, _) in value {
+                    if token == callbackToken {
+                        self.completionBlocksMap[key]?[token] = nil
+                    }
                 }
             }
+            _ = self._lock.signal()
         }
-        _ = _lock.signal()
     }
 }
 

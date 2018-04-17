@@ -151,6 +151,18 @@ public extension TimeInterval {
     public static var minProgressiveBlurTimeInterval: TimeInterval {
         return 0.4
     }
+
+}
+
+public extension CFTimeInterval {
+    
+    public static var lg_imageFadeAnimationTime: CFTimeInterval {
+        return 0.2
+    }
+    
+    public static var lg_imageProgressiveFadeAnimationTime: CFTimeInterval {
+        return 0.4
+    }
 }
 
 /// Returns JPEG SOS (Start Of Scan) Marker
