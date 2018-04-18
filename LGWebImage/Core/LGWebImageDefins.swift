@@ -59,7 +59,7 @@ public struct LGWebImageOptions: OptionSet {
     }()
     
     /// 开启大图优化，图片在解压缩时需要消耗大量内存，开启后会将大于1MB的大图进行压缩处理后显示，支持JPG，PNG，ICO等，不支持WEBP，HEIF
-    public static let enableBigPictureOptimization: LGWebImageOptions = {
+    public static let enableLargePictureOptimization: LGWebImageOptions = {
         return LGWebImageOptions(rawValue: 1 << 6)
     }()
     
@@ -109,7 +109,7 @@ public struct LGWebImageOptions: OptionSet {
                 LGWebImageOptions.allowBackgroundTask,
                 LGWebImageOptions.progressiveBlur,
                 LGWebImageOptions.enableBreakpointPass,
-                LGWebImageOptions.enableBigPictureOptimization]
+                LGWebImageOptions.enableLargePictureOptimization]
     }()
 }
 

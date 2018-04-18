@@ -304,15 +304,16 @@ public class LGWebImageManager {
                                 }
                                 
                                 if UInt64(receivedData.count) > self._maxFileSize &&
-                                    options.contains(LGWebImageOptions.enableBigPictureOptimization)
+                                    options.contains(LGWebImageOptions.enableLargePictureOptimization)
                                 {
                                     do {
                                         let decoder = try LGImageDecoder(withData: receivedData,
                                                                          scale: UIScreen.main.scale)
-                                        if decoder.imageType == LGImageType.jpeg ||
-                                            decoder.imageType == LGImageType.png
+                                        if decoder.imageType != LGImageType.webp &&
+                                            decoder.imageType != LGImageType.other &&
+                                            decoder.imageType != LGImageType.unknow
                                         {
-                                            if let image = decoder.bigPictureCreateThumbnail() {
+                                            if let image = decoder.largePictureCreateThumbnail() {
                                                 self.cache.setImage(image: image, forKey: originURL.absoluteString)
                                                 self.invokeCompletionBlocks(weakTargetRequest,
                                                                             image: image,

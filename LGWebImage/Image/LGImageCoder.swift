@@ -183,13 +183,14 @@ public class LGImageDecoder {
         return result
     }
     
-    public func bigPictureCreateThumbnail() -> UIImage? {
+    public func largePictureCreateThumbnail() -> UIImage? {
         var result: UIImage? = nil
         pthread_mutex_lock(&_lock)
         if self._source != nil {
+            let maxPixelSize = UIScreen.main.nativeBounds.width
             let thumbnailOptions = [kCGImageSourceCreateThumbnailWithTransform: true,
                                     kCGImageSourceCreateThumbnailFromImageAlways: true,
-                                    kCGImageSourceThumbnailMaxPixelSize: UIScreen.main.bounds.width] as [CFString : Any]
+                                    kCGImageSourceThumbnailMaxPixelSize: maxPixelSize] as [CFString : Any]
             if CGImageSourceGetCount(self._source!) > 0 {
                 if let cgImage = CGImageSourceCreateThumbnailAtIndex(self._source!,
                                                                      0,
