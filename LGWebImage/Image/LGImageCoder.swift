@@ -22,7 +22,6 @@ import Photos
 /// - tiff: tiff,tif
 /// - bmp: bmp
 /// - ico: ico
-/// - icns: icns
 /// - gif: gif
 /// - png: png
 /// - webp: webp
@@ -149,15 +148,22 @@ public class LGImageDecoder {
     
     public convenience init(withData data: Data?, scale: CGFloat) throws {
         guard data != nil else {
-            throw LGImageCoderError.errorWith(code: LGImageCoderError.ErrorCode.emptyData,
-                                              description: "数据为空")
+            throw LGImageCoderError.imageDataIsEmpty
         }
         self.init(withScale: scale)
         _ = self.updateData(data: data!, final: true)
         
+        if self.imageType == LGImageType.heic {
+            if #available(iOS 11, *) {
+                
+            } else {
+                println("heic only supports iOS11 or above")
+                throw LGImageCoderError.imageTypeNotSupport(type: LGImageType.heic)
+            }
+        }
+        
         guard self.frameCount != 0 else {
-            throw LGImageCoderError.errorWith(code: LGImageCoderError.ErrorCode.frameCountInvalid,
-                                              description: "frameCount == 0")
+            throw LGImageCoderError.frameCountInvalid
         }
     }
     
@@ -930,8 +936,7 @@ public class LGImageEncoder {
     
     public init(with type: LGImageType) throws {
         if type == LGImageType.unknow || type == LGImageType.other {
-            throw LGImageCoderError.errorWith(code: LGImageCoderError.ErrorCode.imageTypeInvalid,
-                                              description: "不支持的图片格式")
+            throw LGImageCoderError.imageTypeInvalid
         }
         
         self.imageType = type
@@ -1307,8 +1312,25 @@ public func LGGetImageDetectType(data: CFData?) -> LGImageType {
     guard let bytes = CFDataGetBytePtr(data) else {
         return LGImageType.unknow
     }
+    
     let magicNum4 = bytes.withMemoryRebound(to: UInt32.self, capacity: 1, { $0.pointee })
     switch magicNum4 {
+        /*heic 文件头 ftypheic (00 00 00 18 66 74 79 70 68 65 69 63 00 00 00 00)*/
+    case _four_cc(c1: 0x00, c2: 0x00, c3: 0x00, c4: 0x18):
+        
+        let ftyp = _four_cc(c1: 0x66, c2: 0x74, c3: 0x79, c4: 0x70)
+        let heic = _four_cc(c1: 0x68, c2: 0x65, c3: 0x69, c4: 0x63)
+        
+        let temp1 = (bytes + 4).withMemoryRebound(to: UInt32.self,
+                                                  capacity: 1,
+                                                  { $0.pointee })
+        let temp2 = (bytes + 8).withMemoryRebound(to: UInt32.self,
+                                                  capacity: 1,
+                                                  { $0.pointee })
+        if temp1 == ftyp && temp2 == heic {
+            return LGImageType.heic
+        }
+        break
         /*'R' = 0x52,'I' = 0x49,'F' = 0x46,'F' = 0x46 RIFF*/
     case _four_cc(c1: 0x52, c2: 0x49, c3: 0x46, c4: 0x46):
         let temp = (bytes + 8).withMemoryRebound(to: UInt32.self, capacity: 1, { $0.pointee })
@@ -1323,9 +1345,6 @@ public func LGGetImageDetectType(data: CFData?) -> LGImageType {
         /*ico*/
     case _four_cc(c1: 0x00, c2: 0x00, c3: 0x01, c4: 0x00), _four_cc(c1: 0x00, c2: 0x00, c3: 0x02, c4: 0x00):
         return LGImageType.ico
-//        /*icns*/
-//    case _four_cc(c1: 0x69, c2: 0x63, c3: 0x6E, c4: 0x73):
-//        return LGImageType.icns
         /*gif*/
     case _four_cc(c1: 0x47, c2: 0x49, c3: 0x46, c4: 0x38):
         return LGImageType.gif
@@ -1367,8 +1386,12 @@ public func LGGetImageDetectType(data: CFData?) -> LGImageType {
         return LGImageType.jpeg2000
     }
     
+    
+    
     return LGImageType.unknow
 }
+
+let kLGUITypeHeic = "public.heic" as CFString
 
 
 /// 通过 LGImageType 找到对应的 kUTTypeImage
@@ -1390,9 +1413,6 @@ public func LGImageTypeToUIType(type: LGImageType) -> CFString? {
     case LGImageType.ico:
         result = kUTTypeICO
         break
-//    case LGImageType.icns:
-//        result = kUTTypeAppleICNS
-//        break
     case LGImageType.tiff:
         result = kUTTypeTIFF
         break
@@ -1401,6 +1421,9 @@ public func LGImageTypeToUIType(type: LGImageType) -> CFString? {
         break
     case LGImageType.png:
         result = kUTTypePNG
+        break
+    case LGImageType.heic:
+        result = kLGUITypeHeic
         break
     default:
         result = nil
@@ -1431,14 +1454,14 @@ public func LGImageTypeFromUTType(uttype: CFString) -> LGImageType {
     case kUTTypeICO:
         result = LGImageType.ico
         break
-//    case kUTTypeAppleICNS:
-//        result = LGImageType.icns
-//        break
     case kUTTypePNG:
         result = LGImageType.png
         break
     case kUTTypeGIF:
         result = LGImageType.gif
+        break
+    case kLGUITypeHeic:
+        result = LGImageType.heic
         break
     default:
         break
@@ -1460,9 +1483,6 @@ public func LGImageTypeGetExtension(type: LGImageType) -> String? {
     case LGImageType.tiff:
         result = "tiff"
         break
-//    case LGImageType.icns:
-//        result = "icns"
-//        break
     case LGImageType.ico:
         result = "ico"
         break
@@ -1477,6 +1497,9 @@ public func LGImageTypeGetExtension(type: LGImageType) -> String? {
         break
     case LGImageType.png:
         result = "png"
+        break
+    case LGImageType.heic:
+        result = "heic"
         break
     default:
         break

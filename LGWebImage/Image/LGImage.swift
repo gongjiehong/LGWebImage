@@ -42,6 +42,14 @@ extension String {
     }
 }
 
+
+/// 本框架支持的文件后缀，不区分大小写
+///
+/// - Returns: 支持的后缀数组
+fileprivate func LGImageSupportExtensions() -> [String] {
+    return ["", "png", "jpeg", "jpg", "gif", "webp", "apng", "jp2", "bmp", "ico", "heic", "tiff"]
+}
+
 public class LGImage: UIImage {
     
     fileprivate var decoder: LGImageDecoder?
@@ -74,14 +82,19 @@ public class LGImage: UIImage {
         var path: String? = nil
         var scale: CGFloat = 1.0
         
-        let exts = ext.lg_length > 0 ? [ext] : ["", "png", "jpeg", "jpg", "gif", "webp", "apng"]
+        let exts = ext.lg_length > 0 ? [ext] : LGImageSupportExtensions()
         let scales = BundlePreferredScales
         
         for scaleIndex in 0..<scales.count {
             scale = scales[scaleIndex]
             let scaledName = res.lg_stringByAppendingNameScale(scale)
             for tempExt in exts {
-                path = Bundle.main.path(forResource: scaledName, ofType: tempExt)
+                path = Bundle.main.path(forResource: scaledName, ofType: tempExt.lowercased())
+                if path != nil {
+                    break
+                } else {
+                    path = Bundle.main.path(forResource: scaledName, ofType: tempExt.uppercased())
+                }
                 if path != nil {
                     break
                 }

@@ -205,19 +205,16 @@ public struct LGPNGInfo {
     
     public init(data: [UInt8], length: Int) throws {
         if length < 32 {
-            throw LGImageCoderError.errorWith(code: LGImageCoderError.ErrorCode.pngDataLengthInvalid,
-                                              description: "数据长度不够")
+            throw LGImageCoderError.pngDataLengthInvalid
         }
         
         var magicNum = LGUint8ArrayToUInt32(data: data, startIndex: 0)
         if magicNum != _four_cc(c1: 0x89, c2: 0x50, c3: 0x4E, c4: 0x47) {
-            throw LGImageCoderError.errorWith(code: LGImageCoderError.ErrorCode.pngFormatInvalid,
-                                              description: "头数据不正确")
+            throw LGImageCoderError.pngFormatInvalid
         }
         magicNum = LGUint8ArrayToUInt32(data: data, startIndex: 4)
         if magicNum != _four_cc(c1: 0x0D, c2: 0x0A, c3: 0x1A, c4: 0x0A) {
-            throw LGImageCoderError.errorWith(code: LGImageCoderError.ErrorCode.pngFormatInvalid,
-                                              description: "头数据不正确")
+            throw LGImageCoderError.pngFormatInvalid
         }
         let chunkReallocNum: UInt32 = 16
         var chunks = LGPNGChunkInfo()

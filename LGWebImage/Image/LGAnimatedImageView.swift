@@ -140,7 +140,7 @@ public class LGAnimatedImageView: UIImageView {
     }
     
     
-    public var maxBufferSize: Int = 0//10 * 1024 * 1024 // 默认10MB
+    public var maxBufferSize: Int = 0
     
     public private(set) var currentIsPlayingAnimation: Bool = false
     
@@ -192,7 +192,7 @@ public class LGAnimatedImageView: UIImageView {
     override public init(image: UIImage?) {
         super.init(frame: CGRect.zero)
         if image != nil {
-            self.frame = CGRect(x: 0, y: 0, width: image!.size.width, height: image!.size.height)
+            self.frame = CGRect(x: 0.0, y: 0.0, width: image!.size.width, height: image!.size.height)
         }
         self.image = image
     }
@@ -200,9 +200,9 @@ public class LGAnimatedImageView: UIImageView {
     override public init(image: UIImage?, highlightedImage: UIImage?) {
         super.init(frame: CGRect.zero)
         if image != nil {
-            self.frame = CGRect(x: 0, y: 0, width: image!.size.width, height: image!.size.height)
+            self.frame = CGRect(x: 0.0, y: 0.0, width: image!.size.width, height: image!.size.height)
         } else if (highlightedImage != nil) {
-            self.frame = CGRect(x: 0, y: 0, width: highlightedImage!.size.width, height: highlightedImage!.size.height)
+            self.frame = CGRect(x: 0.0, y: 0.0, width: highlightedImage!.size.width, height: highlightedImage!.size.height)
         }
         self.image = image
         self.highlightedImage = highlightedImage
@@ -346,8 +346,6 @@ extension LGAnimatedImageView {
         case LGAnimatedImageType.highlightedImages:
             super.highlightedAnimationImages = image as? [UIImage]
             break
-//        default:
-//            break
         }
         imageChanged()
     }
@@ -367,10 +365,10 @@ extension LGAnimatedImageView {
         
         
         if !hasContentsRect && isCurrentImageHasContentsRect  {
-            if self.layer.contentsRect != CGRect(x: 0, y: 0, width: 1, height: 1) {
+            if self.layer.contentsRect != CGRect(x: 0.0, y: 0.0, width: 1.0, height: 1.0) {
                 CATransaction.begin()
                 CATransaction.setDisableActions(true)
-                self.layer.contentsRect = CGRect(x: 0, y: 0, width: 1, height: 1)
+                self.layer.contentsRect = CGRect(x: 0.0, y: 0.0, width: 1.0, height: 1.0)
                 CATransaction.commit()
             }
         }
@@ -453,8 +451,6 @@ extension LGAnimatedImageView {
         case LGAnimatedImageType.highlightedImages:
             result = self.highlightedAnimationImages
             break
-//        default:
-//            break
         }
         return result
     }
@@ -527,6 +523,9 @@ extension LGAnimatedImageView {
             currentAnimatedImageIndex = nextIndex
             currentFrame = bufferedImage
             if isCurrentImageHasContentsRect {
+                if image.responds(to: #selector(LGAnimatedImage.animatedImageContentsRect(atIndex:))) {
+                    currentContentsRect = image.animatedImageContentsRect!(atIndex: nextIndex)
+                }
                 setContentsRect(currentContentsRect, for: currentFrame)
             }
             nextIndex = (currentAnimatedImageIndex + 1) % totalFrameCount
@@ -631,7 +630,7 @@ extension LGAnimatedImageView {
     }
     
     func setContentsRect(_ rect: CGRect, for image: UIImage?) {
-        var layerRect = CGRect(x: 0, y: 0, width: 1, height: 1)
+        var layerRect = CGRect(x: 0.0, y: 0.0, width: 1.0, height: 1.0)
         if image != nil {
             let imageSize = image!.size
             if imageSize.width > 0.01 && imageSize.height > 0.01 {
@@ -639,9 +638,9 @@ extension LGAnimatedImageView {
                 layerRect.origin.y = rect.origin.y / imageSize.height
                 layerRect.size.width = rect.size.width / imageSize.width
                 layerRect.size.height = rect.size.height / imageSize.height
-                layerRect = layerRect.intersection(CGRect(x: 0, y: 0, width: 1, height: 1))
+                layerRect = layerRect.intersection(CGRect(x: 0.0, y: 0.0, width: 1.0, height: 1.0))
                 if layerRect.isNull || layerRect.isEmpty {
-                    layerRect = CGRect(x: 0, y: 0, width: 1, height: 1)
+                    layerRect = CGRect(x: 0.0, y: 0.0, width: 1.0, height: 1.0)
                 }
             }
         }

@@ -12,9 +12,10 @@ import Foundation
 
 func println(_ object: Any...) {
     #if DEBUG
-        var date = Date()
-        date.addTimeInterval(TimeInterval(TimeZone.current.secondsFromGMT()))
-        Swift.print(date, ":\n")
-        Swift.print(object, terminator: "\n\n")
+    let dateFormater = DateFormatter()
+    dateFormater.timeZone = TimeZone.current
+    dateFormater.dateStyle = .full
+    dateFormater.timeStyle = .full
+    Swift.print("[", dateFormater.string(from: Date()), "LGWebImage ]:", object, terminator: "\n")
     #endif
 }

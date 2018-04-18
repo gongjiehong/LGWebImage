@@ -14,19 +14,17 @@ public class LGSpriteSheetImage: UIImage {
     public private(set) var loopCount: Int = 0
     
     
-    static func imageWith(spriteSheetImage image: UIImage,
-                          contentRects: [CGRect],
-                          frameDurations: [TimeInterval],
-                          loopCount: Int) throws -> LGSpriteSheetImage
+    public static func imageWith(spriteSheetImage image: UIImage,
+                                 contentRects: [CGRect],
+                                 frameDurations: [TimeInterval],
+                                 loopCount: Int) throws -> LGSpriteSheetImage
     {
         guard let cgImage = image.cgImage else {
-            throw LGImageCoderError.errorWith(code: LGImageCoderError.ErrorCode.imageSourceInvalid,
-                                              description: "图片数据无法读取")
+            throw LGImageCoderError.imageSourceInvalid
         }
         
         if contentRects.count < 1 || frameDurations.count < 1 || contentRects.count != frameDurations.count {
-            throw LGImageCoderError.errorWith(code: LGImageCoderError.ErrorCode.imageSourceInvalid,
-                                              description: "数组数据不合法")
+            throw LGImageCoderError.imageSourceInvalid
         }
         
         let result = LGSpriteSheetImage(cgImage: cgImage, scale: image.scale, orientation: image.imageOrientation)
@@ -84,7 +82,7 @@ extension LGSpriteSheetImage: LGAnimatedImage {
     }
     
     public func animatedImageContentsRect(atIndex index: Int) -> CGRect {
-        if index >= frameDurations.count {
+        if index >= contentRects.count {
             return CGRect.zero
         }
         return contentRects[index]

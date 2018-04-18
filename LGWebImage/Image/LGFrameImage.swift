@@ -68,30 +68,23 @@ public class LGFrameImage: UIImage {
                                  loopCount: Int) throws -> LGFrameImage
     {
         if imagePaths.count == 0 || imagePaths.count != frameDurations.count {
-            throw LGImageCoderError.errorWith(code: LGImageCoderError.ErrorCode.frameDataInvalid,
-                                              description: "输入数据异常")
+            throw LGImageCoderError.frameImageInputInvalid
         }
         let firstPath = imagePaths[0]
-        if let firstPathUrl = URL(string: firstPath) {
-            let firstData = try Data(contentsOf: firstPathUrl)
-            let scale = firstPath.lg_pathScale
-            if let firstCG = UIImage(data: firstData, scale: scale)?.lg_imageByDecoded.cgImage {
-                let result = LGFrameImage(cgImage: firstCG, scale: scale, orientation: UIImageOrientation.up)
-                let frameBytes = firstCG.bytesPerRow
-                result.oneFrameBytes = frameBytes
-                result.imagePaths += imagePaths
-                result.frameDurations += frameDurations
-                result.loopCount = loopCount
-                return result
-            } else {
-                throw LGImageCoderError.errorWith(code: LGImageCoderError.ErrorCode.frameDataInvalid,
-                                                  description: "图片数据读取异常")
-            }
+        let firstPathUrl = URL(fileURLWithPath: firstPath)
+        let firstData = try Data(contentsOf: firstPathUrl)
+        let scale = firstPath.lg_pathScale
+        if let firstCG = UIImage(data: firstData, scale: scale)?.lg_imageByDecoded.cgImage {
+            let result = LGFrameImage(cgImage: firstCG, scale: scale, orientation: UIImageOrientation.up)
+            let frameBytes = firstCG.bytesPerRow
+            result.oneFrameBytes = frameBytes
+            result.imagePaths += imagePaths
+            result.frameDurations += frameDurations
+            result.loopCount = loopCount
+            return result
         } else {
-            throw LGImageCoderError.errorWith(code: LGImageCoderError.ErrorCode.frameDataInvalid,
-                                              description: "图片数据路径异常")
+            throw LGImageCoderError.frameDataInvalid
         }
-
     }
     
     public static func imageWith(imageDataArray: [Data],
@@ -111,8 +104,7 @@ public class LGFrameImage: UIImage {
                                  loopCount: Int) throws -> LGFrameImage
     {
         if imageDataArray.count == 0 || imageDataArray.count != frameDurations.count {
-            throw LGImageCoderError.errorWith(code: LGImageCoderError.ErrorCode.frameDataInvalid,
-                                              description: "输入数据异常")
+            throw LGImageCoderError.frameImageInputInvalid
         }
         let firstData = imageDataArray[0]
         let scale = UIScreen.main.scale
@@ -125,8 +117,7 @@ public class LGFrameImage: UIImage {
             result.loopCount = loopCount
             return result
         } else {
-            throw LGImageCoderError.errorWith(code: LGImageCoderError.ErrorCode.frameDataInvalid,
-                                              description: "图片数据读取异常")
+            throw LGImageCoderError.frameDataInvalid
         }
     }
 }
@@ -158,13 +149,9 @@ extension LGFrameImage: LGAnimatedImage {
             let path = imagePaths[index]
             let scale = path.lg_pathScale
             do {
-                if let url = URL(string: path) {
-                    let data = try Data(contentsOf: url)
-                    return UIImage(data: data, scale: scale)?.lg_imageByDecoded
-                } else {
-                    return nil
-                }
-                
+                let url = URL(fileURLWithPath: path)
+                let data = try Data(contentsOf: url)
+                return UIImage(data: data, scale: scale)?.lg_imageByDecoded
             } catch {
                 return nil
             }
