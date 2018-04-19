@@ -35,6 +35,7 @@
 		FE7208DE208742820046F0C2 /* running_1.jpg in Resources */ = {isa = PBXBuildFile; fileRef = FE7208D2208742820046F0C2 /* running_1.jpg */; };
 		FE7208DF208742820046F0C2 /* running_5.jpg in Resources */ = {isa = PBXBuildFile; fileRef = FE7208D3208742820046F0C2 /* running_5.jpg */; };
 		FE7208E0208742820046F0C2 /* running_11.jpg in Resources */ = {isa = PBXBuildFile; fileRef = FE7208D4208742820046F0C2 /* running_11.jpg */; };
+		FE7208E2208748E40046F0C2 /* LGWebImageRemoteDownloadController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE7208E1208748E40046F0C2 /* LGWebImageRemoteDownloadController.swift */; };
 		FE805A5F207B19E900EC1DD1 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE805A5E207B19E900EC1DD1 /* AppDelegate.swift */; };
 		FE805A64207B19E900EC1DD1 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = FE805A62207B19E900EC1DD1 /* Main.storyboard */; };
 		FE805A66207B19EA00EC1DD1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FE805A65207B19EA00EC1DD1 /* Assets.xcassets */; };
@@ -92,6 +93,7 @@
 		FE7208D2208742820046F0C2 /* running_1.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = running_1.jpg; sourceTree = "<group>"; };
 		FE7208D3208742820046F0C2 /* running_5.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = running_5.jpg; sourceTree = "<group>"; };
 		FE7208D4208742820046F0C2 /* running_11.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = running_11.jpg; sourceTree = "<group>"; };
+		FE7208E1208748E40046F0C2 /* LGWebImageRemoteDownloadController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LGWebImageRemoteDownloadController.swift; sourceTree = "<group>"; };
 		FE805A5B207B19E900EC1DD1 /* LGWebImageDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LGWebImageDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FE805A5E207B19E900EC1DD1 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		FE805A63207B19E900EC1DD1 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
@@ -173,6 +175,7 @@
 				FE57C2E720861EF30037708E /* Images */,
 				FE805A5E207B19E900EC1DD1 /* AppDelegate.swift */,
 				FE7208BC2086F1240046F0C2 /* LGWebImageDisplayController.swift */,
+				FE7208E1208748E40046F0C2 /* LGWebImageRemoteDownloadController.swift */,
 				FE805A62207B19E900EC1DD1 /* Main.storyboard */,
 				FE805A65207B19EA00EC1DD1 /* Assets.xcassets */,
 				FE805A67207B19EA00EC1DD1 /* LaunchScreen.storyboard */,
@@ -292,6 +295,7 @@
 			files = (
 				FE7208BD2086F1240046F0C2 /* LGWebImageDisplayController.swift in Sources */,
 				FE805A5F207B19E900EC1DD1 /* AppDelegate.swift in Sources */,
+				FE7208E2208748E40046F0C2 /* LGWebImageRemoteDownloadController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
