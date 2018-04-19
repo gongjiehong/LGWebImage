@@ -26,7 +26,7 @@ class LGRemoteDownloadCell: UITableViewCell {
     override init(style: UITableViewCellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         showImageView = LGAnimatedImageView(frame: self.contentView.bounds)
-        showImageView.contentMode = UIViewContentMode.scaleAspectFill
+        showImageView.contentMode = UIViewContentMode.scaleAspectFit
         self.contentView.addSubview(showImageView)
         
         progressView = UIProgressView(frame: CGRect(x: 0, y: 0, width: self.contentView.bounds.width, height: 20))
@@ -39,6 +39,11 @@ class LGRemoteDownloadCell: UITableViewCell {
     
     override func didMoveToSuperview() {
         super.didMoveToSuperview()
+        
+    }
+    
+    override func layoutSubviews() {
+        super.layoutSubviews()
         progressView.frame = CGRect(x: 0, y: 0, width: self.contentView.bounds.width, height: 20)
         showImageView.frame = self.contentView.bounds
     }

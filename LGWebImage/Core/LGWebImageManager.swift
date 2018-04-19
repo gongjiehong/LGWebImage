@@ -24,6 +24,10 @@ public class LGWebImageManager {
     /// 单线程锁
     fileprivate var _lock = DispatchSemaphore(value: 1)
     
+    public var workQueue: DispatchQueue {
+        return _cacheQueue
+    }
+    
     /// 同步处理队列
     fileprivate var _cacheQueue = DispatchQueue(label: "com.LGWebImageManager.cacheQueue",
                                                 qos: DispatchQoS.utility,

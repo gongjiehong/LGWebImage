@@ -69,7 +69,7 @@ public extension UIImageView {
         }
         
         if self.image == nil && !options.contains(LGWebImageOptions.ignorePlaceHolder) && placeholder != nil {
-            DispatchQueue.userInitiated.async { [weak self] in
+            LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier) { [weak self] in
                 var placeholderImage: UIImage? = nil
                 if let image = placeholder?.lg_imageByDecoded {
                     if let cornerRadiusImage = self?.cornerRadius(image)
