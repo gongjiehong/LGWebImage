@@ -94,6 +94,8 @@ class LGWebImageRemoteDownloadController: UITableViewController {
         dataArray.append("https://s3-us-west-2.amazonaws.com/julyforcd/100/static_gif.gif")
         dataArray.append("https://s3-us-west-2.amazonaws.com/julyforcd/100/twitter_fav_icon_300.png")
         
+        // Only supports iOS11 and above
+        dataArray.append("http://staticfile.cxylg.com/IMG_0392.heic")
     }
 
     override func didReceiveMemoryWarning() {

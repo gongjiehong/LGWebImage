@@ -18,35 +18,37 @@ class LGWebImageDisplayController: UIViewController {
 
         // Do any additional setup after loading the view.
         
-        self.addImage(with: "lime-cat", text: "JPEG格式显示")
-        self.addImage(with: "1510480481", text: "JPG格式显示")
-        self.addImage(with: "1510480450", text: "JPG2000格式显示")
-        
-        self.addImage(with: "static_gif", text: "静态GIF显示")
-        self.addImage(with: "Pikachu", text: "动态GIF显示")
-        
-        self.addImage(with: "normal_png", text: "静态PNG显示")
-        self.addImage(with: "AnimatedPortableNetworkGraphics", text: "动态APNG显示")
-        
-        self.addImage(with: "5ad6b3c630e69", text: "BMP格式显示")
-        self.addImage(with: "bitbug_favicon", text: "ICO格式显示")
-        self.addImage(with: "1518065289", text: "TIFF格式显示")
-        
-        self.addImage(with: "google", text: "静态WEBP显示")
-        self.addImage(with: "animated", text: "动态WEBP显示")
-        
-        self.addImage(with: "IMG_0392", text: "静态HEIC显示")
-        
-        self.addSpriteSheetImage(withText: "精灵动画骷髅",
-                                 imageName: "C3ZwL",
-                                 verticalCount: 4,
-                                 horizontallyCount: 9)
-        self.addSpriteSheetImage(withText: "精灵动画点赞",
-                                 imageName: "twitter_fav_icon_300",
-                                 verticalCount: 4,
-                                 horizontallyCount: 8)
-        
-        self.addFrameImags(withText: "拼接帧动画")
+        DispatchQueue.utility.async(flags: DispatchWorkItemFlags.barrier) {
+            self.addImage(with: "lime-cat", text: "JPEG格式显示")
+            self.addImage(with: "1510480481", text: "JPG格式显示")
+            self.addImage(with: "1510480450", text: "JPG2000格式显示")
+            
+            self.addImage(with: "static_gif", text: "静态GIF显示")
+            self.addImage(with: "Pikachu", text: "动态GIF显示")
+            
+            self.addImage(with: "normal_png", text: "静态PNG显示")
+            self.addImage(with: "AnimatedPortableNetworkGraphics", text: "动态APNG显示")
+            
+            self.addImage(with: "5ad6b3c630e69", text: "BMP格式显示")
+            self.addImage(with: "bitbug_favicon", text: "ICO格式显示")
+            self.addImage(with: "1518065289", text: "TIFF格式显示")
+            
+            self.addImage(with: "google", text: "静态WEBP显示")
+            self.addImage(with: "animated", text: "动态WEBP显示")
+            
+            self.addImage(with: "IMG_0392", text: "静态HEIC显示")
+            
+            self.addSpriteSheetImage(withText: "精灵动画骷髅",
+                                     imageName: "C3ZwL",
+                                     verticalCount: 4,
+                                     horizontallyCount: 9)
+            self.addSpriteSheetImage(withText: "精灵动画点赞",
+                                     imageName: "twitter_fav_icon_300",
+                                     verticalCount: 4,
+                                     horizontallyCount: 8)
+            
+            self.addFrameImags(withText: "拼接帧动画")
+        }
     }
 
     override func didReceiveMemoryWarning() {
@@ -66,13 +68,13 @@ class LGWebImageDisplayController: UIViewController {
         }
         do {
             let frameImage = try LGFrameImage.imageWith(imagePaths: imagePaths, oneFrameDuration: 1 / 30.0, loopCount: 0)
-            self.add(image: frameImage, text: text)
+            DispatchQueue.main.async {
+                self.add(image: frameImage, text: text)
+            }
         } catch {
             print(error)
         }
-        
     }
-    
     
     func addSpriteSheetImage(withText text: String, imageName: String, verticalCount: Int, horizontallyCount: Int) {
         guard let sheetImage = UIImage(named: imageName) else {
@@ -100,18 +102,21 @@ class LGWebImageDisplayController: UIViewController {
                                                           contentRects: contentRects,
                                                           frameDurations: durations,
                                                           loopCount: 0)
-            add(image: sprite, text: text, size: itemSize)
+            DispatchQueue.main.async {
+                self.add(image: sprite, text: text, size: itemSize)
+            }
         } catch {
             print(error)
         }
         
     }
-    
 
     func addImage(with imageName: String, text: String) {
         let image = LGImage.imageWith(named: imageName)
         if image != nil {
-            add(image: image!, text: text)
+            DispatchQueue.main.async {
+                self.add(image: image!, text: text)
+            }
         } else {
             print("Load image from imagename failed: \(text)")
         }

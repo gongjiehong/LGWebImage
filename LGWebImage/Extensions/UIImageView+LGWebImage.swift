@@ -12,27 +12,27 @@ import MapKit
 
 let kLGWebImageFadeAnimationKey = "LGWebImageFadeAnimation"
 
-fileprivate var LGWebImageNormalURLKey = "LGWebImageNormalURLKey"
-fileprivate var LGWebImageHighlightedURLKey = "LGWebImageHighlightedURLKey"
-
-fileprivate var LGWebImageNormalTokenKey = "LGWebImageNormalTokenKey"
-fileprivate var LGWebImageHighlightedTokenKey = "LGWebImageHighlightedTokenKey"
-
 public extension UIImageView {
-    // MARK: -  普通状态
+    private struct AssociatedKeys {
+        static var normalURLKey = "LGWebImageNormalURLKey"
+        static var highlightedURLKey = "LGWebImageHighlightedURLKey"
+        static var normalTokenKey = "LGWebImageNormalTokenKey"
+        static var highlightedTokenKey = "LGWebImageHighlightedTokenKey"
+    }
     
+    // MARK: -  普通状态
     /// 普通状态图片URL
     public var lg_imageURL: URL? {
         set {
             objc_setAssociatedObject(self,
-                                     &LGWebImageNormalURLKey,
+                                     &AssociatedKeys.normalURLKey,
                                      newValue,
                                      objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
             if let url = newValue {
                 self.lg_setImageWithURL(url)
             }
         } get {
-            return objc_getAssociatedObject(self, &LGWebImageNormalURLKey) as? URL
+            return objc_getAssociatedObject(self, &AssociatedKeys.normalURLKey) as? URL
         }
     }
     
@@ -40,11 +40,11 @@ public extension UIImageView {
     private var lg_normalCallbackToken: LGWebImageCallbackToken? {
         set {
             objc_setAssociatedObject(self,
-                                     &LGWebImageNormalTokenKey,
+                                     &AssociatedKeys.normalTokenKey,
                                      newValue,
                                      objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         } get {
-            return objc_getAssociatedObject(self, &LGWebImageNormalTokenKey) as? LGWebImageCallbackToken
+            return objc_getAssociatedObject(self, &AssociatedKeys.normalTokenKey) as? LGWebImageCallbackToken
         }
     }
     
@@ -159,14 +159,14 @@ public extension UIImageView {
     public var lg_highlightedImageURL: URL? {
         set {
             objc_setAssociatedObject(self,
-                                     &LGWebImageHighlightedURLKey,
+                                     &AssociatedKeys.highlightedURLKey,
                                      newValue,
                                      objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
             if let url = newValue {
                 self.lg_setHighlightedImageWithURL(url)
             }
         } get {
-            return objc_getAssociatedObject(self, &LGWebImageHighlightedURLKey) as? URL
+            return objc_getAssociatedObject(self, &AssociatedKeys.highlightedURLKey) as? URL
         }
     }
 
@@ -174,11 +174,11 @@ public extension UIImageView {
     private var lg_highlightedCallbackToken: LGWebImageCallbackToken? {
         set {
             objc_setAssociatedObject(self,
-                                     &LGWebImageHighlightedTokenKey,
+                                     &AssociatedKeys.highlightedTokenKey,
                                      newValue,
                                      objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         } get {
-            return objc_getAssociatedObject(self, &LGWebImageHighlightedTokenKey) as? LGWebImageCallbackToken
+            return objc_getAssociatedObject(self, &AssociatedKeys.highlightedTokenKey) as? LGWebImageCallbackToken
         }
     }
 

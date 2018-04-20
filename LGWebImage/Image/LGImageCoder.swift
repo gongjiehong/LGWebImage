@@ -2245,10 +2245,14 @@ public extension UIImage {
         return newImage
     }
     
+    private struct AssociatedKeys {
+        static var isDecodedForDisplay: String = "lg_isDecodedForDisplay"
+    }
+    
     public var lg_isDecodedForDisplay: Bool {
         set {
             objc_setAssociatedObject(self,
-                                     "lg_isDecodedForDisplay",
+                                     &AssociatedKeys.isDecodedForDisplay,
                                      NSNumber(booleanLiteral: newValue),
                                      objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
@@ -2256,7 +2260,7 @@ public extension UIImage {
             if (self.images != nil && self.images!.count > 1) || self.isKind(of: LGSpriteSheetImage.classForCoder()) {
                 return true
             }
-            guard let number = objc_getAssociatedObject(self, "lg_isDecodedForDisplay") as? NSNumber else {
+            guard let number = objc_getAssociatedObject(self, &AssociatedKeys.isDecodedForDisplay) as? NSNumber else {
                 return false
             }
             

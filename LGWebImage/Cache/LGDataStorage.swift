@@ -56,7 +56,7 @@ public class LGDataStorage {
     fileprivate var _dbOpenErrorCount: Int = 0
     fileprivate var _needCreateDir: Bool = true
     
-
+    
     
     
     public private(set) var path: String
@@ -100,7 +100,7 @@ public class LGDataStorage {
         let path = _dataPath! + "/" + filename
         return URL(fileURLWithPath: path)
     }
-        
+    
     public func saveItem(item: LGDataStorageItem) -> Bool {
         return _dbSaveWith(key: item.key,
                            value: item.data,
@@ -497,7 +497,7 @@ public class LGDataStorage {
         }
         return value
     }
-
+    
     public func getItems(forKeys keys: [String]) -> [LGDataStorageItem] {
         if keys.count == 0 {
             return [LGDataStorageItem]()
@@ -542,7 +542,7 @@ public class LGDataStorage {
         
         return result
     }
-
+    
     public func itemExists(forKey key: String) -> Bool {
         if key.lg_length == 0 {
             return false
@@ -770,7 +770,7 @@ fileprivate extension LGDataStorage {
         else {
             sqlite3_bind_blob(stmt, 7, nil, 0, SQLITE_TRANSIENT)
         }
-
+        
         let result = sqlite3_step(stmt)
         
         guard result == SQLITE_DONE else {
@@ -965,10 +965,12 @@ fileprivate extension LGDataStorage {
         sqlite3_bind_text(stmt, 1, key, -1, SQLITE_TRANSIENT)
         var resultItem: LGDataStorageItem? = nil
         let result = sqlite3_step(stmt)
-        if result == SQLITE_ROW{
+        if result == SQLITE_ROW {
             resultItem = _dbGetItem(from: stmt!, excludeInlineData: excludeInlineData)
         } else {
             if result == SQLITE_DONE {
+                // 数据库无记录，直接step finished
+            } else {
                 println("查询数据失败", #file, #function, #line, #column, result)
             }
         }
@@ -1125,7 +1127,7 @@ fileprivate extension LGDataStorage {
         
         return resultArray
     }
-
+    
     fileprivate func _dbGetFilenames(withTimeEarlierThan time: Int) -> [String] {
         let sql = "select filename from manifest where last_access_time < ?1 and filename is not null;"
         let stmt = _dbPrepareStmt(sql: sql)
@@ -1213,7 +1215,7 @@ fileprivate extension LGDataStorage {
         let count = sqlite3_column_int(stmt!, 0)
         return Int(count)
     }
-
+    
     fileprivate func _dbGetTotalItemSize() -> Int {
         let sql = "select sum(size) from manifest;"
         let stmt: OpaquePointer? = _dbPrepareStmt(sql: sql)
