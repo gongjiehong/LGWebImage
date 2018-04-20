@@ -281,13 +281,13 @@ public class LGWebImageManager {
                                                                    forKey: originURL.absoluteString)
                                     
                                     // 首先直接对data进行解码，解码不成功再说后续
-                                    if var image = LGImage.imageWith(data: receivedData) {
+                                    if var image: UIImage = LGImage.imageWith(data: receivedData) {
                                         self.cache.memoryCache.setObject(LGCacheItem(data: image,
                                                                                      extendedData: nil),
                                                                          forKey: originURL.absoluteString,
                                                                          withCost: image.imageCost)
                                         if let transformBlock = transform {
-                                            if let temp = transformBlock(image, remoteURL) as? LGImage {
+                                            if let temp = transformBlock(image, remoteURL) {
                                                 image = temp
                                             }
                                         }
