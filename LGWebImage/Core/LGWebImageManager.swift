@@ -96,6 +96,7 @@ public class LGWebImageManager {
     public func downloadImageWith(url: LGURLConvertible,
                                   options: LGWebImageOptions = LGWebImageOptions.default,
                                   progress: LGWebImageProgressBlock? = nil,
+                                  transform: LGWebImageTransformBlock? = nil,
                                   completion: LGWebImageCompletionBlock? = nil) -> LGWebImageCallbackToken
     {
         let token = UUID().uuidString + "\(CACurrentMediaTime())"
@@ -136,7 +137,12 @@ public class LGWebImageManager {
                 } else {
                     cacheType = LGImageCacheType.all
                 }
-                if let image = self.cache.getImage(forKey: urlString, withType: cacheType) {
+                if var image = self.cache.getImage(forKey: urlString, withType: cacheType) {
+                    if let transformBlock = transform {
+                        if let temp = transformBlock(image, remoteURL) {
+                            image = temp
+                        }
+                    }
                     completion?(image,
                                 remoteURL,
                                 LGWebImageSourceType.memoryCacheFast,
@@ -241,7 +247,8 @@ public class LGWebImageManager {
                         }
                         self.decodeDataToUIImageIfNeeded(receivedData,
                                                          options: options,
-                                                         targetRequest: weakTargetRequest)
+                                                         targetRequest: weakTargetRequest,
+                                                         transform: transform)
                     })
 
                     /**
@@ -274,20 +281,30 @@ public class LGWebImageManager {
                                                                    forKey: originURL.absoluteString)
                                     
                                     // 首先直接对data进行解码，解码不成功再说后续
-                                    if let image = LGImage.imageWith(data: receivedData) {
+                                    if var image = LGImage.imageWith(data: receivedData) {
                                         self.cache.memoryCache.setObject(LGCacheItem(data: image,
                                                                                      extendedData: nil),
                                                                          forKey: originURL.absoluteString,
                                                                          withCost: image.imageCost)
+                                        if let transformBlock = transform {
+                                            if let temp = transformBlock(image, remoteURL) as? LGImage {
+                                                image = temp
+                                            }
+                                        }
                                         self.invokeCompletionBlocks(weakTargetRequest,
                                                                     image: image,
                                                                     url: originURL,
                                                                     sourceType: LGWebImageSourceType.memoryCacheFast,
                                                                     imageStatus: LGWebImageStage.finished,
                                                                     error: nil)
-                                    } else if let image = self.cache.getImage(forKey: originURL.absoluteString,
+                                    } else if var image = self.cache.getImage(forKey: originURL.absoluteString,
                                                                               withType: LGImageCacheType.disk)
                                     {
+                                        if let transformBlock = transform {
+                                            if let temp = transformBlock(image, remoteURL) {
+                                                image = temp
+                                            }
+                                        }
                                         self.invokeCompletionBlocks(weakTargetRequest,
                                                                     image: image,
                                                                     url: originURL,
@@ -317,8 +334,13 @@ public class LGWebImageManager {
                                             decoder.imageType != LGImageType.other &&
                                             decoder.imageType != LGImageType.unknow
                                         {
-                                            if let image = decoder.largePictureCreateThumbnail() {
+                                            if var image = decoder.largePictureCreateThumbnail() {
                                                 self.cache.setImage(image: image, forKey: originURL.absoluteString)
+                                                if let transformBlock = transform {
+                                                    if let temp = transformBlock(image, remoteURL) {
+                                                        image = temp
+                                                    }
+                                                }
                                                 self.invokeCompletionBlocks(weakTargetRequest,
                                                                             image: image,
                                                                             url: originURL,
@@ -525,7 +547,8 @@ public class LGWebImageManager {
     ///   - targetRequest: 对应的请求
     private func decodeDataToUIImageIfNeeded(_ data: Data,
                                              options: LGWebImageOptions,
-                                             targetRequest: LGDataRequest)
+                                             targetRequest: LGDataRequest,
+                                             transform: LGWebImageTransformBlock? = nil)
     {
         // 图片解码会占用大量内存，如果大于1MB则直接不进行处理
         if targetRequest.expectedContentLength >= _maxFileSize {
@@ -604,9 +627,14 @@ public class LGWebImageManager {
         
         if !progressiveBlur {
             let frame = progressiveDecoder?.frameAtIndex(index: 0, decodeForDisplay: true)
-            if frame?.image != nil {
+            if var tempImage = frame?.image {
+                if let transformBlock = transform {
+                    if let temp = transformBlock(tempImage, targetRequest.request?.url) {
+                        tempImage = temp
+                    }
+                }
                 self.invokeCompletionBlocks(targetRequest,
-                                            image: frame?.image,
+                                            image: tempImage,
                                             url: targetRequest.request?.url,
                                             sourceType: LGWebImageSourceType.remoteServer,
                                             imageStatus: LGWebImageStage.progress,
@@ -673,11 +701,16 @@ public class LGWebImageManager {
             } else {
                 radius /= CGFloat(progressiveContainer.progressiveDisplayCount)
             }
-            let temp = image.lg_imageByBlurRadius(radius,
+            var temp = image.lg_imageByBlurRadius(radius,
                                                   tintColor: nil,
                                                   tintBlendMode: CGBlendMode.normal,
                                                   saturation: 1, maskImage: nil)
             if temp != nil {
+                if let transformBlock = transform {
+                    if let tempImage = transformBlock(temp, targetRequest.request?.url) {
+                        temp = tempImage
+                    }
+                }
                 self.invokeCompletionBlocks(targetRequest,
                                             image: temp,
                                             url: targetRequest.request?.url,

@@ -170,8 +170,13 @@ public var JPEGSOSMarker: Data {
     return Data(bytes: [0xFF, 0xDA])
 }
 
+/// <#Description#>
 public typealias LGWebImageTransformBlock = ((UIImage?, URL?) -> UIImage?)
+
+/// <#Description#>
 public typealias LGWebImageCompletionBlock = ((UIImage?, URL?, LGWebImageSourceType, LGWebImageStage, Error?) -> Void)
+
+/// <#Description#>
 public typealias LGWebImageProgressBlock = LGProgressHandler
 
 

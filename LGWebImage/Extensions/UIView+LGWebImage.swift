@@ -8,9 +8,6 @@
 
 import Foundation
 
-
-var kLGWebImageCornerRadiusKey = "lg_cornerRadius"
-
 public struct LGCornerRadiusConfig {
     public var cornerRadius: CGFloat = 0.0
     public var corners: UIRectCorner = UIRectCorner.allCorners
@@ -37,15 +34,24 @@ public struct LGCornerRadiusConfig {
 }
 
 public extension UIView {
+    private struct AssociatedKeys {
+        static var cornerRadiusKey = "lg_cornerRadius"
+    }
+    
+    public var needSetCornerRadius: Bool {
+        return self.lg_cornerRadius?.needSetCornerRadius == true
+    }
+    
+    
     /// 在不设置layer圆角的情况下设置图片圆角
     public var lg_cornerRadius: LGCornerRadiusConfig? {
         set {
             objc_setAssociatedObject(self,
-                                     &kLGWebImageCornerRadiusKey,
+                                     &AssociatedKeys.cornerRadiusKey,
                                      newValue,
                                      objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         } get {
-            return objc_getAssociatedObject(self, &kLGWebImageCornerRadiusKey) as? LGCornerRadiusConfig
+            return objc_getAssociatedObject(self, &AssociatedKeys.cornerRadiusKey) as? LGCornerRadiusConfig
         }
     }
     

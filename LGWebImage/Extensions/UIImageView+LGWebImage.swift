@@ -8,7 +8,6 @@
 
 import Foundation
 import LGHTTPRequest
-import MapKit
 
 let kLGWebImageFadeAnimationKey = "LGWebImageFadeAnimation"
 
@@ -22,14 +21,17 @@ public extension UIImageView {
     
     // MARK: -  普通状态
     /// 普通状态图片URL
-    public var lg_imageURL: URL? {
+    public private(set) var lg_imageURL: LGURLConvertible? {
         set {
-            objc_setAssociatedObject(self,
-                                     &AssociatedKeys.normalURLKey,
-                                     newValue,
-                                     objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-            if let url = newValue {
-                self.lg_setImageWithURL(url)
+            do {
+                if let url = try newValue?.asURL() {
+                    objc_setAssociatedObject(self,
+                                             &AssociatedKeys.normalURLKey,
+                                             url,
+                                             objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                }
+            } catch {
+                
             }
         } get {
             return objc_getAssociatedObject(self, &AssociatedKeys.normalURLKey) as? URL
@@ -60,8 +62,11 @@ public extension UIImageView {
                                    placeholder: UIImage? = nil,
                                    options: LGWebImageOptions = LGWebImageOptions.default,
                                    progressBlock: LGWebImageProgressBlock? = nil,
+                                   transformBlock: LGWebImageTransformBlock? = nil,
                                    completionBlock: LGWebImageCompletionBlock? = nil)
     {
+        self.lg_imageURL = imageURL
+        
         if let token = self.lg_normalCallbackToken {
             LGWebImageManager.default.cancelWith(callbackToken: token)
             self.lg_normalCallbackToken = nil
@@ -92,56 +97,59 @@ public extension UIImageView {
                 DispatchQueue.main.async {
                     progressBlock?(progress)
                 }
-        }, completion: {[weak self] (resultImage, url, sourceType, imageStage, error) in
-            if resultImage != nil && error == nil {
-                let needFadeAnimation = options.contains(LGWebImageOptions.setImageWithFadeAnimation)
-                let avoidSetImage = options.contains(LGWebImageOptions.avoidSetImage)
-                if  needFadeAnimation && !avoidSetImage
-                {
-                    DispatchQueue.main.async { [weak self] in
-                        guard let weakSelf = self else {
-                            return
-                        }
-                        if !weakSelf.isHighlighted {
-                            weakSelf.layer.removeAnimation(forKey: kLGWebImageFadeAnimationKey)
-                        }
-                    }
-                }
-                
-                let imageIsValid = (imageStage == LGWebImageStage.finished || imageStage == LGWebImageStage.progress)
-                let canSetImage = (!avoidSetImage && imageIsValid)
-                
-                var result = resultImage
-                if let cornerRadiusImage = self?.cornerRadius(resultImage) {
-                    result = cornerRadiusImage
-                }
-                
-                if canSetImage {
-                    DispatchQueue.main.async { [weak self] in
-                        guard let weakSelf = self else {
-                            return
-                        }
-                        if needFadeAnimation && !weakSelf.isHighlighted {
-                            let transition = CATransition()
-                            var duration: CFTimeInterval
-                            if imageStage == LGWebImageStage.finished {
-                                duration = CFTimeInterval.lg_imageFadeAnimationTime
-                            } else {
-                                duration = CFTimeInterval.lg_imageProgressiveFadeAnimationTime
+        },
+                                                                                  transform: transformBlock,
+                                                                                  completion:
+            {[weak self] (resultImage, url, sourceType, imageStage, error) in
+                if resultImage != nil && error == nil {
+                    let needFadeAnimation = options.contains(LGWebImageOptions.setImageWithFadeAnimation)
+                    let avoidSetImage = options.contains(LGWebImageOptions.avoidSetImage)
+                    if  needFadeAnimation && !avoidSetImage
+                    {
+                        DispatchQueue.main.async { [weak self] in
+                            guard let weakSelf = self else {
+                                return
                             }
-                            transition.duration = duration
-                            transition.timingFunction = CAMediaTimingFunction(name: kCAMediaTimingFunctionEaseInEaseOut)
-                            transition.type = kCATransitionFade
-                            weakSelf.layer.add(transition, forKey: kLGWebImageFadeAnimationKey)
+                            if !weakSelf.isHighlighted {
+                                weakSelf.layer.removeAnimation(forKey: kLGWebImageFadeAnimationKey)
+                            }
                         }
-                        weakSelf.image = result
+                    }
+                    
+                    let imageIsValid = (imageStage == .finished || imageStage == .progress)
+                    let canSetImage = (!avoidSetImage && imageIsValid)
+                    
+                    var result = resultImage
+                    if let cornerRadiusImage = self?.cornerRadius(resultImage) {
+                        result = cornerRadiusImage
+                    }
+                    
+                    if canSetImage {
+                        DispatchQueue.main.async { [weak self] in
+                            guard let weakSelf = self else {
+                                return
+                            }
+                            if needFadeAnimation && !weakSelf.isHighlighted {
+                                let transition = CATransition()
+                                var duration: CFTimeInterval
+                                if imageStage == LGWebImageStage.finished {
+                                    duration = CFTimeInterval.lg_imageFadeAnimationTime
+                                } else {
+                                    duration = CFTimeInterval.lg_imageProgressiveFadeAnimationTime
+                                }
+                                transition.duration = duration
+                                transition.timingFunction = CAMediaTimingFunction(name: kCAMediaTimingFunctionEaseInEaseOut)
+                                transition.type = kCATransitionFade
+                                weakSelf.layer.add(transition, forKey: kLGWebImageFadeAnimationKey)
+                            }
+                            weakSelf.image = result
+                        }
                     }
                 }
-            }
-            
-            DispatchQueue.main.async {
-                completionBlock?(resultImage, url, sourceType, imageStage, error)
-            }
+                
+                DispatchQueue.main.async {
+                    completionBlock?(resultImage, url, sourceType, imageStage, error)
+                }
         })
     }
     
@@ -156,20 +164,23 @@ public extension UIImageView {
     // MARK: -  高亮状态
     
     /// 高亮状态图片URL
-    public var lg_highlightedImageURL: URL? {
+    public private(set) var lg_highlightedImageURL: LGURLConvertible? {
         set {
-            objc_setAssociatedObject(self,
-                                     &AssociatedKeys.highlightedURLKey,
-                                     newValue,
-                                     objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-            if let url = newValue {
-                self.lg_setHighlightedImageWithURL(url)
+            do {
+                if let url = try newValue?.asURL() {
+                    objc_setAssociatedObject(self,
+                                             &AssociatedKeys.highlightedURLKey,
+                                             url,
+                                             objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                }
+            } catch {
             }
-        } get {
+        }
+        get {
             return objc_getAssociatedObject(self, &AssociatedKeys.highlightedURLKey) as? URL
         }
     }
-
+    
     /// 高亮状态下的下载回调token
     private var lg_highlightedCallbackToken: LGWebImageCallbackToken? {
         set {
@@ -181,7 +192,7 @@ public extension UIImageView {
             return objc_getAssociatedObject(self, &AssociatedKeys.highlightedTokenKey) as? LGWebImageCallbackToken
         }
     }
-
+    
     /// 通过URL和占位图，参数设置等设置高亮状态图片
     ///
     /// - Parameters:
@@ -194,8 +205,11 @@ public extension UIImageView {
                                               placeholder: UIImage? = nil,
                                               options: LGWebImageOptions = LGWebImageOptions.default,
                                               progressBlock: LGWebImageProgressBlock? = nil,
+                                              transformBlock: LGWebImageTransformBlock? = nil,
                                               completionBlock: LGWebImageCompletionBlock? = nil)
     {
+        self.lg_highlightedImageURL = imageURL
+        
         if let token = self.lg_highlightedCallbackToken {
             LGWebImageManager.default.cancelWith(callbackToken: token)
             self.lg_highlightedCallbackToken = nil
@@ -206,7 +220,7 @@ public extension UIImageView {
             !options.contains(LGWebImageOptions.ignorePlaceHolder) &&
             placeholder != nil
         {
-            DispatchQueue.userInitiated.async { [weak self] in
+            LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier) { [weak self] in
                 var placeholderImage: UIImage? = nil
                 if let image = placeholder?.lg_imageByDecoded {
                     if let cornerRadiusImage = self?.cornerRadius(image)
@@ -229,59 +243,62 @@ public extension UIImageView {
                 DispatchQueue.main.async {
                     progressBlock?(progress)
                 }
-        }, completion: {[weak self] (resultImage, url, sourceType, imageStage, error) in
-            if resultImage != nil && error == nil {
-                let needFadeAnimation = options.contains(LGWebImageOptions.setImageWithFadeAnimation)
-                let avoidSetImage = options.contains(LGWebImageOptions.avoidSetImage)
-                if  needFadeAnimation && !avoidSetImage
-                {
-                    DispatchQueue.main.async { [weak self] in
-                        guard let weakSelf = self else {
-                            return
-                        }
-                        if weakSelf.isHighlighted {
-                            weakSelf.layer.removeAnimation(forKey: kLGWebImageFadeAnimationKey)
-                        }
-                    }
-                }
-                
-                let imageIsValid = (imageStage == LGWebImageStage.finished || imageStage == LGWebImageStage.progress)
-                let canSetImage = (!avoidSetImage && imageIsValid)
-                
-                var result = resultImage
-                if let cornerRadiusImage = self?.cornerRadius(resultImage) {
-                    result = cornerRadiusImage
-                }
-                
-                if canSetImage {
-                    DispatchQueue.main.async { [weak self] in
-                        guard let weakSelf = self else {
-                            return
-                        }
-                        if needFadeAnimation && !weakSelf.isHighlighted {
-                            let transition = CATransition()
-                            var duration: CFTimeInterval
-                            if imageStage == LGWebImageStage.finished {
-                                duration = CFTimeInterval.lg_imageFadeAnimationTime
-                            } else {
-                                duration = CFTimeInterval.lg_imageProgressiveFadeAnimationTime
+        },
+                                                                                       transform: transformBlock,
+                                                                                       completion:
+            {[weak self] (resultImage, url, sourceType, imageStage, error) in
+                if resultImage != nil && error == nil {
+                    let needFadeAnimation = options.contains(LGWebImageOptions.setImageWithFadeAnimation)
+                    let avoidSetImage = options.contains(LGWebImageOptions.avoidSetImage)
+                    if  needFadeAnimation && !avoidSetImage
+                    {
+                        DispatchQueue.main.async { [weak self] in
+                            guard let weakSelf = self else {
+                                return
                             }
-                            transition.duration = duration
-                            transition.timingFunction = CAMediaTimingFunction(name: kCAMediaTimingFunctionEaseInEaseOut)
-                            transition.type = kCATransitionFade
-                            weakSelf.layer.add(transition, forKey: kLGWebImageFadeAnimationKey)
+                            if weakSelf.isHighlighted {
+                                weakSelf.layer.removeAnimation(forKey: kLGWebImageFadeAnimationKey)
+                            }
                         }
-                        weakSelf.highlightedImage = result
+                    }
+                    
+                    let imageIsValid = (imageStage == .finished || imageStage == .progress)
+                    let canSetImage = (!avoidSetImage && imageIsValid)
+                    
+                    var result = resultImage
+                    if let cornerRadiusImage = self?.cornerRadius(resultImage) {
+                        result = cornerRadiusImage
+                    }
+                    
+                    if canSetImage {
+                        DispatchQueue.main.async { [weak self] in
+                            guard let weakSelf = self else {
+                                return
+                            }
+                            if needFadeAnimation && !weakSelf.isHighlighted {
+                                let transition = CATransition()
+                                var duration: CFTimeInterval
+                                if imageStage == LGWebImageStage.finished {
+                                    duration = CFTimeInterval.lg_imageFadeAnimationTime
+                                } else {
+                                    duration = CFTimeInterval.lg_imageProgressiveFadeAnimationTime
+                                }
+                                transition.duration = duration
+                                transition.timingFunction = CAMediaTimingFunction(name: kCAMediaTimingFunctionEaseInEaseOut)
+                                transition.type = kCATransitionFade
+                                weakSelf.layer.add(transition, forKey: kLGWebImageFadeAnimationKey)
+                            }
+                            weakSelf.highlightedImage = result
+                        }
                     }
                 }
-            }
-            
-            DispatchQueue.main.async {
-                completionBlock?(resultImage, url, sourceType, imageStage, error)
-            }
+                
+                DispatchQueue.main.async {
+                    completionBlock?(resultImage, url, sourceType, imageStage, error)
+                }
         })
     }
-
+    
     /// 取消高亮图片请求
     public func lg_cancelCurrentHighlightedImageRequest() {
         if let token = self.lg_highlightedCallbackToken {
