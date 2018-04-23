@@ -77,6 +77,11 @@ public class LGWebImageManager {
                                               serverTrustPolicyManager: sslTrust)
         
         createTempFileDirIfNeeded()
+        
+        if options.contains(LGWebImageOptions.autoTurnOnFillet) {
+            UIImageView.swizzleImplementations()
+            UIButton.swizzleImplementations()
+        }
     }
     
     /// 默认单例

@@ -67,24 +67,16 @@ public extension UIImageView {
     {
         self.lg_imageURL = imageURL
         
-        if let token = self.lg_normalCallbackToken {
-            LGWebImageManager.default.cancelWith(callbackToken: token)
-            self.lg_normalCallbackToken = nil
+        if self.lg_normalCallbackToken != nil {
+            self.lg_cancelCurrentNormalImageRequest()
             self.image = nil
         }
         
         if self.image == nil && !options.contains(LGWebImageOptions.ignorePlaceHolder) && placeholder != nil {
             LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier) { [weak self] in
-                var placeholderImage: UIImage? = nil
                 if let image = placeholder?.lg_imageByDecoded {
-                    if let cornerRadiusImage = self?.cornerRadius(image)
-                    {
-                        placeholderImage = cornerRadiusImage
-                    } else {
-                        placeholderImage = image
-                    }
                     DispatchQueue.main.async { [weak self] in
-                        self?.image = placeholderImage
+                        self?.image = image
                     }
                 }
             }
@@ -119,11 +111,8 @@ public extension UIImageView {
                     let imageIsValid = (imageStage == .finished || imageStage == .progress)
                     let canSetImage = (!avoidSetImage && imageIsValid)
                     
-                    var result = resultImage
-                    if let cornerRadiusImage = self?.cornerRadius(resultImage) {
-                        result = cornerRadiusImage
-                    }
-                    
+                    let result = resultImage
+
                     if canSetImage {
                         DispatchQueue.main.async { [weak self] in
                             guard let weakSelf = self else {
@@ -210,9 +199,8 @@ public extension UIImageView {
     {
         self.lg_highlightedImageURL = imageURL
         
-        if let token = self.lg_highlightedCallbackToken {
-            LGWebImageManager.default.cancelWith(callbackToken: token)
-            self.lg_highlightedCallbackToken = nil
+        if self.lg_highlightedCallbackToken != nil {
+            self.lg_cancelCurrentHighlightedImageRequest()
             self.highlightedImage = nil
         }
         
@@ -221,16 +209,9 @@ public extension UIImageView {
             placeholder != nil
         {
             LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier) { [weak self] in
-                var placeholderImage: UIImage? = nil
                 if let image = placeholder?.lg_imageByDecoded {
-                    if let cornerRadiusImage = self?.cornerRadius(image)
-                    {
-                        placeholderImage = cornerRadiusImage
-                    } else {
-                        placeholderImage = image
-                    }
                     DispatchQueue.main.async { [weak self] in
-                        self?.highlightedImage = placeholderImage
+                        self?.highlightedImage = image
                     }
                 }
             }
@@ -265,10 +246,7 @@ public extension UIImageView {
                     let imageIsValid = (imageStage == .finished || imageStage == .progress)
                     let canSetImage = (!avoidSetImage && imageIsValid)
                     
-                    var result = resultImage
-                    if let cornerRadiusImage = self?.cornerRadius(resultImage) {
-                        result = cornerRadiusImage
-                    }
+                    let result = resultImage
                     
                     if canSetImage {
                         DispatchQueue.main.async { [weak self] in
@@ -304,6 +282,76 @@ public extension UIImageView {
         if let token = self.lg_highlightedCallbackToken {
             LGWebImageManager.default.cancelWith(callbackToken: token)
             self.lg_highlightedCallbackToken = nil
+        }
+    }
+}
+
+extension UIImageView {
+    static func swizzleImplementations() {
+        UIImageView.swizzleSetImageImplementation()
+        UIImageView.swizzleSetHighlightedImageImplementation()
+    }
+    
+    private static func swizzleSetImageImplementation() {
+        let aClass: AnyClass = self.classForCoder()
+        let originalMethod = class_getInstanceMethod(aClass, #selector(setter: UIImageView.image))
+        let swizzledMethod = class_getInstanceMethod(aClass, #selector(UIImageView.lg_setImage(_:)))
+        if let originalMethod = originalMethod, let swizzledMethod = swizzledMethod {
+            // switch implementation..
+            method_exchangeImplementations(originalMethod, swizzledMethod)
+        }
+    }
+    
+    private static func swizzleSetHighlightedImageImplementation() {
+        let aClass: AnyClass = self.classForCoder()
+        let originalMethod = class_getInstanceMethod(aClass, #selector(setter: UIImageView.highlightedImage))
+        let swizzledMethod = class_getInstanceMethod(aClass, #selector(UIImageView.lg_setHighlightedImage(_:)))
+        if let originalMethod = originalMethod, let swizzledMethod = swizzledMethod {
+            // switch implementation..
+            method_exchangeImplementations(originalMethod, swizzledMethod)
+        }
+    }
+    
+    @objc func lg_setImage(_ image: UIImage?) {
+        if self.lg_needSetCornerRadius == true {
+            LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier)
+            { [weak self] in
+                var result: UIImage? = nil
+                if let tempImage = image?.lg_imageByDecoded {
+                    if let cornerRadiusImage = self?.cornerRadius(tempImage)
+                    {
+                        result = cornerRadiusImage
+                    } else {
+                        result = tempImage
+                    }
+                    DispatchQueue.main.async { [weak self] in
+                        self?.lg_setImage(result)
+                    }
+                }
+            }
+        } else {
+            self.lg_setImage(image)
+        }
+    }
+    
+    @objc func lg_setHighlightedImage(_ image: UIImage?) {
+        if self.lg_needSetCornerRadius == true {
+            LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier) { [weak self] in
+                var result: UIImage? = nil
+                if let tempImage = image?.lg_imageByDecoded {
+                    if let cornerRadiusImage = self?.cornerRadius(tempImage)
+                    {
+                        result = cornerRadiusImage
+                    } else {
+                        result = tempImage
+                    }
+                    DispatchQueue.main.async { [weak self] in
+                        self?.lg_setHighlightedImage(result)
+                    }
+                }
+            }
+        } else {
+            self.lg_setHighlightedImage(image)
         }
     }
 }

@@ -9,11 +9,11 @@
 import Foundation
 
 public struct LGCornerRadiusConfig {
-    public var cornerRadius: CGFloat = 0.0
-    public var corners: UIRectCorner = UIRectCorner.allCorners
-    public var borderWidth: CGFloat = 0.0
-    public var borderColor: UIColor? = nil
-    public var borderLineJoin: CGLineJoin = CGLineJoin.miter
+    public var cornerRadius: CGFloat
+    public var corners: UIRectCorner
+    public var borderWidth: CGFloat
+    public var borderColor: UIColor?
+    public var borderLineJoin: CGLineJoin
     
     public init(cornerRadius: CGFloat,
                 corners: UIRectCorner = UIRectCorner.allCorners,
@@ -38,10 +38,9 @@ public extension UIView {
         static var cornerRadiusKey = "lg_cornerRadius"
     }
     
-    public var needSetCornerRadius: Bool {
+    public var lg_needSetCornerRadius: Bool {
         return self.lg_cornerRadius?.needSetCornerRadius == true
     }
-    
     
     /// 在不设置layer圆角的情况下设置图片圆角
     public var lg_cornerRadius: LGCornerRadiusConfig? {

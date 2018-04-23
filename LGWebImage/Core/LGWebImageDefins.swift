@@ -103,13 +103,19 @@ public struct LGWebImageOptions: OptionSet {
         return LGWebImageOptions(rawValue: 1 << 14)
     }()
     
+    /// 自动开启图片圆角，需要设置UIView和CALayer的lg_cornerRadius属性
+    public static let autoTurnOnFillet: LGWebImageOptions = {
+        return LGWebImageOptions(rawValue: 1 << 15)
+    }()
+    
     /// 默认，使用Fade动画，允许后台下载，开启渐进加载
     public static let `default`: LGWebImageOptions = {
         return [LGWebImageOptions.setImageWithFadeAnimation,
                 LGWebImageOptions.allowBackgroundTask,
                 LGWebImageOptions.progressiveBlur,
                 LGWebImageOptions.enableBreakpointPass,
-                LGWebImageOptions.enableLargePictureOptimization]
+                LGWebImageOptions.enableLargePictureOptimization,
+                LGWebImageOptions.autoTurnOnFillet]
     }()
 }
 

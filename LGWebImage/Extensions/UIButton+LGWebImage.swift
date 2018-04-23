@@ -273,3 +273,73 @@ public extension UIButton {
         self.backgroundImageTokenContainer[state.rawValue] = token
     }
 }
+
+extension UIButton {
+    static func swizzleImplementations() {
+        UIButton.swizzleSetImageImplementation()
+        UIButton.swizzleSetBackgroundImageImplementation()
+    }
+    
+    private static func swizzleSetImageImplementation() {
+        let aClass: AnyClass = self.classForCoder()
+        let originalMethod = class_getInstanceMethod(aClass, #selector(UIButton.setImage(_:for:)))
+        let swizzledMethod = class_getInstanceMethod(aClass, #selector(UIButton.lg_setImage(_:for:)))
+        if let originalMethod = originalMethod, let swizzledMethod = swizzledMethod {
+            // switch implementation..
+            method_exchangeImplementations(originalMethod, swizzledMethod)
+        }
+    }
+    
+    private static func swizzleSetBackgroundImageImplementation() {
+        let aClass: AnyClass = self.classForCoder()
+        let originalMethod = class_getInstanceMethod(aClass, #selector(UIButton.setBackgroundImage(_:for:)))
+        let swizzledMethod = class_getInstanceMethod(aClass, #selector(UIButton.lg_setBackgroundImage(_:for:)))
+        if let originalMethod = originalMethod, let swizzledMethod = swizzledMethod {
+            // switch implementation..
+            method_exchangeImplementations(originalMethod, swizzledMethod)
+        }
+    }
+    
+    @objc func lg_setImage(_ image: UIImage?, for state: UIControlState) {
+        if self.lg_needSetCornerRadius == true {
+            LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier)
+            { [weak self] in
+                var result: UIImage? = nil
+                if let tempImage = image?.lg_imageByDecoded {
+                    if let cornerRadiusImage = self?.cornerRadius(tempImage)
+                    {
+                        result = cornerRadiusImage
+                    } else {
+                        result = tempImage
+                    }
+                    DispatchQueue.main.async { [weak self] in
+                        self?.lg_setImage(result, for: state)
+                    }
+                }
+            }
+        } else {
+            self.lg_setImage(image, for: state)
+        }
+    }
+    
+    @objc func lg_setBackgroundImage(_ image: UIImage?, for state: UIControlState) {
+        if self.lg_needSetCornerRadius == true {
+            LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier) { [weak self] in
+                var result: UIImage? = nil
+                if let tempImage = image?.lg_imageByDecoded {
+                    if let cornerRadiusImage = self?.cornerRadius(tempImage)
+                    {
+                        result = cornerRadiusImage
+                    } else {
+                        result = tempImage
+                    }
+                    DispatchQueue.main.async { [weak self] in
+                        self?.lg_setBackgroundImage(result, for: state)
+                    }
+                }
+            }
+        } else {
+            self.lg_setBackgroundImage(image, for: state)
+        }
+    }
+}

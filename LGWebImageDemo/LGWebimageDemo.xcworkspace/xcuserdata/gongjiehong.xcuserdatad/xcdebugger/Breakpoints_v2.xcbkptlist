@@ -218,11 +218,11 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "../LGWebImage/Core/LGWebImageManager.swift"
-            timestampString = "545914349.207316"
+            timestampString = "546148361.67772"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "279"
-            endingLineNumber = "279"
+            startingLineNumber = "283"
+            endingLineNumber = "283"
             landmarkName = "checkNormalImage()"
             landmarkType = "9">
          </BreakpointContent>

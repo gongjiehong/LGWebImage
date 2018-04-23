@@ -31,6 +31,16 @@ class LGRemoteDownloadCell: UITableViewCell {
         
         progressView = UIProgressView(frame: CGRect(x: 0, y: 0, width: self.contentView.bounds.width, height: 20))
         self.contentView.addSubview(progressView)
+//        10.0,
+//        corners: UIRectCorner.allCorners,
+//        borderWidth: 2.0,
+//        borderColor: UIColor.orange,
+//        borderLineJoin: CGLineJoin.miter
+        exampleImageView.lg_cornerRadius = LGCornerRadiusConfig(cornerRadius: 10.0,
+                                                                corners: UIRectCorner.allCorners,
+                                                                borderWidth: 2.0,
+                                                                borderColor: UIColor.orange,
+                                                                borderLineJoin: CGLineJoin.miter)
     }
     
     required init?(coder aDecoder: NSCoder) {
@@ -62,37 +72,38 @@ class LGRemoteDownloadCell: UITableViewCell {
             { (progress) in
                 self.progressView.progress = Float(progress.fractionCompleted)
         }, transformBlock: {[weak self] (image, url) -> UIImage? in
-            if let tempImage = image as? LGImage {
-                if tempImage.animatedImageFrameCount() > 1 {
-                    return image
-                } else {
-                    guard let weakSelf = self else {
-                        return image
-                    }
-                    
-                    var result = tempImage.lg_imageByResizeToSize(weakSelf.exampleImageViewSize,
-                                                                  contentMode: UIViewContentMode.scaleAspectFill)
-                    result = result?.lg_imageByRoundCornerRadius(10.0,
-                                                                 corners: UIRectCorner.allCorners,
-                                                                 borderWidth: 2.0,
-                                                                 borderColor: UIColor.orange,
-                                                                 borderLineJoin: CGLineJoin.miter)
-                    return result
-                }
-            } else {
-                guard let weakSelf = self else {
-                    return image
-                }
-                
-                var result = image?.lg_imageByResizeToSize(weakSelf.exampleImageViewSize,
-                                                           contentMode: UIViewContentMode.scaleAspectFill)
-                result = result?.lg_imageByRoundCornerRadius(10.0,
-                                                             corners: UIRectCorner.allCorners,
-                                                             borderWidth: 2.0,
-                                                             borderColor: UIColor.orange,
-                                                             borderLineJoin: CGLineJoin.miter)
-                return result
-            }
+//            if let tempImage = image as? LGImage {
+//                if tempImage.animatedImageFrameCount() > 1 {
+//                    return image
+//                } else {
+//                    guard let weakSelf = self else {
+//                        return image
+//                    }
+//
+//                    var result = tempImage.lg_imageByResizeToSize(weakSelf.exampleImageViewSize,
+//                                                                  contentMode: UIViewContentMode.scaleAspectFill)
+//                    result = result?.lg_imageByRoundCornerRadius(10.0,
+//                                                                 corners: UIRectCorner.allCorners,
+//                                                                 borderWidth: 2.0,
+//                                                                 borderColor: UIColor.orange,
+//                                                                 borderLineJoin: CGLineJoin.miter)
+//                    return result
+//                }
+//            } else {
+//                guard let weakSelf = self else {
+//                    return image
+//                }
+//
+//                var result = image?.lg_imageByResizeToSize(weakSelf.exampleImageViewSize,
+//                                                           contentMode: UIViewContentMode.scaleAspectFill)
+//                result = result?.lg_imageByRoundCornerRadius(10.0,
+//                                                             corners: UIRectCorner.allCorners,
+//                                                             borderWidth: 2.0,
+//                                                             borderColor: UIColor.orange,
+//                                                             borderLineJoin: CGLineJoin.miter)
+//                return result
+//            }
+            return image
         }) { (resultImage, url, sourceType, imageStage, error) in
             
         }
