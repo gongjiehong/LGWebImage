@@ -117,6 +117,16 @@ public extension UIButton {
                                    transformBlock: LGWebImageTransformBlock? = nil,
                                    completionBlock: LGWebImageCompletionBlock? = nil)
     {
+        do {
+            let newURL = try imageURL.asURL()
+            let originalURL = try self.imageUrlContainer[state.rawValue]?.asURL()
+            if newURL == originalURL {
+                return
+            }
+        } catch {
+            
+        }
+        
         self.imageUrlContainer[state.rawValue] = imageURL
         
         if let token = self.imageTokenContainer[state.rawValue] {
@@ -205,6 +215,16 @@ public extension UIButton {
                                              transformBlock: LGWebImageTransformBlock? = nil,
                                              completionBlock: LGWebImageCompletionBlock? = nil)
     {
+        do {
+            let newURL = try imageURL.asURL()
+            let originalURL = try self.backgroundImageUrlContainer[state.rawValue]?.asURL()
+            if newURL == originalURL {
+                return
+            }
+        } catch {
+            
+        }
+        
         self.backgroundImageUrlContainer[state.rawValue] = imageURL
         
         if let token = self.backgroundImageTokenContainer[state.rawValue] {

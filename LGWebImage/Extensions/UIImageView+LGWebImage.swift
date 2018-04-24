@@ -65,6 +65,16 @@ public extension UIImageView {
                                    transformBlock: LGWebImageTransformBlock? = nil,
                                    completionBlock: LGWebImageCompletionBlock? = nil)
     {
+        do {
+            let newURL = try imageURL.asURL()
+            let originalURL = try self.lg_imageURL?.asURL()
+            if newURL == originalURL {
+                return
+            }
+        } catch {
+            
+        }
+        
         self.lg_imageURL = imageURL
         
         if self.lg_normalCallbackToken != nil {
@@ -197,6 +207,16 @@ public extension UIImageView {
                                               transformBlock: LGWebImageTransformBlock? = nil,
                                               completionBlock: LGWebImageCompletionBlock? = nil)
     {
+        do {
+            let newURL = try imageURL.asURL()
+            let originalURL = try self.lg_highlightedImageURL?.asURL()
+            if newURL == originalURL {
+                return
+            }
+        } catch {
+            
+        }
+        
         self.lg_highlightedImageURL = imageURL
         
         if self.lg_highlightedCallbackToken != nil {

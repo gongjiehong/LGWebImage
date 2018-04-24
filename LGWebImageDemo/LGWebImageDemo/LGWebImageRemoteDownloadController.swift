@@ -128,7 +128,7 @@ class LGWebImageRemoteDownloadController: UITableViewController {
         self.tableView.register(LGRemoteDownloadCell.classForCoder(),
                                 forCellReuseIdentifier: kLGRemoteDownloadCellReuse)
         
-        dataArray.append("http://staticfile.cxylg.com/%E6%97%A0%E7%A0%81%E5%A4%A7%E5%9B%BE.jpg")
+        dataArray.append("https://s3-us-west-2.amazonaws.com/julyforcd/100/mew_interlaced.png")
         dataArray.append("https://s3-us-west-2.amazonaws.com/julyforcd/100/1510480450.jp2")
         dataArray.append("https://s3-us-west-2.amazonaws.com/julyforcd/100/1510480481.jpg")
         dataArray.append("https://s3-us-west-2.amazonaws.com/julyforcd/100/1518065289.tiff")

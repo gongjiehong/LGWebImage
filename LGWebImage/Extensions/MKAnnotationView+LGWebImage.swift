@@ -61,6 +61,16 @@ public extension MKAnnotationView {
                                    transformBlock: LGWebImageTransformBlock? = nil,
                                    completionBlock: LGWebImageCompletionBlock? = nil)
     {
+        do {
+            let newURL = try imageURL.asURL()
+            let originalURL = try self.lg_imageURL?.asURL()
+            if newURL == originalURL {
+                return
+            }
+        } catch {
+            
+        }
+        
         self.lg_imageURL = imageURL
         
         if self.lg_callbackToken != nil {

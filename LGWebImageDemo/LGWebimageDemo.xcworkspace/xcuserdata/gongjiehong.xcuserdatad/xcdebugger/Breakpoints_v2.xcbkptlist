@@ -42,11 +42,11 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "../LGWebImage/Extensions/UIImage+Extensions.swift"
-            timestampString = "545660551.839829"
+            timestampString = "546252017.0468481"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "566"
-            endingLineNumber = "566"
+            startingLineNumber = "600"
+            endingLineNumber = "600"
             landmarkName = "lg_draw(in:withContentMode:clipsToBounds:)"
             landmarkType = "7">
          </BreakpointContent>
@@ -58,27 +58,11 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "../LGWebImage/Extensions/UIImage+Extensions.swift"
-            timestampString = "545660551.839897"
+            timestampString = "546252017.047561"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "572"
-            endingLineNumber = "572"
-            landmarkName = "lg_draw(in:withContentMode:clipsToBounds:)"
-            landmarkType = "7">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            shouldBeEnabled = "No"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "../LGWebImage/Extensions/UIImage+Extensions.swift"
-            timestampString = "545660551.8399611"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "575"
-            endingLineNumber = "575"
+            startingLineNumber = "606"
+            endingLineNumber = "606"
             landmarkName = "lg_draw(in:withContentMode:clipsToBounds:)"
             landmarkType = "7">
          </BreakpointContent>
@@ -218,13 +202,29 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "../LGWebImage/Core/LGWebImageManager.swift"
-            timestampString = "546148361.67772"
+            timestampString = "546247008.675896"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "283"
             endingLineNumber = "283"
-            landmarkName = "checkNormalImage()"
-            landmarkType = "9">
+            landmarkName = "downloadImageWith(url:options:progress:transform:completion:)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../LGWebImage/Core/LGWebImageManager.swift"
+            timestampString = "546247008.6759861"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "654"
+            endingLineNumber = "654"
+            landmarkName = "decodeDataToUIImageIfNeeded(_:options:targetRequest:transform:)"
+            landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>

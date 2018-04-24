@@ -78,12 +78,12 @@ extension CGRect {
         case UIViewContentMode.bottomLeft:
             result.origin.y += result.size.height - toCalcSize.height
             result.size = toCalcSize
-         break
+            break
         case UIViewContentMode.bottomRight:
             result.origin.x += result.size.width - toCalcSize.width
             result.origin.y += result.size.height - toCalcSize.height
             result.size = toCalcSize
-         break
+            break
         default:
             break
         }
@@ -274,7 +274,7 @@ extension UIImage {
         UIGraphicsEndImageContext()
         return newImage
     }
-
+    
     public func lg_imageByGrayscale() -> UIImage? {
         return self.lg_imageByBlurRadius(0,
                                          tintColor: nil,
@@ -306,7 +306,7 @@ extension UIImage {
                                          saturation: 1.8,
                                          maskImage: nil)
     }
-
+    
     public func lg_imageByBlurDark() -> UIImage? {
         return self.lg_imageByBlurRadius(40,
                                          tintColor: UIColor(white: 0.11, alpha: 0.73),
@@ -337,30 +337,42 @@ extension UIImage {
                                          maskImage: nil)
     }
     
+    /// 设置图片的一些效果，使用硬件加速
+    /// 参考苹果官方代码：https://developer.apple.com/library/content/samplecode/UIImageEffects
+    ///
+    /// - Parameters:
+    ///   - blurRadius: 模糊半径
+    ///   - tintColor: 色调色
+    ///   - tintBlendMode: 色调混合模式
+    ///   - saturation: 差量饱和因子
+    ///   - maskImage: 蒙版图
+    /// - Returns: 处理后的图片
     public func lg_imageByBlurRadius(_ blurRadius: CGFloat,
                                      tintColor: UIColor?,
                                      tintBlendMode: CGBlendMode,
                                      saturation: CGFloat,
                                      maskImage: UIImage?) -> UIImage? {
         if self.size.width < 1 || self.size.height < 1 {
+            //            println("*** error: invalid size: (\(self.size.width) x \(self.size.height)). " +
+            //                "Both dimensions must be >= 1: \(self)")
             return nil
         }
         
         guard let cgImage = self.cgImage else {
+            //            println("*** error: self must be backed by a CGImage: \(self)")
             return nil
         }
         
         if maskImage != nil && maskImage?.cgImage == nil {
+            //            println("*** error: effectMaskImage must be backed by a CGImage: \(maskImage)")
             return nil
         }
+        
         
         let hasBlur = blurRadius > CGFloat.ulpOfOne
         let hasSaturation = fabs(saturation - 1.0) > CGFloat.ulpOfOne
         
         let scale = self.scale
-        if !hasBlur && !hasSaturation {
-            
-        }
         
         if (!hasBlur && !hasSaturation) {
             return self.lg_mergeCGImage(cgImage,
@@ -369,92 +381,115 @@ extension UIImage {
                                         maskImage: maskImage,
                                         opaque: false)
         }
-        var effect: vImage_Buffer = vImage_Buffer()
-        var scratch: vImage_Buffer = vImage_Buffer()
-        var inputBuffer: UnsafeMutablePointer<vImage_Buffer> = UnsafeMutablePointer(mutating: &effect)
-        var outputBuffer: UnsafeMutablePointer<vImage_Buffer> = UnsafeMutablePointer(mutating: &scratch)
-        let bitmapValue = CGBitmapInfo.byteOrder32Little.rawValue | CGImageAlphaInfo.premultipliedFirst.rawValue
+        
+        var effect: vImage_Buffer? = vImage_Buffer()
+        var scratch: vImage_Buffer? = vImage_Buffer()
+        let bitmapValue = CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
         let bitmapInfo = CGBitmapInfo(rawValue: bitmapValue)
+        let colorSpace = Unmanaged.passRetained(LGCGColorSpaceDeviceRGB)
+        defer {
+            colorSpace.release()
+        }
         var format: vImage_CGImageFormat = vImage_CGImageFormat(bitsPerComponent: 8,
                                                                 bitsPerPixel: 32,
-                                                                colorSpace: nil,
+                                                                colorSpace: colorSpace,
                                                                 bitmapInfo: bitmapInfo,
                                                                 version: 0,
                                                                 decode: nil,
                                                                 renderingIntent: CGColorRenderingIntent.defaultIntent)
-
         
-        var error = vImageBuffer_InitWithCGImage(&effect,
+        
+        var error = vImageBuffer_InitWithCGImage(&effect!,
                                                  &format,
-                                                 nil, cgImage,
+                                                 nil,
+                                                 cgImage,
                                                  vImage_Flags(kvImagePrintDiagnosticsToConsole))
         if error != kvImageNoError {
+            //            println("*** error: vImageBuffer_InitWithCGImage returned error code \(error) for inputImage: \(self)")
             return nil
         }
         
-        error = vImageBuffer_Init(&effect,
-                                  effect.height,
-                                  effect.width,
+        error = vImageBuffer_Init(&scratch!,
+                                  effect!.height,
+                                  effect!.width,
                                   format.bitsPerPixel,
                                   vImage_Flags(kvImageNoFlags))
         
+        
         if error != kvImageNoError {
             return nil
         }
-
+        
+        var inputBuffer = withUnsafePointer(to: &effect!) { $0 }
+        var outputBuffer = withUnsafePointer(to: &scratch!) { $0 }
+        
         if (hasBlur) {
             var inputRadius = blurRadius * scale
             if inputRadius - 2.0 < CGFloat.ulpOfOne {
                 inputRadius = 2.0
             }
-            let temp1: CGFloat = sqrt(2 * CGFloat.pi)
+            let temp1: CGFloat = sqrt(2.0 * CGFloat.pi)
             let temp2: CGFloat = inputRadius * 3.0
             var radius: Int = Int(floor((temp2 *  temp1 / 4 + 0.5) / 2))
             radius |= 1
-            var iterations: Int
-            if blurRadius * scale < 0.5 {
-                iterations = 1
-            } else if blurRadius * scale < 1.5 {
-                iterations = 2
-            } else {
-                iterations = 3
-            }
-            let tempSize = vImageBoxConvolve_ARGB8888(inputBuffer,
-                                                      outputBuffer,
-                                                      nil,
-                                                      0,
-                                                      0,
-                                                      UInt32(radius),
-                                                      UInt32(radius),
-                                                      nil,
-                                                      vImage_Flags(kvImageGetTempBufferSize | kvImageEdgeExtend))
             
-            let tempBuffer = UnsafeMutableRawPointer(bitPattern: tempSize)
-            for _ in 0..<iterations {
-                vImageBoxConvolve_ARGB8888(inputBuffer,
-                                           outputBuffer,
-                                           tempBuffer,
-                                           0,
-                                           0,
-                                           UInt32(radius),
-                                           UInt32(radius),
-                                           nil,
-                                           vImage_Flags(kvImageEdgeExtend))
-                let temp = inputBuffer
-                inputBuffer = outputBuffer
-                outputBuffer = temp
-            }
-
+            let tempBufferSize = vImageBoxConvolve_ARGB8888(inputBuffer,
+                                                            outputBuffer,
+                                                            nil,
+                                                            0,
+                                                            0,
+                                                            UInt32(radius),
+                                                            UInt32(radius),
+                                                            nil,
+                                                            vImage_Flags(kvImageGetTempBufferSize | kvImageEdgeExtend))
+            
+            let tempBuffer = malloc(tempBufferSize)
+            vImageBoxConvolve_ARGB8888(inputBuffer,
+                                       outputBuffer,
+                                       tempBuffer,
+                                       0,
+                                       0,
+                                       UInt32(radius),
+                                       UInt32(radius),
+                                       nil,
+                                       vImage_Flags(kvImageEdgeExtend))
+            vImageBoxConvolve_ARGB8888(outputBuffer,
+                                       inputBuffer,
+                                       tempBuffer,
+                                       0,
+                                       0,
+                                       UInt32(radius),
+                                       UInt32(radius),
+                                       nil,
+                                       vImage_Flags(kvImageEdgeExtend))
+            vImageBoxConvolve_ARGB8888(inputBuffer,
+                                       outputBuffer,
+                                       tempBuffer,
+                                       0,
+                                       0,
+                                       UInt32(radius),
+                                       UInt32(radius),
+                                       nil,
+                                       vImage_Flags(kvImageEdgeExtend))
+            // swap
+            let temp = inputBuffer
+            inputBuffer = outputBuffer
+            outputBuffer = temp
+            free(tempBuffer)
         }
+        
         if (hasSaturation) {
             
             let s = saturation
+            // These values appear in the W3C Filter Effects spec:
+            // https://dvcs.w3.org/hg/FXTF/raw-file/default/filters/index.html#grayscaleEquivalent
+            //
             let matrixFloat: [CGFloat] = [
                 0.0722 + 0.9278 * s,  0.0722 - 0.0722 * s,  0.0722 - 0.0722 * s,  0,
                 0.7152 - 0.7152 * s,  0.7152 + 0.2848 * s,  0.7152 - 0.7152 * s,  0,
                 0.2126 - 0.2126 * s,  0.2126 - 0.2126 * s,  0.2126 + 0.7873 * s,  0,
                 0,                    0,                    0,                    1,
-            ]
+                ]
             
             let divisor: Int = 256
             let matrixSize: Int = MemoryLayout.size(ofValue: matrixFloat) / MemoryLayout.size(ofValue: matrixFloat[0])
@@ -484,19 +519,22 @@ extension UIImage {
         effectCGImage = vImageCreateCGImageFromBuffer(inputBuffer,
                                                       &format,
                                                       { (oriPointer, newPointer) in
+                                                        free(newPointer)
                                                         return
-                                                      },
+        },
                                                       nil,
                                                       vImage_Flags(kvImageNoAllocate),
-                                                      nil).takeRetainedValue()
+                                                      &error).takeRetainedValue()
         if effectCGImage == nil {
             effectCGImage = vImageCreateCGImageFromBuffer(inputBuffer,
                                                           &format,
                                                           nil,
                                                           nil,
                                                           vImage_Flags(kvImageNoFlags),
-                                                          nil).takeRetainedValue()
+                                                          &error).takeRetainedValue()
+            free(inputBuffer.pointee.data)
         }
+        free(outputBuffer.pointee.data)
         if effectCGImage == nil {
             return nil
         }
@@ -505,11 +543,10 @@ extension UIImage {
                                            tintBlendMode: tintBlendMode,
                                            maskImage: maskImage,
                                            opaque: false)
-
         return outputImage
     }
     
-   
+    
     func lg_mergeCGImage(_ effectCGImage: CGImage,
                          tintColor: UIColor?,
                          tintBlendMode: CGBlendMode,
@@ -551,7 +588,7 @@ extension UIImage {
         }
         let resultImage = UIGraphicsGetImageFromCurrentImageContext()
         UIGraphicsEndImageContext()
-
+        
         return resultImage
     }
     
@@ -607,7 +644,7 @@ extension UIImage {
         }
         return nil
     }
-
+    
     public func lg_imageByInsetEdge(_ insets: UIEdgeInsets, withColor color: UIColor? = nil) -> UIImage? {
         var size = self.size
         size.width -= insets.left + insets.right
@@ -688,7 +725,7 @@ extension UIImage {
         UIGraphicsEndImageContext()
         return image
     }
-
+    
     public func lg_imageByRotate(_ radians: CGFloat, fitSize: Bool) -> UIImage? {
         guard let cgImage = self.cgImage else {return nil}
         let width = cgImage.width
@@ -722,7 +759,7 @@ extension UIImage {
         return nil
         
     }
-
+    
     public func lg_flipHorizontal(_ horizontal: Bool, vertical: Bool) -> UIImage? {
         guard let cgImage = self.cgImage else {return nil}
         let width = cgImage.width
@@ -775,7 +812,7 @@ extension UIImage {
     public func lg_imageByRotate180() -> UIImage?  {
         return self.lg_flipHorizontal(true, vertical: true)
     }
-
+    
     public func lg_imageByFlipVertical() -> UIImage?  {
         return self.lg_flipHorizontal(false, vertical: true)
     }
@@ -783,7 +820,7 @@ extension UIImage {
     public func lg_imageByFlipHorizontal() -> UIImage?  {
         return self.lg_flipHorizontal(true, vertical: false)
     }
-
+    
 }
 
 fileprivate func LGDegreesToRadians(degrees : CGFloat) -> CGFloat {

@@ -9,6 +9,7 @@
 import Foundation
 import LGHTTPRequest
 import ImageIO
+import MapKit
 
 /// 标识请求回调的Token类型定义，用于取消回调，但不取消下载
 public typealias LGWebImageCallbackToken = String
@@ -81,6 +82,8 @@ public class LGWebImageManager {
         if options.contains(LGWebImageOptions.autoTurnOnFillet) {
             UIImageView.swizzleImplementations()
             UIButton.swizzleImplementations()
+            CALayer.swizzleImplementations()
+            MKAnnotationView.swizzleImplementations()
         }
     }
     
@@ -650,26 +653,30 @@ public class LGWebImageManager {
             if progressiveDecoder?.imageType == LGImageType.jpeg {
                 if !progressiveContainer.progressiveDetected {
                     if let dic = progressiveDecoder?.frameProperties(atIndex: 0) {
-                        let jpeg = dic[kCGImagePropertyJFIFIsProgressive as String] as? [String: Any]
+                        let jpeg = dic[kCGImagePropertyJFIFDictionary as String] as? [String: Any]
                         if let isProg = jpeg?[kCGImagePropertyJFIFIsProgressive as String] as? NSNumber {
                             if !isProg.boolValue {
-                                progressiveIgnored = true
-                                progressiveDecoder = nil
+                                progressiveContainer.progressiveIgnored = true
+                                progressiveContainer.progressiveDecoder = nil
+                                progressiveContainerMap[targetRequest] = progressiveContainer
                                 return
                             }
-                            progressiveContainer.progressiveDetected = true
+                        } else {
+                            progressiveContainer.progressiveIgnored = true
+                            progressiveContainer.progressiveDecoder = nil
                             progressiveContainerMap[targetRequest] = progressiveContainer
+                            return
                         }
-                        
+                        progressiveContainer.progressiveDetected = true
+                        progressiveContainerMap[targetRequest] = progressiveContainer
                     }
-                    
                 }
                 let scanLength = writedData.count - progressiveContainer.progressiveScanedLength - 4
                 if scanLength <= 2 {return}
                 let endIndex = Data.Index(progressiveContainer.progressiveScanedLength + scanLength)
                 let scanRange: Range<Data.Index> = Data.Index(progressiveContainer.progressiveScanedLength)..<endIndex
                 let markerRange = writedData.range(of: JPEGSOSMarker,
-                                                   options: Data.SearchOptions.backwards,
+                                                   options: Data.SearchOptions(rawValue: 0),
                                                    in: scanRange)
                 progressiveContainer.progressiveScanedLength = writedData.count
                 progressiveContainerMap[targetRequest] = progressiveContainer
@@ -694,7 +701,7 @@ public class LGWebImageManager {
                 return
             }
             
-            if image.cgImage?.lastPixelFilled() == false {
+            if image.cgImage?.lastPixelFilled() != true {
                 return
             }
             
@@ -702,14 +709,15 @@ public class LGWebImageManager {
             progressiveContainerMap[targetRequest] = progressiveContainer
             var radius: CGFloat = 32
             if targetRequest.expectedContentLength > 0 {
-                radius *= 1.0 / (3.0 * CGFloat(writedData.count) / CGFloat(targetRequest.totalBytesReceived) + 0.6) - 0.25
+                radius *= 1.0 / (3.0 * CGFloat(writedData.count) / CGFloat(targetRequest.expectedContentLength) + 0.6) - 0.25
             } else {
                 radius /= CGFloat(progressiveContainer.progressiveDisplayCount)
             }
             var temp = image.lg_imageByBlurRadius(radius,
                                                   tintColor: nil,
                                                   tintBlendMode: CGBlendMode.normal,
-                                                  saturation: 1, maskImage: nil)
+                                                  saturation: 1,
+                                                  maskImage: nil)
             if temp != nil {
                 if let transformBlock = transform {
                     if let tempImage = transformBlock(temp, targetRequest.request?.url) {
@@ -787,29 +795,16 @@ fileprivate func networkIndicatorStop() {
 // MARK: - 填充最后个像素
 extension CGImage {
     public func lastPixelFilled() -> Bool {
-        let width = self.width
-        let height = self.height
-        if width == 0 || height == 0 {return false}
-        let bitmapInfo = CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrderMask.rawValue
-        let context = CGContext(data: nil,
-                                width: 1,
-                                height: 1,
-                                bitsPerComponent: 8,
-                                bytesPerRow: 0,
-                                space: LGCGColorSpaceDeviceRGB,
-                                bitmapInfo: bitmapInfo)
-        if context == nil {return false}
-        context?.draw(self, in: CGRect(x: -width + 1, y: 0, width: width, height: height))
-        let data = context?.data
-        var isAlpha: Bool = false
-        if data != nil {
-            let array = data!.load(as: [UInt8].self)
-            if array[0] == 0 {
-                isAlpha = true
+        if let cfData = self.dataProvider?.data {
+            let dataLength = CFDataGetLength(cfData)
+            if let buffer = CFDataGetBytePtr(cfData) {
+                let lastByte = buffer[dataLength - 1]
+                return lastByte != 0
             }
+            return false
+        } else {
+            return false
         }
-        
-        return !isAlpha
     }
 }
 
