@@ -115,7 +115,7 @@ fileprivate class LGAnimatedImageViewFetchOperation: Operation {
 
 
 /// 展示动态图片的imageView
-public class LGAnimatedImageView: UIImageView {
+open class LGAnimatedImageView: UIImageView {
 
     /// 是否自动播放动图，默认true
     public var isAutoPlayAnimatedImage: Bool = true
@@ -144,7 +144,7 @@ public class LGAnimatedImageView: UIImageView {
     
     public private(set) var currentIsPlayingAnimation: Bool = false
     
-    override public var isAnimating: Bool {
+    override open var isAnimating: Bool {
         return currentIsPlayingAnimation
     }
     
@@ -234,7 +234,7 @@ public class LGAnimatedImageView: UIImageView {
         
     }
     
-    override public func encode(with aCoder: NSCoder) {
+    override open func encode(with aCoder: NSCoder) {
         super.encode(with: aCoder)
         aCoder.encode(runloopMode, forKey: "runloopMode")
         aCoder.encode(isAutoPlayAnimatedImage, forKey: "isAutoPlayAnimatedImage")
@@ -583,12 +583,12 @@ extension LGAnimatedImageView {
         _ = self.lock.signal()
     }
     
-    override public func didMoveToWindow() {
+    override open func didMoveToWindow() {
         super.didMoveToWindow()
         didMoved()
     }
     
-    override public func didMoveToSuperview() {
+    override open func didMoveToSuperview() {
         super.didMoveToSuperview()
         didMoved()
     }
@@ -603,14 +603,14 @@ extension LGAnimatedImageView {
         }
     }
     
-    override public func stopAnimating() {
+    override open func stopAnimating() {
         super.stopAnimating()
         requestQueue.cancelAllOperations()
         timer?.isPaused = true
         self.currentIsPlayingAnimation = false
     }
     
-    override public func startAnimating() {
+    override open func startAnimating() {
         let type = currentImageType()
         if type == LGAnimatedImageType.images || type == LGAnimatedImageType.highlightedImages {
             if let images = image(for: type) as? [UIImage] {
@@ -651,7 +651,7 @@ extension LGAnimatedImageView {
         CATransaction.commit()
     }
 
-    override public func display(_ layer: CALayer) {
+    override open func display(_ layer: CALayer) {
         if currentFrame != nil {
             layer.contents = currentFrame?.cgImage
         }
@@ -694,18 +694,18 @@ extension LGAnimatedImageView {
 }
 
 
-class LGImageWeakTarget: NSObject {
-    weak var target: NSObjectProtocol?
-    init(target: NSObjectProtocol) {
+public class LGImageWeakTarget: NSObject {
+    public weak var target: NSObjectProtocol?
+    public init(target: NSObjectProtocol) {
         super.init()
         self.target = target
     }
     
-    override func responds(to aSelector: Selector!) -> Bool {
+    public override func responds(to aSelector: Selector!) -> Bool {
         return (target?.responds(to: aSelector) ?? false) || super.responds(to: aSelector)
     }
     
-    override func forwardingTarget(for aSelector: Selector!) -> Any? {
+    public override func forwardingTarget(for aSelector: Selector!) -> Any? {
         return target
     }
 }
