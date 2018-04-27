@@ -31,7 +31,7 @@ public class LGWebImageManager {
     
     /// 同步处理队列
     fileprivate var _cacheQueue = DispatchQueue(label: "com.LGWebImageManager.cacheQueue",
-                                                qos: DispatchQoS.utility,
+                                                qos: DispatchQoS.userInteractive,
                                                 attributes: DispatchQueue.Attributes.concurrent,
                                                 autoreleaseFrequency: DispatchQueue.AutoreleaseFrequency.inherit,
                                                 target: DispatchQueue.utility)
@@ -45,6 +45,8 @@ public class LGWebImageManager {
     private var progressBlocksMap = [LGDataRequest: [LGWebImageCallbackToken: LGWebImageProgressBlock]]()
     private var completionBlocksMap = [LGDataRequest: [LGWebImageCallbackToken: LGWebImageCompletionBlock]]()
     private var progressiveContainerMap = [LGDataRequest: LGWebImageProgressiveContainer]()
+    
+    private var tokenValidMap = [LGWebImageCallbackToken: Bool]()
     
     private let tempDirSuffix = "LGWebImage/TempFile/"
     
@@ -108,6 +110,11 @@ public class LGWebImageManager {
                                   completion: LGWebImageCompletionBlock? = nil) -> LGWebImageCallbackToken
     {
         let token = UUID().uuidString + "\(CACurrentMediaTime())"
+        
+        
+        tokenValidMap[token] = true
+        
+        
         _cacheQueue.async(flags: DispatchWorkItemFlags.barrier) { [unowned self] in
             // 处理忽略下载失败的URL和和名单
             if options.contains(LGWebImageOptions.ignoreFailedURL) &&
@@ -478,8 +485,16 @@ public class LGWebImageManager {
         _ = _lock.wait(timeout: DispatchTime.distantFuture)
         if let tempDic = self.progressBlocksMap[request] {
             if tempDic.count > 0 {
-                for (_, block) in tempDic {
-                    block(progress)
+                for (token, block) in tempDic {
+                    let tokenIsValid = DispatchQueue.main.sync {
+                        return tokenValidMap[token] == true
+                    }
+                    if tokenIsValid {
+//                        DispatchQueue.main.sync {
+//                            tokenValidMap[token] = nil
+//                        }
+                        block(progress)
+                    }
                 }
             }
         }
@@ -525,8 +540,16 @@ public class LGWebImageManager {
         _ = _lock.wait(timeout: DispatchTime.distantFuture)
         if let tempDic = self.completionBlocksMap[request] {
             if tempDic.count > 0 {
-                for (_, block) in tempDic {
-                    block(image, url, sourceType, imageStatus, error)
+                for (token, block) in tempDic {
+                    let tokenIsValid = DispatchQueue.main.sync {
+                        return tokenValidMap[token] == true
+                    }
+                    if tokenIsValid {
+//                        DispatchQueue.main.sync {
+//                            tokenValidMap[token] = nil
+//                        }
+                        block(image, url, sourceType, imageStatus, error)
+                    }
                 }
             }
         }
@@ -738,6 +761,9 @@ public class LGWebImageManager {
     ///
     /// - Parameter callbackToken: 某次请求对应的token
     public func cancelWith(callbackToken: LGWebImageCallbackToken) {
+        
+        tokenValidMap[callbackToken] = nil
+        
         _cacheQueue.async(flags: DispatchWorkItemFlags.barrier) { [unowned self] in
             _ = self._lock.wait(timeout: DispatchTime.distantFuture)
             for (key, value) in self.progressBlocksMap {

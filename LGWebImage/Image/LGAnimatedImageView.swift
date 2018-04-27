@@ -694,7 +694,7 @@ extension LGAnimatedImageView {
 }
 
 
-public class LGImageWeakTarget: NSObject {
+class LGImageWeakTarget: NSObject {
     public weak var target: NSObjectProtocol?
     public init(target: NSObjectProtocol) {
         super.init()
