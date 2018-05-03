@@ -67,12 +67,15 @@ public extension UIImageView {
     {
         do {
             let newURL = try imageURL.asURL()
-            let originalURL = try self.lg_imageURL?.asURL()
-            if newURL == originalURL {
+            if  let image = LGImageCache.default.getImage(forKey: newURL.absoluteString,
+                                                          withType: LGImageCacheType.memory)
+            {
+                self.lg_imageURL = imageURL
+                self.image = image
                 return
             }
         } catch {
-            
+            println(error)
         }
         
         self.lg_imageURL = imageURL
@@ -209,8 +212,11 @@ public extension UIImageView {
     {
         do {
             let newURL = try imageURL.asURL()
-            let originalURL = try self.lg_highlightedImageURL?.asURL()
-            if newURL == originalURL {
+            if let image = LGImageCache.default.getImage(forKey: newURL.absoluteString,
+                                                         withType: LGImageCacheType.memory)
+            {
+                self.lg_highlightedImageURL = imageURL
+                self.highlightedImage = image
                 return
             }
         } catch {

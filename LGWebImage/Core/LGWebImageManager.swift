@@ -34,7 +34,7 @@ public class LGWebImageManager {
                                                 qos: DispatchQoS.userInteractive,
                                                 attributes: DispatchQueue.Attributes.concurrent,
                                                 autoreleaseFrequency: DispatchQueue.AutoreleaseFrequency.inherit,
-                                                target: DispatchQueue.utility)
+                                                target: DispatchQueue.userInteractive)
     
     /// 下载URLSession管理器
     fileprivate var _sessionManager: LGURLSessionManager
@@ -269,13 +269,13 @@ public class LGWebImageManager {
                     /**
                      ** 处理进度回调
                      **/
-                    targetRequest = targetRequest!.downloadProgress(queue: DispatchQueue.utility)
+                    targetRequest = targetRequest!.downloadProgress(queue: self._cacheQueue)
                     {[unowned self] (progress) in
                         self.invokeProgressBlocks(targetRequest!, progress: progress)
                     }
 
                     // 下载完成结果处理
-                    targetRequest = targetRequest!.validate().response(queue: DispatchQueue.utility)
+                    targetRequest = targetRequest!.validate().response(queue: self._cacheQueue)
                     {[unowned self] (response) in
                         guard let weakTargetRequest = targetRequest else {
                             return

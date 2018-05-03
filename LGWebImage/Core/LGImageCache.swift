@@ -58,10 +58,14 @@ public class LGImageCache {
         /// 12（小时） * 60（分） * 60（秒）
         memoryCache.ageLimit = 12 * 60 * 60
         
-        /// 最大30 MB
-        memoryCache.costLimit = 30 * 1024 * 1024
+        /// 最大50MB， 50 * 1024 * 1024
+        memoryCache.costLimit = 52428800
         
         let diskCache = LGDiskCache(path: path)
+        // 最大占用1GB磁盘 1024 * 1024 * 1024
+        diskCache.costLimit = 1024 * 1024 * 1024
+        // 最多存储30天，30天 * 24小时 * 60分 * 60秒
+        diskCache.ageLimit = 2592000
         self.memoryCache = memoryCache
         self.diskCache = diskCache
     }
