@@ -72,6 +72,11 @@ public extension UIImageView {
             {
                 self.lg_imageURL = imageURL
                 self.image = image
+                completionBlock?(image,
+                                 newURL,
+                                 LGWebImageSourceType.memoryCache,
+                                 LGWebImageStage.finished,
+                                 nil)
                 return
             }
         } catch {
