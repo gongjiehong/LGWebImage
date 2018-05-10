@@ -122,8 +122,8 @@ public class LGWebImageManager {
             {
                 completion?(nil,
                             nil,
-                            LGWebImageSourceType.memoryCacheFast,
-                            LGWebImageStage.finished,
+                            LGWebImageSourceType.none,
+                            LGWebImageStage.cancelled,
                             LGImageDownloadError.urlIsInTheBlackList(url: url))
                 return
             }

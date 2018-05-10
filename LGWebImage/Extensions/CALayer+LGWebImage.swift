@@ -63,8 +63,16 @@ public extension CALayer {
     {
         do {
             let newURL = try imageURL.asURL()
-            let originalURL = try self.lg_imageURL?.asURL()
-            if newURL == originalURL {
+            if let image = LGImageCache.default.getImage(forKey: newURL.absoluteString,
+                                                         withType: LGImageCacheType.memory)
+            {
+                self.lg_imageURL = imageURL
+                self.contents = image.cgImage
+                completionBlock?(image,
+                                 newURL,
+                                 LGWebImageSourceType.memoryCache,
+                                 LGWebImageStage.finished,
+                                 nil)
                 return
             }
         } catch {

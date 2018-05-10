@@ -119,12 +119,20 @@ public extension UIButton {
     {
         do {
             let newURL = try imageURL.asURL()
-            let originalURL = try self.imageUrlContainer[state.rawValue]?.asURL()
-            if newURL == originalURL {
+            if  let image = LGImageCache.default.getImage(forKey: newURL.absoluteString,
+                                                          withType: LGImageCacheType.memory)
+            {
+                self.imageUrlContainer[state.rawValue] = imageURL
+                self.setImage(image, for: state)
+                completionBlock?(image,
+                                 newURL,
+                                 LGWebImageSourceType.memoryCache,
+                                 LGWebImageStage.finished,
+                                 nil)
                 return
             }
         } catch {
-            
+            println(error)
         }
         
         self.imageUrlContainer[state.rawValue] = imageURL
@@ -217,12 +225,20 @@ public extension UIButton {
     {
         do {
             let newURL = try imageURL.asURL()
-            let originalURL = try self.backgroundImageUrlContainer[state.rawValue]?.asURL()
-            if newURL == originalURL {
+            if  let image = LGImageCache.default.getImage(forKey: newURL.absoluteString,
+                                                          withType: LGImageCacheType.memory)
+            {
+                self.backgroundImageUrlContainer[state.rawValue] = imageURL
+                self.setBackgroundImage(image, for: state)
+                completionBlock?(image,
+                                 newURL,
+                                 LGWebImageSourceType.memoryCache,
+                                 LGWebImageStage.finished,
+                                 nil)
                 return
             }
         } catch {
-            
+            println(error)
         }
         
         self.backgroundImageUrlContainer[state.rawValue] = imageURL

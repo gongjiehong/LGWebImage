@@ -222,6 +222,11 @@ public extension UIImageView {
             {
                 self.lg_highlightedImageURL = imageURL
                 self.highlightedImage = image
+                completionBlock?(image,
+                                 newURL,
+                                 LGWebImageSourceType.memoryCache,
+                                 LGWebImageStage.finished,
+                                 nil)
                 return
             }
         } catch {
