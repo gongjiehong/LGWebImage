@@ -11,19 +11,104 @@ import LGHTTPRequest
 import ImageIO
 import MapKit
 
+
+/// 将Dictionary封装为线程安全的Dictionary
+public struct LGThreadSafeDictionary<Key, Value>: Sequence where Key : Hashable {
+    
+    /// 原始Dictionary容器
+    private var container: Dictionary<Key, Value> = Dictionary<Key, Value>()
+    
+    /// 线程锁
+    private var lock: NSLock = NSLock()
+    
+    /// 元素类型定义
+    public typealias Element = (key: Key, value: Value)
+
+    public init() {
+    }
+
+    public subscript(key: Key) -> Value? {
+        get {
+            lock.lock()
+            defer {
+                lock.unlock()
+            }
+            return self.container[key]
+        } set {
+            lock.lock()
+            defer {
+                lock.unlock()
+            }
+            self.container[key] = newValue
+        }
+    }
+    
+    public var count: Int {
+        lock.lock()
+        defer {
+            lock.unlock()
+        }
+        return self.container.count
+    }
+
+    public var isEmpty: Bool {
+        return self.count == 0
+    }
+
+    @discardableResult
+    public mutating func removeValue(forKey key: Key) -> Value? {
+        lock.lock()
+        defer {
+            lock.unlock()
+        }
+        return self.container.removeValue(forKey: key)
+    }
+    
+    public mutating func removeAll(keepingCapacity keepCapacity: Bool = false) {
+        lock.lock()
+        defer {
+            lock.unlock()
+        }
+        self.container.removeAll(keepingCapacity: keepCapacity)
+    }
+    
+
+    public var keys: Dictionary<Key, Value>.Keys {
+        lock.lock()
+        defer {
+            lock.unlock()
+        }
+        return self.container.keys
+    }
+    
+
+    public var values: Dictionary<Key, Value>.Values {
+        lock.lock()
+        defer {
+            lock.unlock()
+        }
+        return self.container.values
+    }
+    
+    public func makeIterator() -> DictionaryIterator<Key, Value> {
+        lock.lock()
+        defer {
+            lock.unlock()
+        }
+        return self.container.makeIterator()
+    }
+}
+
 /// 标识请求回调的Token类型定义，用于取消回调，但不取消下载
 public typealias LGWebImageCallbackToken = String
 
 /// 同意下载图片的Manager
 public class LGWebImageManager {
     /// 请求容器，用于存储当前活跃的请求，避免重复下载同一个文件
-    public var requestContainer: NSMapTable<NSString, LGHTTPRequest>
+    public var requestContainer: LGThreadSafeDictionary<String, LGDataRequest>
     
     /// 图片缓存工具
     public var cache: LGImageCache
-    
-    /// 单线程锁
-    fileprivate var _lock = DispatchSemaphore(value: 1)
     
     public var workQueue: DispatchQueue {
         return _cacheQueue
@@ -42,11 +127,14 @@ public class LGWebImageManager {
     /// 大图的最大字节数，这里设置为1MB，超过1MB不处理渐进显示，在显示的时候根据屏幕大小生成缩略图进行展示
     fileprivate let _maxFileSize: UInt64 = 1024 * 1024
     
-    private var progressBlocksMap = [LGDataRequest: [LGWebImageCallbackToken: LGWebImageProgressBlock]]()
-    private var completionBlocksMap = [LGDataRequest: [LGWebImageCallbackToken: LGWebImageCompletionBlock]]()
-    private var progressiveContainerMap = [LGDataRequest: LGWebImageProgressiveContainer]()
+    private typealias ProgressBlockMapItem = [LGWebImageCallbackToken: LGWebImageProgressBlock]
+    private typealias CompletionBlockMapItem = [LGWebImageCallbackToken: LGWebImageCompletionBlock]
     
-    private var tokenValidMap = [LGWebImageCallbackToken: Bool]()
+    private var progressBlocksMap = LGThreadSafeDictionary<LGDataRequest, ProgressBlockMapItem>()
+    private var completionBlocksMap = LGThreadSafeDictionary<LGDataRequest, CompletionBlockMapItem>()
+    private var progressiveContainerMap = LGThreadSafeDictionary<LGDataRequest, LGWebImageProgressiveContainer>()
+    
+    private var tokenValidMap = LGThreadSafeDictionary<LGWebImageCallbackToken, Bool>()
     
     private let tempDirSuffix = "LGWebImage/TempFile/"
     
@@ -56,8 +144,7 @@ public class LGWebImageManager {
     ///   - options: 固定设置
     ///   - trustHosts: 信任的host，设置后不会验证SSL有效性
     public init(options: LGWebImageOptions = LGWebImageOptions.default, trustHosts: [String] = []) {
-        requestContainer = NSMapTable<NSString, LGHTTPRequest>(keyOptions: NSPointerFunctions.Options.weakMemory,
-                                                               valueOptions: NSPointerFunctions.Options.weakMemory)
+        requestContainer = LGThreadSafeDictionary<String, LGDataRequest>()
         cache = LGImageCache.default
         
         _sessionManager = LGURLSessionManager.default
@@ -175,14 +262,11 @@ public class LGWebImageManager {
                 /**
                  ** 处理唯一request，保证每个独立URL只处理一次
                  **/
-                let urlNSSString = NSString(string: urlString)
                 var targetRequest: LGDataRequest?
-                _ = self._lock.wait(timeout: DispatchTime.distantFuture)
-                if let request = self.requestContainer.object(forKey: urlNSSString) as? LGDataRequest {
+                let request = self.requestContainer[urlString]
+                if request != nil {
                     targetRequest = request
-                    _ = self._lock.signal()
                 } else {
-                    _ = self._lock.signal()
                     var header: LGHTTPHeaders = [:]
                     var resumeData: Data? = nil
                     
@@ -391,14 +475,12 @@ public class LGWebImageManager {
                                                             error: error)
                             }
                         }
-                        self.clearMaps(targetRequest!, urlNSSString: urlNSSString)
+                        self.clearMaps(targetRequest!, urlString: urlString)
                         networkIndicatorStop()
                         targetRequest = nil
                     }
                     
-                    _ = self._lock.wait(timeout: DispatchTime.distantFuture)
-                    self.requestContainer.setObject(targetRequest, forKey: urlNSSString)
-                    _ = self._lock.signal()
+                    self.requestContainer[urlString] = targetRequest
                     
                 }
                 
@@ -466,14 +548,12 @@ public class LGWebImageManager {
                                        progress: @escaping LGWebImageProgressBlock,
                                        callbackToken: LGWebImageCallbackToken)
     {
-        _ = _lock.wait(timeout: DispatchTime.distantFuture)
         if var tempDic = progressBlocksMap[targetRequest] {
             tempDic[callbackToken] = progress
             progressBlocksMap[targetRequest] = tempDic
         } else {
             progressBlocksMap[targetRequest] = [callbackToken: progress]
         }
-        _ = _lock.signal()
     }
     
     /// 处理进度条回调
@@ -482,7 +562,6 @@ public class LGWebImageManager {
     ///   - request: 目标请求
     ///   - progress: Progress
     private func invokeProgressBlocks(_ request: LGDataRequest, progress: Progress) {
-        _ = _lock.wait(timeout: DispatchTime.distantFuture)
         if let tempDic = self.progressBlocksMap[request] {
             if tempDic.count > 0 {
                 for (token, block) in tempDic {
@@ -490,15 +569,11 @@ public class LGWebImageManager {
                         return tokenValidMap[token] == true
                     }
                     if tokenIsValid {
-//                        DispatchQueue.main.sync {
-//                            tokenValidMap[token] = nil
-//                        }
                         block(progress)
                     }
                 }
             }
         }
-        _ = _lock.signal()
     }
     
     /// 将完成回调添加到缓存
@@ -511,14 +586,12 @@ public class LGWebImageManager {
                                           completion: @escaping LGWebImageCompletionBlock,
                                           callbackToken: LGWebImageCallbackToken)
     {
-        _ = _lock.wait(timeout: DispatchTime.distantFuture)
         if var tempDic = completionBlocksMap[targetRequest] {
             tempDic[callbackToken] = completion
             completionBlocksMap[targetRequest] = tempDic
         } else {
             completionBlocksMap[targetRequest] = [callbackToken: completion]
         }
-        _ = _lock.signal()
     }
     
     /// 调用完成回调
@@ -537,7 +610,6 @@ public class LGWebImageManager {
                                         imageStatus: LGWebImageStage,
                                         error: Error?)
     {
-        _ = _lock.wait(timeout: DispatchTime.distantFuture)
         if let tempDic = self.completionBlocksMap[request] {
             if tempDic.count > 0 {
                 for (token, block) in tempDic {
@@ -550,7 +622,6 @@ public class LGWebImageManager {
                 }
             }
         }
-        _ = _lock.signal()
     }
     
     /// 根据对应的request清理各个container
@@ -558,13 +629,11 @@ public class LGWebImageManager {
     /// - Parameters:
     ///   - targetRequest: 对应的request
     ///   - urlNSSString: 图片原始地址
-    private func clearMaps(_ targetRequest: LGDataRequest, urlNSSString: NSString) {
-        _ = self._lock.wait(timeout: DispatchTime.distantFuture)
-        self.requestContainer.removeObject(forKey: urlNSSString)
+    private func clearMaps(_ targetRequest: LGDataRequest, urlString: String) {
+        self.requestContainer.removeValue(forKey: urlString)
         self.progressBlocksMap.removeValue(forKey: targetRequest)
         self.completionBlocksMap.removeValue(forKey: targetRequest)
         self.progressiveContainerMap.removeValue(forKey: targetRequest)
-        _ = self._lock.signal()
     }
     
     /// progressive或者progressiveBlur方式展示图片解码，如果图片超过1MB，则会直接返回，不执行此操作
@@ -761,7 +830,6 @@ public class LGWebImageManager {
         tokenValidMap[callbackToken] = nil
         
         _cacheQueue.async(flags: DispatchWorkItemFlags.barrier) { [unowned self] in
-            _ = self._lock.wait(timeout: DispatchTime.distantFuture)
             for (key, value) in self.progressBlocksMap {
                 for (token, _) in value {
                     if token == callbackToken {
@@ -777,7 +845,6 @@ public class LGWebImageManager {
                     }
                 }
             }
-            _ = self._lock.signal()
         }
     }
 }
