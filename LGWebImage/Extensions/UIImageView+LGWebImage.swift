@@ -70,10 +70,10 @@ public extension UIImageView {
         
         do {
             let newURL = try imageURL.asURL()
+            self.lg_imageURL = imageURL
             if  let image = LGImageCache.default.getImage(forKey: newURL.absoluteString,
                                                           withType: LGImageCacheType.memory)
             {
-                self.lg_imageURL = imageURL
                 self.image = image
                 completionBlock?(image,
                                  newURL,
@@ -83,12 +83,9 @@ public extension UIImageView {
                 return
             }
         } catch {
+            self.lg_imageURL = nil
             println(error)
         }
-        
-        self.lg_imageURL = imageURL
-        
-        
         
         if self.image == nil && !options.contains(LGWebImageOptions.ignorePlaceHolder) && placeholder != nil {
             LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier) { [weak self] in
