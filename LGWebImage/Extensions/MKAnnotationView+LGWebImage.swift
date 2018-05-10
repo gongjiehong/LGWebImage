@@ -61,12 +61,15 @@ public extension MKAnnotationView {
                                    transformBlock: LGWebImageTransformBlock? = nil,
                                    completionBlock: LGWebImageCompletionBlock? = nil)
     {
+        self.lg_cancelCurrentImageRequest()
+        self.image = nil
+        
         do {
             let newURL = try imageURL.asURL()
+            self.lg_imageURL = imageURL
             if let image = LGImageCache.default.getImage(forKey: newURL.absoluteString,
                                                          withType: LGImageCacheType.memory)
             {
-                self.lg_imageURL = imageURL
                 self.image = image
                 completionBlock?(image,
                                  newURL,
@@ -76,14 +79,8 @@ public extension MKAnnotationView {
                 return
             }
         } catch {
-            
-        }
-        
-        self.lg_imageURL = imageURL
-        
-        if self.lg_callbackToken != nil {
-            self.lg_cancelCurrentImageRequest()
-            self.image = nil
+            self.lg_imageURL = nil
+            println(error)
         }
         
         if self.image == nil && !options.contains(LGWebImageOptions.ignorePlaceHolder) && placeholder != nil {
@@ -96,6 +93,10 @@ public extension MKAnnotationView {
                     }
                 }
             }
+        }
+        
+        if self.lg_imageURL == nil {
+            return
         }
         
         self.lg_callbackToken = LGWebImageManager.default.downloadImageWith(url: imageURL,

@@ -117,12 +117,16 @@ public extension UIButton {
                                    transformBlock: LGWebImageTransformBlock? = nil,
                                    completionBlock: LGWebImageCompletionBlock? = nil)
     {
+        self.lg_cancelImageRequestForState(state)
+        self.imageTokenContainer[state.rawValue] = nil
+        self.setImage(nil, for: state)
+        
         do {
             let newURL = try imageURL.asURL()
+            self.imageUrlContainer[state.rawValue] = imageURL
             if  let image = LGImageCache.default.getImage(forKey: newURL.absoluteString,
                                                           withType: LGImageCacheType.memory)
             {
-                self.imageUrlContainer[state.rawValue] = imageURL
                 self.setImage(image, for: state)
                 completionBlock?(image,
                                  newURL,
@@ -132,16 +136,10 @@ public extension UIButton {
                 return
             }
         } catch {
+            self.imageUrlContainer[state.rawValue] = nil
             println(error)
         }
         
-        self.imageUrlContainer[state.rawValue] = imageURL
-        
-        if let token = self.imageTokenContainer[state.rawValue] {
-            LGWebImageManager.default.cancelWith(callbackToken: token)
-            self.imageTokenContainer[state.rawValue] = nil
-            self.setImage(nil, for: state)
-        }
         
         if self.image(for: state) == nil &&
             !options.contains(LGWebImageOptions.ignorePlaceHolder) &&
@@ -162,6 +160,11 @@ public extension UIButton {
                 }
             }
         }
+        
+        if self.imageUrlContainer[state.rawValue] == nil {
+            return
+        }
+        
         
         let token = LGWebImageManager.default.downloadImageWith(url: imageURL,
                                                                 options: options,
@@ -223,12 +226,17 @@ public extension UIButton {
                                              transformBlock: LGWebImageTransformBlock? = nil,
                                              completionBlock: LGWebImageCompletionBlock? = nil)
     {
+        self.lg_cancelBackgroundImageRequestForState(state)
+        self.backgroundImageTokenContainer[state.rawValue] = nil
+        self.setBackgroundImage(nil, for: state)
+        
         do {
             let newURL = try imageURL.asURL()
+            self.backgroundImageUrlContainer[state.rawValue] = imageURL
             if  let image = LGImageCache.default.getImage(forKey: newURL.absoluteString,
                                                           withType: LGImageCacheType.memory)
             {
-                self.backgroundImageUrlContainer[state.rawValue] = imageURL
+                
                 self.setBackgroundImage(image, for: state)
                 completionBlock?(image,
                                  newURL,
@@ -238,15 +246,8 @@ public extension UIButton {
                 return
             }
         } catch {
-            println(error)
-        }
-        
-        self.backgroundImageUrlContainer[state.rawValue] = imageURL
-        
-        if let token = self.backgroundImageTokenContainer[state.rawValue] {
-            LGWebImageManager.default.cancelWith(callbackToken: token)
             self.backgroundImageTokenContainer[state.rawValue] = nil
-            self.setBackgroundImage(nil, for: state)
+            println(error)
         }
         
         if self.image(for: state) == nil &&
@@ -268,6 +269,11 @@ public extension UIButton {
                 }
             }
         }
+        
+        if self.backgroundImageTokenContainer[state.rawValue] == nil {
+            return
+        }
+        
         
         let token = LGWebImageManager.default.downloadImageWith(url: imageURL,
                                                                 options: options,

@@ -65,6 +65,9 @@ public extension UIImageView {
                                    transformBlock: LGWebImageTransformBlock? = nil,
                                    completionBlock: LGWebImageCompletionBlock? = nil)
     {
+        self.lg_cancelCurrentNormalImageRequest()
+        self.image = nil
+        
         do {
             let newURL = try imageURL.asURL()
             if  let image = LGImageCache.default.getImage(forKey: newURL.absoluteString,
@@ -85,10 +88,7 @@ public extension UIImageView {
         
         self.lg_imageURL = imageURL
         
-        if self.lg_normalCallbackToken != nil {
-            self.lg_cancelCurrentNormalImageRequest()
-            self.image = nil
-        }
+        
         
         if self.image == nil && !options.contains(LGWebImageOptions.ignorePlaceHolder) && placeholder != nil {
             LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier) { [weak self] in
@@ -98,6 +98,10 @@ public extension UIImageView {
                     }
                 }
             }
+        }
+        
+        if self.lg_imageURL == nil {
+            return
         }
         
         self.lg_normalCallbackToken = LGWebImageManager.default.downloadImageWith(url: imageURL,
@@ -215,12 +219,16 @@ public extension UIImageView {
                                               transformBlock: LGWebImageTransformBlock? = nil,
                                               completionBlock: LGWebImageCompletionBlock? = nil)
     {
+        self.lg_cancelCurrentHighlightedImageRequest()
+        self.highlightedImage = nil
+        
         do {
             let newURL = try imageURL.asURL()
+            self.lg_highlightedImageURL = imageURL
             if let image = LGImageCache.default.getImage(forKey: newURL.absoluteString,
                                                          withType: LGImageCacheType.memory)
             {
-                self.lg_highlightedImageURL = imageURL
+                
                 self.highlightedImage = image
                 completionBlock?(image,
                                  newURL,
@@ -230,14 +238,8 @@ public extension UIImageView {
                 return
             }
         } catch {
-            
-        }
-        
-        self.lg_highlightedImageURL = imageURL
-        
-        if self.lg_highlightedCallbackToken != nil {
-            self.lg_cancelCurrentHighlightedImageRequest()
-            self.highlightedImage = nil
+            self.lg_highlightedImageURL = nil
+            println(error)
         }
         
         if self.highlightedImage == nil &&
@@ -251,6 +253,10 @@ public extension UIImageView {
                     }
                 }
             }
+        }
+        
+        if self.lg_highlightedImageURL == nil {
+            return
         }
         
         self.lg_highlightedCallbackToken = LGWebImageManager.default.downloadImageWith(url: imageURL,

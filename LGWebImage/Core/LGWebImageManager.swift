@@ -545,9 +545,6 @@ public class LGWebImageManager {
                         return tokenValidMap[token] == true
                     }
                     if tokenIsValid {
-//                        DispatchQueue.main.sync {
-//                            tokenValidMap[token] = nil
-//                        }
                         block(image, url, sourceType, imageStatus, error)
                     }
                 }
@@ -761,7 +758,6 @@ public class LGWebImageManager {
     ///
     /// - Parameter callbackToken: 某次请求对应的token
     public func cancelWith(callbackToken: LGWebImageCallbackToken) {
-        
         tokenValidMap[callbackToken] = nil
         
         _cacheQueue.async(flags: DispatchWorkItemFlags.barrier) { [unowned self] in

@@ -61,12 +61,16 @@ public extension CALayer {
                                    transformBlock: LGWebImageTransformBlock? = nil,
                                    completionBlock: LGWebImageCompletionBlock? = nil)
     {
+        self.lg_cancelCurrentImageRequest()
+        self.contents = nil
+
+        
         do {
             let newURL = try imageURL.asURL()
+            self.lg_imageURL = imageURL
             if let image = LGImageCache.default.getImage(forKey: newURL.absoluteString,
                                                          withType: LGImageCacheType.memory)
             {
-                self.lg_imageURL = imageURL
                 self.contents = image.cgImage
                 completionBlock?(image,
                                  newURL,
@@ -76,14 +80,8 @@ public extension CALayer {
                 return
             }
         } catch {
-            
-        }
-        
-        self.lg_imageURL = imageURL
-        
-        if self.lg_callbackToken != nil {
-            self.lg_cancelCurrentImageRequest()
-            self.contents = nil
+            self.lg_imageURL = nil
+            println(error)
         }
         
         if self.contents == nil && !options.contains(LGWebImageOptions.ignorePlaceHolder) && placeholder != nil {
@@ -96,6 +94,10 @@ public extension CALayer {
                     }
                 }
             }
+        }
+        
+        if self.lg_imageURL == nil {
+            return
         }
         
         self.lg_callbackToken = LGWebImageManager.default.downloadImageWith(url: imageURL,
