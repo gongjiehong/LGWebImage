@@ -58,8 +58,8 @@ public class LGImageCache {
         /// 12（小时） * 60（分） * 60（秒）
         memoryCache.ageLimit = 12 * 60 * 60
         
-        /// 最大50MB， 50 * 1024 * 1024
-        memoryCache.costLimit = 52428800
+        /// 物理内存的百分之五用作缓存内存缓存
+        memoryCache.costLimit = Int(Double(ProcessInfo().physicalMemory) * 0.05)
         
         let diskCache = LGDiskCache(path: path)
         // 最大占用1GB磁盘 1024 * 1024 * 1024
@@ -244,6 +244,20 @@ public class LGImageCache {
         get {
             return self.getImage(forKey: key)
         }
+    }
+    
+    public func clearMemoryCache() {
+        self.memoryCache.removeAllObjects()
+    }
+    
+    public func clearDiskCache(withBlock block: (() -> Void)?) {
+        self.diskCache.removeAllObjects(withBlock: block)
+    }
+    
+    /// 清理内存缓存和磁盘缓存，磁盘缓存会在异步线程中清理
+    public func clearAllCache(withBlock block: (() -> Void)?) {
+        self.clearMemoryCache()
+        self.clearDiskCache(withBlock: block)
     }
 }
 

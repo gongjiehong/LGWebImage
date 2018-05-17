@@ -23,10 +23,10 @@ public struct LGThreadSafeDictionary<Key, Value>: Sequence where Key : Hashable 
     
     /// 元素类型定义
     public typealias Element = (key: Key, value: Value)
-
+    
     public init() {
     }
-
+    
     public subscript(key: Key) -> Value? {
         get {
             lock.lock()
@@ -50,11 +50,11 @@ public struct LGThreadSafeDictionary<Key, Value>: Sequence where Key : Hashable 
         }
         return self.container.count
     }
-
+    
     public var isEmpty: Bool {
         return self.count == 0
     }
-
+    
     @discardableResult
     public mutating func removeValue(forKey key: Key) -> Value? {
         lock.lock()
@@ -72,7 +72,7 @@ public struct LGThreadSafeDictionary<Key, Value>: Sequence where Key : Hashable 
         self.container.removeAll(keepingCapacity: keepCapacity)
     }
     
-
+    
     public var keys: Dictionary<Key, Value>.Keys {
         lock.lock()
         defer {
@@ -81,7 +81,7 @@ public struct LGThreadSafeDictionary<Key, Value>: Sequence where Key : Hashable 
         return self.container.keys
     }
     
-
+    
     public var values: Dictionary<Key, Value>.Values {
         lock.lock()
         defer {
@@ -114,12 +114,12 @@ public class LGWebImageManager {
         return _cacheQueue
     }
     
-    /// 同步处理队列
+    /// 处理队列
     fileprivate var _cacheQueue = DispatchQueue(label: "com.LGWebImageManager.cacheQueue",
-                                                qos: DispatchQoS.userInteractive,
+                                                qos: DispatchQoS.userInitiated,
                                                 attributes: DispatchQueue.Attributes.concurrent,
                                                 autoreleaseFrequency: DispatchQueue.AutoreleaseFrequency.inherit,
-                                                target: DispatchQueue.userInteractive)
+                                                target: nil)
     
     /// 下载URLSession管理器
     fileprivate var _sessionManager: LGURLSessionManager
@@ -202,16 +202,18 @@ public class LGWebImageManager {
         tokenValidMap[token] = true
         
         
-        _cacheQueue.async(flags: DispatchWorkItemFlags.barrier) { [unowned self] in
+        _cacheQueue.async { [unowned self] in
             // 处理忽略下载失败的URL和和名单
             if options.contains(LGWebImageOptions.ignoreFailedURL) &&
                 LGURLBlackList.default.isContains(url: url)
             {
-                completion?(nil,
-                            nil,
-                            LGWebImageSourceType.none,
-                            LGWebImageStage.cancelled,
-                            LGImageDownloadError.urlIsInTheBlackList(url: url))
+                if self.tokenValidMap[token] == true {
+                    completion?(nil,
+                                nil,
+                                LGWebImageSourceType.none,
+                                LGWebImageStage.cancelled,
+                                LGImageDownloadError.urlIsInTheBlackList(url: url))
+                }
                 return
             }
             
@@ -239,17 +241,24 @@ public class LGWebImageManager {
                 } else {
                     cacheType = LGImageCacheType.all
                 }
+                
+                if self.tokenValidMap[token] != true {
+                    return
+                }
+                
                 if var image = self.cache.getImage(forKey: urlString, withType: cacheType) {
                     if let transformBlock = transform {
                         if let temp = transformBlock(image, remoteURL) {
                             image = temp
                         }
                     }
-                    completion?(image,
-                                remoteURL,
-                                LGWebImageSourceType.memoryCacheFast,
-                                LGWebImageStage.finished,
-                                nil)
+                    if self.tokenValidMap[token] == true {
+                        completion?(image,
+                                    remoteURL,
+                                    LGWebImageSourceType.memoryCacheFast,
+                                    LGWebImageStage.finished,
+                                    nil)
+                    }
                     networkIndicatorStop()
                     return
                 }
@@ -342,6 +351,9 @@ public class LGWebImageManager {
                         outputStream.close()
                         
                         guard let weakTargetRequest = targetRequest else {
+                            return
+                        }
+                        if self.tokenValidMap[token] != true {
                             return
                         }
                         self.decodeDataToUIImageIfNeeded(receivedData,
@@ -565,9 +577,7 @@ public class LGWebImageManager {
         if let tempDic = self.progressBlocksMap[request] {
             if tempDic.count > 0 {
                 for (token, block) in tempDic {
-                    let tokenIsValid = DispatchQueue.main.sync {
-                        return tokenValidMap[token] == true
-                    }
+                    let tokenIsValid = (tokenValidMap[token] == true)
                     if tokenIsValid {
                         block(progress)
                     }
@@ -613,9 +623,7 @@ public class LGWebImageManager {
         if let tempDic = self.completionBlocksMap[request] {
             if tempDic.count > 0 {
                 for (token, block) in tempDic {
-                    let tokenIsValid = DispatchQueue.main.sync {
-                        return tokenValidMap[token] == true
-                    }
+                    let tokenIsValid = (tokenValidMap[token] == true)
                     if tokenIsValid {
                         block(image, url, sourceType, imageStatus, error)
                     }
@@ -829,21 +837,47 @@ public class LGWebImageManager {
     public func cancelWith(callbackToken: LGWebImageCallbackToken) {
         tokenValidMap[callbackToken] = nil
         
-        _cacheQueue.async(flags: DispatchWorkItemFlags.barrier) { [unowned self] in
-            for (key, value) in self.progressBlocksMap {
-                for (token, _) in value {
-                    if token == callbackToken {
-                        self.progressBlocksMap[key]?[token] = nil
-                    }
+        for (key, value) in self.progressBlocksMap {
+            for (token, _) in value {
+                if token == callbackToken {
+                    self.progressBlocksMap[key]?[token] = nil
                 }
             }
-            
-            for (key, value) in self.completionBlocksMap {
-                for (token, _) in value {
-                    if token == callbackToken {
-                        self.completionBlocksMap[key]?[token] = nil
-                    }
+        }
+        
+        for (key, value) in self.completionBlocksMap {
+            for (token, _) in value {
+                if token == callbackToken {
+                    self.completionBlocksMap[key]?[token] = nil
                 }
+            }
+        }
+    }
+    
+    /// 清理所有缓存，包含内存缓存，磁盘缓存，断点续传临时文件等
+    ///
+    /// - Parameter block: 清理完成后的回调
+
+    public func clearAllCache(withBolck block: (() -> Void)?) {
+        var clearCacheMark: Int = 0 {
+            didSet {
+                if clearCacheMark == 2 {
+                    block?()
+                }
+            }
+        }
+        
+        LGImageCache.default.clearAllCache {
+            clearCacheMark += 1
+        }
+        DispatchQueue.background.async { [unowned self] in
+            let dir = NSTemporaryDirectory() + self.tempDirSuffix
+            do {
+                try FileManager.default.removeItem(at: URL(fileURLWithPath: dir))
+                self.createTempFileDirIfNeeded()
+                clearCacheMark += 1
+            } catch {
+                clearCacheMark += 1
             }
         }
     }
