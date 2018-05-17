@@ -176,13 +176,13 @@ public var JPEGSOSMarker: Data {
     return Data(bytes: [0xFF, 0xDA])
 }
 
-/// <#Description#>
+/// 对图片进行一些附加操作的回调，比如进行缩放，圆角等操作
 public typealias LGWebImageTransformBlock = ((UIImage?, URL?) -> UIImage?)
 
-/// <#Description#>
+/// 请求图片完成回调，注意不是成功回调，成功的时候参数1为正常UIImage或者子类（LGImage），失败error不为空
 public typealias LGWebImageCompletionBlock = ((UIImage?, URL?, LGWebImageSourceType, LGWebImageStage, Error?) -> Void)
 
-/// <#Description#>
+/// 图片下载和处理进度回调
 public typealias LGWebImageProgressBlock = LGProgressHandler
 
 
