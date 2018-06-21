@@ -540,6 +540,7 @@
 				"SWIFT_INCLUDE_PATHS[sdk=macosx*]" = "${SRCROOT}/ModuleMap/macosx";
 				"SWIFT_INCLUDE_PATHS[sdk=watchos*]" = "${SRCROOT}/ModuleMap/watchos";
 				"SWIFT_INCLUDE_PATHS[sdk=watchsimulator*]" = "${SRCROOT}/ModuleMap/watchsimulator";
+				SWIFT_OBJC_BRIDGING_HEADER = "";
 				SWIFT_VERSION = 4.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -580,6 +581,7 @@
 				"SWIFT_INCLUDE_PATHS[sdk=macosx*]" = "${SRCROOT}/ModuleMap/macosx";
 				"SWIFT_INCLUDE_PATHS[sdk=watchos*]" = "${SRCROOT}/ModuleMap/watchos";
 				"SWIFT_INCLUDE_PATHS[sdk=watchsimulator*]" = "${SRCROOT}/ModuleMap/watchsimulator";
+				SWIFT_OBJC_BRIDGING_HEADER = "";
 				SWIFT_VERSION = 4.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};

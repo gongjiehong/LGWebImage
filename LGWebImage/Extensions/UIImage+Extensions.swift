@@ -832,15 +832,15 @@ extension UIImage {
         switch imageOrientation {
         case UIImageOrientation.down, UIImageOrientation.downMirrored:
             transform = transform.translatedBy(x: size.width, y: size.height)
-            transform = transform.rotated(by: CGFloat(M_PI))
+            transform = transform.rotated(by: CGFloat.pi)
             break
         case UIImageOrientation.left, UIImageOrientation.leftMirrored:
             transform = transform.translatedBy(x: size.width, y: 0)
-            transform = transform.rotated(by: CGFloat(M_PI_2))
+            transform = transform.rotated(by: CGFloat.pi / 2.0)
             break
         case UIImageOrientation.right, UIImageOrientation.rightMirrored:
             transform = transform.translatedBy(x: 0, y: size.height)
-            transform = transform.rotated(by: CGFloat(-M_PI_2))
+            transform = transform.rotated(by: CGFloat.pi / -2.0)
             break
         case UIImageOrientation.up, UIImageOrientation.upMirrored:
             break
