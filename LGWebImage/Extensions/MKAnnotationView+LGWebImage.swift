@@ -142,7 +142,8 @@ public extension MKAnnotationView {
                                     duration = CFTimeInterval.lg_imageProgressiveFadeAnimationTime
                                 }
                                 transition.duration = duration
-                                transition.timingFunction = CAMediaTimingFunction(name: kCAMediaTimingFunctionEaseInEaseOut)
+                                let functionName = kCAMediaTimingFunctionEaseInEaseOut
+                                transition.timingFunction = CAMediaTimingFunction(name: functionName)
                                 transition.type = kCATransitionFade
                                 weakSelf.layer.add(transition, forKey: kLGWebImageFadeAnimationKey)
                             }

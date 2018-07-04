@@ -13,7 +13,6 @@ import ImageIO
 import Accelerate
 import Photos
 
-
 /// 图片类型枚举
 ///
 /// - unknow: unknow
@@ -124,6 +123,11 @@ public class LGImageDecoder {
     public private(set) var width: Int = 0
     public private(set) var height: Int = 0
     public private(set) var isFinalized: Bool = false
+    
+    /// CGContext.draw() 解压缩时会生成位图，导致内存暴增，所以超大的图片没有必要进行解压缩
+    /// 此处限制像素点超过1024px * 1024px的图片不做解压缩，也可以修改此参数自定义最大大小
+    public static var maxDecompressImageSize: Int = 1024 * 1024
+    
     
     deinit {
         if _webpSource != nil {
@@ -777,7 +781,8 @@ fileprivate extension LGImageDecoder {
         }
         
         if _source != nil {
-            var image = CGImageSourceCreateImageAtIndex(_source!, index, [kCGImageSourceShouldCache: true] as CFDictionary)
+            let options = [kCGImageSourceShouldCache: true] as CFDictionary
+            var image = CGImageSourceCreateImageAtIndex(_source!, index, options)
             if image != nil {
                 if extendToCanvas {
                     let width = image!.width
@@ -788,7 +793,9 @@ fileprivate extension LGImageDecoder {
                             decoded = true
                         }
                     } else {
-                        let bigmapInfo = LGCGBitmapByteOrder32Host.rawValue | CGImageAlphaInfo.premultipliedFirst.rawValue
+                        let biteOrderValue = LGCGBitmapByteOrder32Host.rawValue
+                        let alphaInfoValue = CGImageAlphaInfo.premultipliedFirst.rawValue
+                        let bigmapInfo = biteOrderValue | alphaInfoValue
                         if let context = CGContext(data: nil,
                                                    width: width,
                                                    height: height,
@@ -796,7 +803,10 @@ fileprivate extension LGImageDecoder {
                                                    bytesPerRow: 0,
                                                    space: LGCGColorSpaceDeviceRGB,
                                                    bitmapInfo: bigmapInfo) {
-                            context.draw(image!, in: CGRect(x: 0, y: self.height - height, width: width, height: height))
+                            context.draw(image!, in: CGRect(x: 0,
+                                                            y: self.height - height,
+                                                            width: width,
+                                                            height: height))
                             if let imageExtended = context.makeImage() {
                                 image = imageExtended;
                                 decoded = true
@@ -1568,6 +1578,10 @@ public func LGCGImageCreateDecodedCopy(image: CGImage?, decodeForDisplay: Bool) 
     }
     
     if decodeForDisplay {
+        if width * height > LGImageDecoder.maxDecompressImageSize {
+            return image
+        }
+        
         let alphaInfo = image.alphaInfo
         var hasAlpha = false
         // CGImageAlphaInfo.alphaOnly 为只有alpha，没有颜色数据
@@ -1749,7 +1763,11 @@ func LGCGImageDecodeToBitmapBufferWithAnyFormat(srcImage: CGImage?,
     src.height = vImagePixelCount(height)
     src.rowBytes = safeImage.bytesPerRow
     
-    error = vImageBuffer_Init(&src, vImagePixelCount(height), vImagePixelCount(width), 32, vImage_Flags(kvImageNoFlags))
+    error = vImageBuffer_Init(&src,
+                              vImagePixelCount(height),
+                              vImagePixelCount(width),
+                              32,
+                              vImage_Flags(kvImageNoFlags))
     if error != kvImageNoError {
         return false
     }
@@ -2083,7 +2101,11 @@ public func LGCGImageCreateCopyWith(image: CGImage?,
                            destBitmapInfo: destBitmapInfo)
 }
 
-public func LGCGImageCreate(withImage image: CGImage, transform: CGAffineTransform, destSize: CGSize, destBitmapInfo: CGBitmapInfo) -> CGImage? {
+public func LGCGImageCreate(withImage image: CGImage,
+                            transform: CGAffineTransform,
+                            destSize: CGSize,
+                            destBitmapInfo: CGBitmapInfo) -> CGImage?
+{
     let srcWidth: Int = image.width
     let srcHeight: Int = image.height
     let destWidth: Int = Int(destSize.width)
@@ -2159,7 +2181,10 @@ public func LGCGImageCreate(withImage image: CGImage, transform: CGAffineTransfo
         return tempImage
     }
     
-    if !LGCGImageDecodeToBitmapBufferWith32BitFormat(scrImage: tempImage, dest: destBuffer, bitmapInfo: destBitmapInfo) {
+    if !LGCGImageDecodeToBitmapBufferWith32BitFormat(scrImage: tempImage,
+                                                     dest: destBuffer,
+                                                     bitmapInfo: destBitmapInfo)
+    {
         return nil
     }
     

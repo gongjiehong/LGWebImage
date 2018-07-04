@@ -806,7 +806,8 @@ public class LGWebImageManager {
             progressiveContainerMap[targetRequest] = progressiveContainer
             var radius: CGFloat = 32
             if targetRequest.expectedContentLength > 0 {
-                radius *= 1.0 / (3.0 * CGFloat(writedData.count) / CGFloat(targetRequest.expectedContentLength) + 0.6) - 0.25
+                radius *= 1.0 / (3.0 * CGFloat(writedData.count) /
+                    CGFloat(targetRequest.expectedContentLength) + 0.6) - 0.25
             } else {
                 radius /= CGFloat(progressiveContainer.progressiveDisplayCount)
             }

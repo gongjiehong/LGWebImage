@@ -165,7 +165,8 @@ extension UIImage {
         }
         var resultArray = [UIImage]()
         for index in 0..<count {
-            guard let cgImage = CGImageSourceCreateImageAtIndex(source, index, nil) else {
+            let options = [kCGImageSourceShouldCache: true] as CFDictionary
+            guard let cgImage = CGImageSourceCreateImageAtIndex(source, index, options) else {
                 return nil
             }
             
@@ -175,7 +176,8 @@ extension UIImage {
                 return nil
             }
             
-            let alphaInfo = CGImageAlphaInfo(rawValue: cgImage.alphaInfo.rawValue & CGBitmapInfo.alphaInfoMask.rawValue)
+            let alphaInfoValue = cgImage.alphaInfo.rawValue & CGBitmapInfo.alphaInfoMask.rawValue
+            let alphaInfo = CGImageAlphaInfo(rawValue: alphaInfoValue)
             var hasAlpha = false
             if alphaInfo == CGImageAlphaInfo.premultipliedLast ||
                 alphaInfo == CGImageAlphaInfo.first ||
@@ -405,7 +407,7 @@ extension UIImage {
                                                  cgImage,
                                                  vImage_Flags(kvImagePrintDiagnosticsToConsole))
         if error != kvImageNoError {
-            //            println("*** error: vImageBuffer_InitWithCGImage returned error code \(error) for inputImage: \(self)")
+//            println("*** error: vImageBuffer_InitWithCGImage returned error code \(error) for inputImage: \(self)")
             return nil
         }
         
@@ -870,7 +872,10 @@ extension UIImage {
         ctx.concatenate(transform)
         
         switch imageOrientation {
-        case UIImageOrientation.left, UIImageOrientation.leftMirrored, UIImageOrientation.right, UIImageOrientation.rightMirrored:
+        case UIImageOrientation.left,
+             UIImageOrientation.leftMirrored,
+             UIImageOrientation.right,
+             UIImageOrientation.rightMirrored:
             ctx.draw(cgImage, in: CGRect(origin: CGPoint.zero, size: size))
         default:
             ctx.draw(cgImage, in: CGRect(origin: CGPoint.zero, size: size))

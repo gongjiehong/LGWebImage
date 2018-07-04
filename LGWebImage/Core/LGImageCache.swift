@@ -223,7 +223,9 @@ public class LGImageCache {
         }
     }
     
-    public func containsImage(forKey key: String, withType type: LGImageCacheType = LGImageCacheType.default) -> Bool {
+    public func containsImage(forKey key: String,
+                              withType type: LGImageCacheType = LGImageCacheType.default) -> Bool
+    {
         if type.contains(LGImageCacheType.memory) {
             return self.memoryCache.containsObject(forKey: key) == true
         }

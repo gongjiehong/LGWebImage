@@ -653,7 +653,10 @@ fileprivate extension LGDataStorage {
     }
     
     fileprivate func _dbInitlalize() -> Bool {
-        let sql = "pragma journal_mode = wal; pragma synchronous = normal; create table if not exists manifest (key text, filename text, size integer, inline_data blob, modification_time integer, last_access_time integer, extended_data blob, primary key(key)); create index if not exists last_access_time_idx on manifest(last_access_time);"
+        let sql =   "pragma journal_mode = wal; pragma synchronous = normal; create table if not exists manifest" +
+                    " (key text, filename text, size integer, inline_data blob, modification_time integer," +
+                    " last_access_time integer, extended_data blob, primary key(key)); " +
+                    "create index if not exists last_access_time_idx on manifest(last_access_time);"
         
         return _dbExecute(sql: sql)
     }
@@ -740,8 +743,13 @@ fileprivate extension LGDataStorage {
         }
     }
     
-    fileprivate func _dbSaveWith(key: String, value: Data, fileName: String? = nil, extendedData: Data? = nil) -> Bool {
-        let sql = "insert or replace into manifest (key, filename, size, inline_data, modification_time, last_access_time, extended_data) values (?1, ?2, ?3, ?4, ?5, ?6, ?7);"
+    fileprivate func _dbSaveWith(key: String,
+                                 value: Data,
+                                 fileName: String? = nil,
+                                 extendedData: Data? = nil) -> Bool
+    {
+        let sql =   "insert or replace into manifest (key, filename, size, inline_data," +
+                    " modification_time, last_access_time, extended_data) values (?1, ?2, ?3, ?4, ?5, ?6, ?7);"
         
         let stmt = _dbPrepareStmt(sql: sql)
         if stmt == nil {
@@ -803,7 +811,9 @@ fileprivate extension LGDataStorage {
             return false
         }
         let timestmap = Int32(time(nil))
-        let sql = String(format: "update manifest set last_access_time = %d where key in (%@);", timestmap, _dbJoinedKeys(keys: keys))
+        let sql = String(format: "update manifest set last_access_time = %d where key in (%@);",
+                         timestmap,
+                         _dbJoinedKeys(keys: keys))
         
         var stmt: OpaquePointer? = nil
         
@@ -936,12 +946,16 @@ fileprivate extension LGDataStorage {
         let fileNameString = (fileName != nil) ? String(cString: fileName!) : nil
         var valueData = Data()
         if inline_data != nil && inline_data_bytes > 0 {
-            valueData = Data(bytesNoCopy: UnsafeMutableRawPointer(mutating: inline_data!), count: Int(inline_data_bytes), deallocator: .none)
+            valueData = Data(bytesNoCopy: UnsafeMutableRawPointer(mutating: inline_data!),
+                             count: Int(inline_data_bytes),
+                             deallocator: .none)
         }
         
         var extendedData: Data? = nil
         if extended_data != nil && extended_data_bytes > 0 {
-            extendedData = Data(bytesNoCopy: UnsafeMutableRawPointer(mutating: extended_data!), count: Int(extended_data_bytes), deallocator: .none)
+            extendedData = Data(bytesNoCopy: UnsafeMutableRawPointer(mutating: extended_data!),
+                                count: Int(extended_data_bytes),
+                                deallocator: .none)
         }
         
         let item = LGDataStorageItem(key: keyString,
@@ -956,7 +970,15 @@ fileprivate extension LGDataStorage {
     }
     
     fileprivate func _dbGetItem(withKey key: String, excludeInlineData: Bool) -> LGDataStorageItem? {
-        let sql = excludeInlineData ? "select key, filename, size, modification_time, last_access_time, extended_data from manifest where key = ?1;" : "select key, filename, size, inline_data, modification_time, last_access_time, extended_data from manifest where key = ?1;"
+        var sql: String
+        if excludeInlineData {
+            sql =   "select key, filename, size, modification_time, last_access_time," +
+                    " extended_data from manifest where key = ?1;"
+        } else {
+            sql =   "select key, filename, size, inline_data, modification_time, last_access_time," +
+                    " extended_data from manifest where key = ?1;"
+        }
+        
         let stmt = _dbPrepareStmt(sql: sql)
         guard stmt != nil else {
             return nil
@@ -984,9 +1006,13 @@ fileprivate extension LGDataStorage {
         }
         let sql: String
         if excludeInlineData {
-            sql = String(format: "select key, filename, size, modification_time, last_access_time, extended_data from manifest where key in (%@);", _dbJoinedKeys(keys: keys))
+            sql = String(format: "select key, filename, size, modification_time, last_access_time," +
+                                 " extended_data from manifest where key in (%@);",
+                         _dbJoinedKeys(keys: keys))
         } else {
-            sql = String(format: "select key, filename, size, inline_data, modification_time, last_access_time, extended_data from manifest where key in (%@);", _dbJoinedKeys(keys: keys))
+            sql = String(format: "select key, filename, size, inline_data, modification_time, " +
+                                 "last_access_time, extended_data from manifest where key in (%@);",
+                         _dbJoinedKeys(keys: keys))
         }
         
         var stmt: OpaquePointer? = nil
@@ -1034,7 +1060,9 @@ fileprivate extension LGDataStorage {
                 return nil
             }
             else {
-                return Data(bytesNoCopy: UnsafeMutableRawPointer(mutating: inline_data!), count: Int(inline_data_bytes), deallocator: .none)
+                return Data(bytesNoCopy: UnsafeMutableRawPointer(mutating: inline_data!),
+                            count: Int(inline_data_bytes),
+                            deallocator: .none)
             }
         }
         else {

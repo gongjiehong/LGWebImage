@@ -202,7 +202,10 @@ open class LGAnimatedImageView: UIImageView {
         if image != nil {
             self.frame = CGRect(x: 0.0, y: 0.0, width: image!.size.width, height: image!.size.height)
         } else if (highlightedImage != nil) {
-            self.frame = CGRect(x: 0.0, y: 0.0, width: highlightedImage!.size.width, height: highlightedImage!.size.height)
+            self.frame = CGRect(x: 0.0,
+                                y: 0.0,
+                                width: highlightedImage!.size.width,
+                                height: highlightedImage!.size.height)
         }
         self.image = image
         self.highlightedImage = highlightedImage
