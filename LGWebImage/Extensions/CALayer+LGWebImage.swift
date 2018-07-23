@@ -143,9 +143,9 @@ public extension CALayer {
                                     duration = CFTimeInterval.lg_imageProgressiveFadeAnimationTime
                                 }
                                 transition.duration = duration
-                                let functionName = kCAMediaTimingFunctionEaseInEaseOut
+                                let functionName = CAMediaTimingFunctionName.easeInEaseOut
                                 transition.timingFunction = CAMediaTimingFunction(name: functionName)
-                                transition.type = kCATransitionFade
+                                transition.type = CATransitionType.fade
                                 weakSelf.add(transition, forKey: kLGWebImageFadeAnimationKey)
                             }
                             weakSelf.contents = result?.cgImage
@@ -233,7 +233,7 @@ public extension CALayer {
         }
         if let corner = self.lg_cornerRadius, corner.needSetCornerRadius == true {
             let size = self.bounds.size
-            let contentMode = LGCALayerContentsGravityToUIViewContentMode(self.contentsGravity)
+            let contentMode = self.contentsGravity.asUIViewContentMode()
             var result = image?.lg_imageByResizeToSize(size, contentMode: contentMode)
             result = result?.lg_imageByRoundCornerRadius(corner.cornerRadius,
                                                          corners: corner.corners,
@@ -246,33 +246,35 @@ public extension CALayer {
     }
 }
 
-fileprivate func LGCALayerContentsGravityToUIViewContentMode(_ contentsGravity: String) -> UIViewContentMode {
-    switch contentsGravity {
-    case kCAGravityTop:
-        return .top
-    case kCAGravityBottom:
-        return .bottom
-    case kCAGravityLeft:
-        return .left
-    case kCAGravityRight:
-        return .right
-    case kCAGravityTopLeft:
-        return .topLeft
-    case kCAGravityBottomLeft:
-        return .bottomLeft
-    case kCAGravityTopRight:
-        return .topRight
-    case kCAGravityBottomRight:
-        return .bottomRight
-    case kCAGravityCenter:
-        return .center
-    case kCAGravityResize:
-        return .scaleToFill
-    case kCAGravityResizeAspect:
-        return .scaleAspectFit
-    case kCAGravityResizeAspectFill:
-        return .scaleAspectFill
-    default:
-        return .scaleAspectFill
+extension CALayerContentsGravity {
+    public func asUIViewContentMode() -> UIView.ContentMode {
+        switch self {
+        case CALayerContentsGravity.top:
+            return .top
+        case CALayerContentsGravity.bottom:
+            return .bottom
+        case CALayerContentsGravity.left:
+            return .left
+        case CALayerContentsGravity.right:
+            return .right
+        case CALayerContentsGravity.topLeft:
+            return .topLeft
+        case CALayerContentsGravity.bottomLeft:
+            return .bottomLeft
+        case CALayerContentsGravity.topRight:
+            return .topRight
+        case CALayerContentsGravity.bottomRight:
+            return .bottomRight
+        case CALayerContentsGravity.center:
+            return .center
+        case CALayerContentsGravity.resize:
+            return .scaleToFill
+        case CALayerContentsGravity.resizeAspect:
+            return .scaleAspectFit
+        case CALayerContentsGravity.resizeAspectFill:
+            return .scaleAspectFill
+        default:
+            return .scaleAspectFill
+        }
     }
 }

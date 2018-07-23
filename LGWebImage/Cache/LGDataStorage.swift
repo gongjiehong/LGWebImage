@@ -564,7 +564,7 @@ public class LGDataStorage {
         }
         _dbClose()
         
-        if taskId != UIBackgroundTaskInvalid {
+        if taskId != UIBackgroundTaskIdentifier.invalid {
             UIApplication.shared.endBackgroundTask(taskId)
         }
     }

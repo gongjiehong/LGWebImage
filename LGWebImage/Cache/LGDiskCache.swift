@@ -76,7 +76,7 @@ public class LGDiskCache {
         _LGDiskCacheSetGlobal(cache: self)
         NotificationCenter.default.addObserver(self,
                                                selector: #selector(_appWillBeTerminated),
-                                               name: NSNotification.Name.UIApplicationWillTerminate,
+                                               name: UIApplication.willTerminateNotification,
                                                object: nil)
     }
     

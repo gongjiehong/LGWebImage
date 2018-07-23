@@ -87,11 +87,11 @@ public class LGMemoryCache {
         _ = pthread_mutex_init(&_lock, nil)
         NotificationCenter.default.addObserver(self,
                                                selector: #selector(_appDidEnterBackgroundNotification(_:)),
-                                               name: NSNotification.Name.UIApplicationDidEnterBackground,
+                                               name: UIApplication.didEnterBackgroundNotification,
                                                object: nil)
         NotificationCenter.default.addObserver(self,
                                                selector: #selector(_appDidReceiveMemoryWarningNotification(_:)),
-                                               name: NSNotification.Name.UIApplicationDidReceiveMemoryWarning,
+                                               name: UIApplication.didReceiveMemoryWarningNotification,
                                                object: nil)
         _trimRecursively()
     }

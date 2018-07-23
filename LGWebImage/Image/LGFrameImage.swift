@@ -75,7 +75,7 @@ public class LGFrameImage: UIImage {
         let firstData = try Data(contentsOf: firstPathUrl)
         let scale = firstPath.lg_pathScale
         if let firstCG = UIImage(data: firstData, scale: scale)?.lg_imageByDecoded.cgImage {
-            let result = LGFrameImage(cgImage: firstCG, scale: scale, orientation: UIImageOrientation.up)
+            let result = LGFrameImage(cgImage: firstCG, scale: scale, orientation: UIImage.Orientation.up)
             let frameBytes = firstCG.bytesPerRow
             result.oneFrameBytes = frameBytes
             result.imagePaths += imagePaths
@@ -109,7 +109,7 @@ public class LGFrameImage: UIImage {
         let firstData = imageDataArray[0]
         let scale = UIScreen.main.scale
         if let firstCG = UIImage(data: firstData, scale: scale)?.lg_imageByDecoded.cgImage {
-            let result = LGFrameImage(cgImage: firstCG, scale: scale, orientation: UIImageOrientation.up)
+            let result = LGFrameImage(cgImage: firstCG, scale: scale, orientation: UIImage.Orientation.up)
             let frameBytes = firstCG.bytesPerRow
             result.oneFrameBytes = frameBytes
             result.imageDatas += imageDataArray

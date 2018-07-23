@@ -23,10 +23,10 @@ class LGRemoteDownloadCell: UITableViewCell {
         }
     }
     
-    override init(style: UITableViewCellStyle, reuseIdentifier: String?) {
+    override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         exampleImageView = LGAnimatedImageView(frame: self.contentView.bounds)
-        exampleImageView.contentMode = UIViewContentMode.scaleAspectFit
+        exampleImageView.contentMode = UIView.ContentMode.scaleAspectFit
         self.contentView.addSubview(exampleImageView)
         
         progressView = UIProgressView(frame: CGRect(x: 0, y: 0, width: self.contentView.bounds.width, height: 20))
@@ -81,7 +81,7 @@ class LGRemoteDownloadCell: UITableViewCell {
 //                    }
 //
 //                    var result = tempImage.lg_imageByResizeToSize(weakSelf.exampleImageViewSize,
-//                                                                  contentMode: UIViewContentMode.scaleAspectFill)
+//                                                                  contentMode: UIView.ContentMode.scaleAspectFill)
 //                    result = result?.lg_imageByRoundCornerRadius(10.0,
 //                                                                 corners: UIRectCorner.allCorners,
 //                                                                 borderWidth: 2.0,
@@ -95,7 +95,7 @@ class LGRemoteDownloadCell: UITableViewCell {
 //                }
 //
 //                var result = image?.lg_imageByResizeToSize(weakSelf.exampleImageViewSize,
-//                                                           contentMode: UIViewContentMode.scaleAspectFill)
+//                                                           contentMode: UIView.ContentMode.scaleAspectFill)
 //                result = result?.lg_imageByRoundCornerRadius(10.0,
 //                                                             corners: UIRectCorner.allCorners,
 //                                                             borderWidth: 2.0,
@@ -166,7 +166,7 @@ class LGWebImageRemoteDownloadController: UITableViewController {
         {
             cell = tempCell
         } else {
-            cell = LGRemoteDownloadCell(style: UITableViewCellStyle.default, reuseIdentifier: kLGRemoteDownloadCellReuse)
+            cell = LGRemoteDownloadCell(style: UITableViewCell.CellStyle.default, reuseIdentifier: kLGRemoteDownloadCellReuse)
         }
         cell.imageURL = dataArray[indexPath.row]
         return cell

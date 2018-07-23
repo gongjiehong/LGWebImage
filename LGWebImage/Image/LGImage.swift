@@ -27,7 +27,7 @@ private var BundlePreferredScales: [CGFloat] {
 extension String {
     
     func lg_stringByAppendingNameScale(_ scale: CGFloat) -> String {
-        if fabs(scale - 1) <= CGFloat.ulpOfOne || self.count == 0 || self.hasSuffix("/") {
+        if abs(scale - 1) <= CGFloat.ulpOfOne || self.count == 0 || self.hasSuffix("/") {
             return self
         }
         return self.appendingFormat("@%dx", Int(scale))

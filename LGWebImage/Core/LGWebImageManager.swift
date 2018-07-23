@@ -321,8 +321,8 @@ public class LGWebImageManager {
                         guard let outputStream = OutputStream(url: destinationURL,
                                                               append: true) else { return }
                         
-                        inputStream.schedule(in: RunLoop.current, forMode: RunLoopMode.defaultRunLoopMode)
-                        outputStream.schedule(in: RunLoop.current, forMode: RunLoopMode.defaultRunLoopMode)
+                        inputStream.schedule(in: RunLoop.current, forMode: RunLoop.Mode.default)
+                        outputStream.schedule(in: RunLoop.current, forMode: RunLoop.Mode.default)
                         inputStream.open()
                         outputStream.open()
                         
@@ -344,8 +344,8 @@ public class LGWebImageManager {
                             }
                         }
                         
-                        inputStream.remove(from: RunLoop.current, forMode: RunLoopMode.defaultRunLoopMode)
-                        outputStream.remove(from: RunLoop.current, forMode: RunLoopMode.defaultRunLoopMode)
+                        inputStream.remove(from: RunLoop.current, forMode: RunLoop.Mode.default)
+                        outputStream.remove(from: RunLoop.current, forMode: RunLoop.Mode.default)
                         
                         inputStream.close()
                         outputStream.close()

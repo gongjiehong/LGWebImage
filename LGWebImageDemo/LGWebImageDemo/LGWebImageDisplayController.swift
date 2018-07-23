@@ -144,7 +144,7 @@ class LGWebImageDisplayController: UIViewController {
         contentView.addSubview(label)
         
         let imageView = LGAnimatedImageView(image: image)
-        imageView.contentMode = UIViewContentMode.scaleAspectFit
+        imageView.contentMode = UIView.ContentMode.scaleAspectFit
         imageView.frame = CGRect(x: originX, y: originY + 30.0, width: newSize.width, height: newSize.height)
         contentView.addSubview(imageView)
         

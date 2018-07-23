@@ -18,8 +18,8 @@ public extension UIButton {
         static var backgroundImageTokenKey = "lg_backgroundImageTokenKey"
     }
     
-    private typealias CallbackTokenContainer = [UIControlState.RawValue: LGWebImageCallbackToken]
-    private typealias URLContainer = [UIControlState.RawValue: LGURLConvertible]
+    private typealias CallbackTokenContainer = [UIControl.State.RawValue: LGWebImageCallbackToken]
+    private typealias URLContainer = [UIControl.State.RawValue: LGURLConvertible]
     
     private var imageTokenContainer: CallbackTokenContainer {
         set {
@@ -99,18 +99,18 @@ public extension UIButton {
     
     // MARK: - public functions
     // MARK: - 普通Image
-    public func lg_imageURLForState(_ state: UIControlState) -> LGURLConvertible? {
+    public func lg_imageURLForState(_ state: UIControl.State) -> LGURLConvertible? {
         return self.imageUrlContainer[state.rawValue]
     }
     
-    public func lg_cancelImageRequestForState(_ state: UIControlState) {
+    public func lg_cancelImageRequestForState(_ state: UIControl.State) {
         if let token = self.imageTokenContainer[state.rawValue] {
             LGWebImageManager.default.cancelWith(callbackToken: token)
         }
     }
     
     public func lg_setImageWithURL(_ imageURL: LGURLConvertible,
-                                   forState state: UIControlState,
+                                   forState state: UIControl.State,
                                    placeholder: UIImage? = nil,
                                    options: LGWebImageOptions = LGWebImageOptions.default,
                                    progressBlock: LGWebImageProgressBlock? = nil,
@@ -208,18 +208,18 @@ public extension UIButton {
     
     // MARK: -  backgroundImage
     
-    public func lg_backgroundImageURLForState(_ state: UIControlState) -> LGURLConvertible? {
+    public func lg_backgroundImageURLForState(_ state: UIControl.State) -> LGURLConvertible? {
         return self.backgroundImageUrlContainer[state.rawValue]
     }
     
-    public func lg_cancelBackgroundImageRequestForState(_ state: UIControlState) {
+    public func lg_cancelBackgroundImageRequestForState(_ state: UIControl.State) {
         if let token = self.backgroundImageTokenContainer[state.rawValue] {
             LGWebImageManager.default.cancelWith(callbackToken: token)
         }
     }
     
     public func lg_setBackgroundImageWithURL(_ imageURL: LGURLConvertible,
-                                             forState state: UIControlState,
+                                             forState state: UIControl.State,
                                              placeholder: UIImage? = nil,
                                              options: LGWebImageOptions = LGWebImageOptions.default,
                                              progressBlock: LGWebImageProgressBlock? = nil,
@@ -342,7 +342,7 @@ extension UIButton {
         }
     }
     
-    @objc func lg_setImage(_ image: UIImage?, for state: UIControlState) {
+    @objc func lg_setImage(_ image: UIImage?, for state: UIControl.State) {
         if self.lg_needSetCornerRadius == true {
             LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier)
             { [weak self] in
@@ -364,7 +364,7 @@ extension UIButton {
         }
     }
     
-    @objc func lg_setBackgroundImage(_ image: UIImage?, for state: UIControlState) {
+    @objc func lg_setBackgroundImage(_ image: UIImage?, for state: UIControl.State) {
         if self.lg_needSetCornerRadius == true {
             LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier) { [weak self] in
                 var result: UIImage? = nil
