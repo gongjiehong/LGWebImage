@@ -13,6 +13,7 @@
 		FE1F7964208D77DC005189A1 /* MKAnnotationView+LGWebImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE1F7963208D77DC005189A1 /* MKAnnotationView+LGWebImage.swift */; };
 		FE77F8112089A0F800DC1A83 /* UIButton+LGWebImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE77F8102089A0F800DC1A83 /* UIButton+LGWebImage.swift */; };
 		FE77F8172089F68B00DC1A83 /* UIView+LGWebImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE77F8162089F68B00DC1A83 /* UIView+LGWebImage.swift */; };
+		FE91954A214B6CAA00E340F5 /* LGWebImageWorkOperation.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE919549214B6CAA00E340F5 /* LGWebImageWorkOperation.swift */; };
 		FEA8D01C20845C01004B6385 /* UIImageView+LGWebImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEA8D01B20845C01004B6385 /* UIImageView+LGWebImage.swift */; };
 		FEB7BA7520735FC000639C13 /* LGWebImage.h in Headers */ = {isa = PBXBuildFile; fileRef = FEB7BA7320735FC000639C13 /* LGWebImage.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		FEB7BA982073602D00639C13 /* LGDiskCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA7C2073602D00639C13 /* LGDiskCache.swift */; };
@@ -76,6 +77,7 @@
 		FE1F7963208D77DC005189A1 /* MKAnnotationView+LGWebImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MKAnnotationView+LGWebImage.swift"; sourceTree = "<group>"; };
 		FE77F8102089A0F800DC1A83 /* UIButton+LGWebImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UIButton+LGWebImage.swift"; sourceTree = "<group>"; };
 		FE77F8162089F68B00DC1A83 /* UIView+LGWebImage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "UIView+LGWebImage.swift"; sourceTree = "<group>"; };
+		FE919549214B6CAA00E340F5 /* LGWebImageWorkOperation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LGWebImageWorkOperation.swift; sourceTree = "<group>"; };
 		FEA8D01B20845C01004B6385 /* UIImageView+LGWebImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UIImageView+LGWebImage.swift"; sourceTree = "<group>"; };
 		FEB7BA7020735FC000639C13 /* LGWebImage.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = LGWebImage.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		FEB7BA7320735FC000639C13 /* LGWebImage.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LGWebImage.h; sourceTree = "<group>"; };
@@ -231,6 +233,7 @@
 				FEB7BA922073602D00639C13 /* LGWebImageDefins.swift */,
 				FEB7BA942073602D00639C13 /* LGImageCache.swift */,
 				FEB7BA972073602D00639C13 /* LGWebImageManager.swift */,
+				FE919549214B6CAA00E340F5 /* LGWebImageWorkOperation.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -375,6 +378,7 @@
 				FEB7BAA02073602E00639C13 /* FileManager+Extensions.swift in Sources */,
 				FEB7BAA32073602E00639C13 /* LGImageCoderError.swift in Sources */,
 				FE77F8112089A0F800DC1A83 /* UIButton+LGWebImage.swift in Sources */,
+				FE91954A214B6CAA00E340F5 /* LGWebImageWorkOperation.swift in Sources */,
 				FEB7BAA82073602E00639C13 /* LGAnimatedImageView.swift in Sources */,
 				FEB7BAA42073602E00639C13 /* LGAPNGEocoder.swift in Sources */,
 				FE1F7964208D77DC005189A1 /* MKAnnotationView+LGWebImage.swift in Sources */,

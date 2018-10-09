@@ -116,16 +116,16 @@ public class LGWebImageManager {
     
     /// 处理队列
     fileprivate var _cacheQueue = DispatchQueue(label: "com.LGWebImageManager.cacheQueue",
-                                                qos: DispatchQoS.userInitiated,
+                                                qos: DispatchQoS.utility,
                                                 attributes: DispatchQueue.Attributes.concurrent,
                                                 autoreleaseFrequency: DispatchQueue.AutoreleaseFrequency.inherit,
-                                                target: nil)
+                                                target: DispatchQueue.utility)
     
     /// 下载URLSession管理器
     fileprivate var _sessionManager: LGURLSessionManager
     
     /// 大图的最大字节数，这里设置为1MB，超过1MB不处理渐进显示，在显示的时候根据屏幕大小生成缩略图进行展示
-    fileprivate let _maxFileSize: UInt64 = 1024 * 1024
+    fileprivate let _maxFileSize: UInt64 = 1_024 * 1_024
     
     private typealias ProgressBlockMapItem = [LGWebImageCallbackToken: LGWebImageProgressBlock]
     private typealias CompletionBlockMapItem = [LGWebImageCallbackToken: LGWebImageCompletionBlock]
@@ -367,7 +367,8 @@ public class LGWebImageManager {
                      **/
                     targetRequest = targetRequest!.downloadProgress(queue: self._cacheQueue)
                     {[unowned self] (progress) in
-                        self.invokeProgressBlocks(targetRequest!, progress: progress)
+                        guard let targetRequest = targetRequest else {return}
+                        self.invokeProgressBlocks(targetRequest, progress: progress)
                     }
 
                     // 下载完成结果处理
@@ -748,26 +749,26 @@ public class LGWebImageManager {
             return
         } else {
             if progressiveDecoder?.imageType == LGImageType.jpeg {
-                if !progressiveContainer.progressiveDetected {
-                    if let dic = progressiveDecoder?.frameProperties(atIndex: 0) {
-                        let jpeg = dic[kCGImagePropertyJFIFDictionary as String] as? [String: Any]
-                        if let isProg = jpeg?[kCGImagePropertyJFIFIsProgressive as String] as? NSNumber {
-                            if !isProg.boolValue {
-                                progressiveContainer.progressiveIgnored = true
-                                progressiveContainer.progressiveDecoder = nil
-                                progressiveContainerMap[targetRequest] = progressiveContainer
-                                return
-                            }
-                        } else {
-                            progressiveContainer.progressiveIgnored = true
-                            progressiveContainer.progressiveDecoder = nil
-                            progressiveContainerMap[targetRequest] = progressiveContainer
-                            return
-                        }
+//                if !progressiveContainer.progressiveDetected {
+//                    if let dic = progressiveDecoder?.frameProperties(atIndex: 0) {
+//                        let jpeg = dic[kCGImagePropertyJFIFDictionary as String] as? [String: Any]
+//                        if let isProg = jpeg?[kCGImagePropertyJFIFIsProgressive as String] as? NSNumber {
+//                            if !isProg.boolValue {
+//                                progressiveContainer.progressiveIgnored = true
+//                                progressiveContainer.progressiveDecoder = nil
+//                                progressiveContainerMap[targetRequest] = progressiveContainer
+//                                return
+//                            }
+//                        } else {
+//                            progressiveContainer.progressiveIgnored = true
+//                            progressiveContainer.progressiveDecoder = nil
+//                            progressiveContainerMap[targetRequest] = progressiveContainer
+//                            return
+//                        }
                         progressiveContainer.progressiveDetected = true
                         progressiveContainerMap[targetRequest] = progressiveContainer
-                    }
-                }
+//                    }
+//                }
                 let scanLength = writedData.count - progressiveContainer.progressiveScanedLength - 4
                 if scanLength <= 2 {return}
                 let endIndex = Data.Index(progressiveContainer.progressiveScanedLength + scanLength)
@@ -842,6 +843,7 @@ public class LGWebImageManager {
             for (token, _) in value {
                 if token == callbackToken {
                     self.progressBlocksMap[key]?[token] = nil
+                    key.cancel()
                 }
             }
         }

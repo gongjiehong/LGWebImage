@@ -30,7 +30,7 @@ public class LGDiskCache {
     public var costLimit: Int = Int.max
     
     /// 缓存对象的过期时间, 默认30天 60S * 60S * 24H * 30D = 2592000S
-    public var ageLimit: Int = 2592000
+    public var ageLimit: Int = 2_592_000
     
     /// 需要多少空余磁盘，无限制，不过在磁盘没有剩余空间时队列中中后面的任务会被放弃
     public var freeDiskSpaceLimit: Int = 0
@@ -42,7 +42,7 @@ public class LGDiskCache {
     
     public init() {
         self.path = FileManager.lg_cacheDirectoryPath + "/LGDiskCache"
-        self.inlineThreshold = 10240
+        self.inlineThreshold = 10_240
         
         _storage = LGDataStorage(path: path, type: LGDataStorageType.mixed)
         _lock = DispatchSemaphore(value: 1)
@@ -55,7 +55,7 @@ public class LGDiskCache {
     /// - Parameters:
     ///   - path: 缓存路径
     ///   - inlineThreshold: 缓存阈值，默认10KB（10 * 1024）
-    public init(path: String, inlineThreshold: Int = 10240) {
+    public init(path: String, inlineThreshold: Int = 10_240) {
         self.path = path
         self.inlineThreshold = inlineThreshold
         
@@ -87,7 +87,7 @@ public class LGDiskCache {
     ///   - path: 缓存路径
     ///   - inlineThreshold: 文件或SQLite直接存储的选择阈值，默认10KB
     /// - Returns: LGDiskCache
-    public class func instanse(with path: String, inlineThreshold: Int = 10240) -> LGDiskCache {
+    public class func instanse(with path: String, inlineThreshold: Int = 10_240) -> LGDiskCache {
         if let cache = _LGDiskCacheGetGlobal(path: path) {
             return cache
         }

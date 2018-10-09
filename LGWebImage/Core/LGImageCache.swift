@@ -63,9 +63,9 @@ public class LGImageCache {
         
         let diskCache = LGDiskCache(path: path)
         // 最大占用1GB磁盘 1024 * 1024 * 1024
-        diskCache.costLimit = 1024 * 1024 * 1024
+        diskCache.costLimit = 1_024 * 1_024 * 1_024
         // 最多存储30天，30天 * 24小时 * 60分 * 60秒
-        diskCache.ageLimit = 2592000
+        diskCache.ageLimit = 2_592_000
         self.memoryCache = memoryCache
         self.diskCache = diskCache
     }
@@ -93,7 +93,9 @@ public class LGImageCache {
                     }
                 }
             } else if imageData != nil {
-                lg_imageCacheDecodeQueue.async { [weak self] in
+                let workItem = DispatchWorkItem(qos: DispatchQoS.utility,
+                                                flags: DispatchWorkItemFlags.barrier)
+                { [weak self] in
                     guard let weakSelf = self else {
                         return
                     }
@@ -105,6 +107,7 @@ public class LGImageCache {
                                                        withCost: newImage.imageCost)
                     }
                 }
+                lg_imageCacheDecodeQueue.async(execute: workItem)
             }
         }
         
