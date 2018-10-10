@@ -842,6 +842,10 @@ public class LGWebImageManager {
             for (token, _) in value {
                 if token == callbackToken {
                     self.progressBlocksMap[key]?[token] = nil
+                    /// 物理内存大于1GB的机器不取消下载
+                    if UIDevice.physicalMemory <= 1_073_741_824 {
+                        key.cancel()
+                    }
                 }
             }
         }
@@ -921,9 +925,9 @@ extension CGImage {
     public func lastPixelFilled() -> Bool {
         if let cfData = self.dataProvider?.data {
             let dataLength = CFDataGetLength(cfData)
-            if let buffer = CFDataGetBytePtr(cfData) {
+            if let buffer = CFDataGetBytePtr(cfData), dataLength > 0 {
                 let lastByte = buffer[dataLength - 1]
-                return lastByte != 0
+                return lastByte == 0
             }
             return false
         } else {
@@ -1002,5 +1006,12 @@ fileprivate struct LGWebImageProgressiveContainer {
     var progressiveDisplayCount: Int = 0
     
     init() {
+    }
+}
+
+
+fileprivate extension UIDevice {
+    static var physicalMemory: UInt64 {
+        return ProcessInfo().physicalMemory
     }
 }

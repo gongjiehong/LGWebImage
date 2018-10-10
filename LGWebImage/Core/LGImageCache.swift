@@ -93,7 +93,9 @@ public class LGImageCache {
                     }
                 }
             } else if imageData != nil {
-                lg_imageCacheDecodeQueue.async { [weak self] in
+                let workItem = DispatchWorkItem(qos: DispatchQoS.utility,
+                                                flags: DispatchWorkItemFlags.barrier)
+                { [weak self] in
                     guard let weakSelf = self else {
                         return
                     }
@@ -105,6 +107,7 @@ public class LGImageCache {
                                                        withCost: newImage.imageCost)
                     }
                 }
+                lg_imageCacheDecodeQueue.async(execute: workItem)
             }
         }
         
