@@ -111,7 +111,7 @@ public class LGWebImageManager {
     public var cache: LGImageCache
     
     public var workQueue: DispatchQueue {
-        return _cacheQueue
+        return DispatchQueue.utility
     }
     
     /// 处理队列
@@ -749,9 +749,9 @@ public class LGWebImageManager {
             return
         } else {
             if progressiveDecoder?.imageType == LGImageType.jpeg {
-//                if !progressiveContainer.progressiveDetected {
-//                    if let dic = progressiveDecoder?.frameProperties(atIndex: 0) {
-//                        let jpeg = dic[kCGImagePropertyJFIFDictionary as String] as? [String: Any]
+                if !progressiveContainer.progressiveDetected {
+                    if let dic = progressiveDecoder?.frameProperties(atIndex: 0) {
+                        let jpeg = dic[kCGImagePropertyJFIFDictionary as String] as? [String: Any]
 //                        if let isProg = jpeg?[kCGImagePropertyJFIFIsProgressive as String] as? NSNumber {
 //                            if !isProg.boolValue {
 //                                progressiveContainer.progressiveIgnored = true
@@ -767,8 +767,8 @@ public class LGWebImageManager {
 //                        }
                         progressiveContainer.progressiveDetected = true
                         progressiveContainerMap[targetRequest] = progressiveContainer
-//                    }
-//                }
+                    }
+                }
                 let scanLength = writedData.count - progressiveContainer.progressiveScanedLength - 4
                 if scanLength <= 2 {return}
                 let endIndex = Data.Index(progressiveContainer.progressiveScanedLength + scanLength)
@@ -843,7 +843,6 @@ public class LGWebImageManager {
             for (token, _) in value {
                 if token == callbackToken {
                     self.progressBlocksMap[key]?[token] = nil
-                    key.cancel()
                 }
             }
         }
@@ -852,6 +851,10 @@ public class LGWebImageManager {
             for (token, _) in value {
                 if token == callbackToken {
                     self.completionBlocksMap[key]?[token] = nil
+                    /// 物理内存大于1GB的机器不取消下载
+                    if UIDevice.physicalMemory <= 1_073_741_824 {
+                        key.cancel()
+                    }
                 }
             }
         }
@@ -923,9 +926,9 @@ extension CGImage {
     public func lastPixelFilled() -> Bool {
         if let cfData = self.dataProvider?.data {
             let dataLength = CFDataGetLength(cfData)
-            if let buffer = CFDataGetBytePtr(cfData) {
+            if let buffer = CFDataGetBytePtr(cfData), dataLength >= 1 {
                 let lastByte = buffer[dataLength - 1]
-                return lastByte != 0
+                return lastByte == 0
             }
             return false
         } else {
@@ -1004,5 +1007,12 @@ fileprivate struct LGWebImageProgressiveContainer {
     var progressiveDisplayCount: Int = 0
     
     init() {
+    }
+}
+
+
+fileprivate extension UIDevice {
+    static var physicalMemory: UInt64 {
+        return ProcessInfo().physicalMemory
     }
 }
