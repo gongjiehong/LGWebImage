@@ -111,15 +111,15 @@ public class LGWebImageManager {
     public var cache: LGImageCache
     
     public var workQueue: DispatchQueue {
-        return DispatchQueue.utility
+        return _cacheQueue
     }
     
     /// 处理队列
     fileprivate var _cacheQueue = DispatchQueue(label: "com.LGWebImageManager.cacheQueue",
-                                                qos: DispatchQoS.utility,
+                                                qos: DispatchQoS.userInitiated,
                                                 attributes: DispatchQueue.Attributes.concurrent,
                                                 autoreleaseFrequency: DispatchQueue.AutoreleaseFrequency.inherit,
-                                                target: DispatchQueue.utility)
+                                                target: nil)
     
     /// 下载URLSession管理器
     fileprivate var _sessionManager: LGURLSessionManager
@@ -361,16 +361,15 @@ public class LGWebImageManager {
                                                          targetRequest: weakTargetRequest,
                                                          transform: transform)
                     })
-
+                    
                     /**
                      ** 处理进度回调
                      **/
                     targetRequest = targetRequest!.downloadProgress(queue: self._cacheQueue)
                     {[unowned self] (progress) in
-                        guard let targetRequest = targetRequest else {return}
-                        self.invokeProgressBlocks(targetRequest, progress: progress)
+                        self.invokeProgressBlocks(targetRequest!, progress: progress)
                     }
-
+                    
                     // 下载完成结果处理
                     targetRequest = targetRequest!.validate().response(queue: self._cacheQueue)
                     {[unowned self] (response) in
@@ -467,9 +466,9 @@ public class LGWebImageManager {
                                         }
                                         
                                     } catch {
-                                       checkNormalImage()
+                                        checkNormalImage()
                                     }
-
+                                    
                                 } else {
                                     checkNormalImage()
                                 }
@@ -503,7 +502,7 @@ public class LGWebImageManager {
                 if progress != nil && targetRequest != nil {
                     self.addProgressBlockToMap(targetRequest!, progress: progress!, callbackToken: token)
                 }
-
+                
                 /**
                  ** 将完成回调添加到缓存
                  **/
@@ -752,19 +751,19 @@ public class LGWebImageManager {
                 if !progressiveContainer.progressiveDetected {
                     if let dic = progressiveDecoder?.frameProperties(atIndex: 0) {
                         let jpeg = dic[kCGImagePropertyJFIFDictionary as String] as? [String: Any]
-//                        if let isProg = jpeg?[kCGImagePropertyJFIFIsProgressive as String] as? NSNumber {
-//                            if !isProg.boolValue {
-//                                progressiveContainer.progressiveIgnored = true
-//                                progressiveContainer.progressiveDecoder = nil
-//                                progressiveContainerMap[targetRequest] = progressiveContainer
-//                                return
-//                            }
-//                        } else {
-//                            progressiveContainer.progressiveIgnored = true
-//                            progressiveContainer.progressiveDecoder = nil
-//                            progressiveContainerMap[targetRequest] = progressiveContainer
-//                            return
-//                        }
+                        if let isProg = jpeg?[kCGImagePropertyJFIFIsProgressive as String] as? NSNumber {
+                            if !isProg.boolValue {
+                                progressiveContainer.progressiveIgnored = true
+                                progressiveContainer.progressiveDecoder = nil
+                                progressiveContainerMap[targetRequest] = progressiveContainer
+                                return
+                            }
+                        } else {
+                            progressiveContainer.progressiveIgnored = true
+                            progressiveContainer.progressiveDecoder = nil
+                            progressiveContainerMap[targetRequest] = progressiveContainer
+                            return
+                        }
                         progressiveContainer.progressiveDetected = true
                         progressiveContainerMap[targetRequest] = progressiveContainer
                     }
@@ -863,7 +862,7 @@ public class LGWebImageManager {
     /// 清理所有缓存，包含内存缓存，磁盘缓存，断点续传临时文件等
     ///
     /// - Parameter block: 清理完成后的回调
-
+    
     public func clearAllCache(withBolck block: (() -> Void)?) {
         var clearCacheMark: Int = 0 {
             didSet {
@@ -985,6 +984,13 @@ fileprivate class LGURLBlackList {
     }
 }
 
+fileprivate extension UIDevice {
+    static let physicalMemory: UInt64 = {
+        return ProcessInfo().physicalMemory
+    }()
+}
+
+
 // MARK: -  下载过程中出现的错误枚举
 
 /// 下载过程中出现的错误枚举
@@ -1007,12 +1013,5 @@ fileprivate struct LGWebImageProgressiveContainer {
     var progressiveDisplayCount: Int = 0
     
     init() {
-    }
-}
-
-
-fileprivate extension UIDevice {
-    static var physicalMemory: UInt64 {
-        return ProcessInfo().physicalMemory
     }
 }

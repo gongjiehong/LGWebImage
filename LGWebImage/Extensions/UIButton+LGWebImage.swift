@@ -145,20 +145,7 @@ public extension UIButton {
             !options.contains(LGWebImageOptions.ignorePlaceHolder) &&
             placeholder != nil
         {
-            LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier) { [weak self] in
-                var placeholderImage: UIImage? = nil
-                if let image = placeholder?.lg_imageByDecoded {
-                    if let cornerRadiusImage = self?.cornerRadius(image)
-                    {
-                        placeholderImage = cornerRadiusImage
-                    } else {
-                        placeholderImage = image
-                    }
-                    DispatchQueue.main.async { [weak self] in
-                        self?.setImage(placeholderImage, for: state)
-                    }
-                }
-            }
+            self.setImage(placeholder, for: state)
         }
         
         if self.imageUrlContainer[state.rawValue] == nil {
@@ -254,20 +241,7 @@ public extension UIButton {
             !options.contains(LGWebImageOptions.ignorePlaceHolder) &&
             placeholder != nil
         {
-            LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier) { [weak self] in
-                var placeholderImage: UIImage? = nil
-                if let image = placeholder?.lg_imageByDecoded {
-                    if let cornerRadiusImage = self?.cornerRadius(image)
-                    {
-                        placeholderImage = cornerRadiusImage
-                    } else {
-                        placeholderImage = image
-                    }
-                    DispatchQueue.main.async { [weak self] in
-                        self?.setBackgroundImage(placeholderImage, for: state)
-                    }
-                }
-            }
+            self.setBackgroundImage(placeholder, for: state)
         }
         
         if self.backgroundImageTokenContainer[state.rawValue] == nil {
@@ -346,16 +320,18 @@ extension UIButton {
         if self.lg_needSetCornerRadius == true {
             LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier)
             { [weak self] in
+                guard let weakSelf = self else {return}
                 var result: UIImage? = nil
                 if let tempImage = image?.lg_imageByDecoded {
-                    if let cornerRadiusImage = self?.cornerRadius(tempImage)
+                    if let cornerRadiusImage = weakSelf.cornerRadius(tempImage)
                     {
                         result = cornerRadiusImage
                     } else {
                         result = tempImage
                     }
                     DispatchQueue.main.async { [weak self] in
-                        self?.lg_setImage(result, for: state)
+                        guard let weakSelf = self else {return}
+                        weakSelf.lg_setImage(result, for: state)
                     }
                 }
             }
@@ -367,16 +343,18 @@ extension UIButton {
     @objc func lg_setBackgroundImage(_ image: UIImage?, for state: UIControl.State) {
         if self.lg_needSetCornerRadius == true {
             LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier) { [weak self] in
+                guard let weakSelf = self else {return}
                 var result: UIImage? = nil
                 if let tempImage = image?.lg_imageByDecoded {
-                    if let cornerRadiusImage = self?.cornerRadius(tempImage)
+                    if let cornerRadiusImage = weakSelf.cornerRadius(tempImage)
                     {
                         result = cornerRadiusImage
                     } else {
                         result = tempImage
                     }
                     DispatchQueue.main.async { [weak self] in
-                        self?.lg_setBackgroundImage(result, for: state)
+                        guard let weakSelf = self else {return}
+                        weakSelf.lg_setBackgroundImage(result, for: state)
                     }
                 }
             }

@@ -88,13 +88,7 @@ public extension UIImageView {
         }
         
         if self.image == nil && !options.contains(LGWebImageOptions.ignorePlaceHolder) && placeholder != nil {
-            LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier) { [weak self] in
-                if let image = placeholder?.lg_imageByDecoded {
-                    DispatchQueue.main.async { [weak self] in
-                        self?.image = image
-                    }
-                }
-            }
+            self.image = placeholder
         }
         
         if self.lg_imageURL == nil {
@@ -245,11 +239,7 @@ public extension UIImageView {
             placeholder != nil
         {
             LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier) { [weak self] in
-                if let image = placeholder?.lg_imageByDecoded {
-                    DispatchQueue.main.async { [weak self] in
-                        self?.highlightedImage = image
-                    }
-                }
+                self?.highlightedImage = placeholder
             }
         }
         
@@ -357,16 +347,18 @@ extension UIImageView {
         if self.lg_needSetCornerRadius == true {
             LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier)
             { [weak self] in
+                guard let weakSelf = self else {return}
                 var result: UIImage? = nil
                 if let tempImage = image?.lg_imageByDecoded {
-                    if let cornerRadiusImage = self?.cornerRadius(tempImage)
+                    if let cornerRadiusImage = weakSelf.cornerRadius(tempImage)
                     {
                         result = cornerRadiusImage
                     } else {
                         result = tempImage
                     }
                     DispatchQueue.main.async { [weak self] in
-                        self?.lg_setImage(result)
+                        guard let weakSelf = self else {return}
+                        weakSelf.lg_setImage(result)
                     }
                 }
             }
@@ -378,16 +370,18 @@ extension UIImageView {
     @objc func lg_setHighlightedImage(_ image: UIImage?) {
         if self.lg_needSetCornerRadius == true {
             LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier) { [weak self] in
+                guard let weakSelf = self else {return}
                 var result: UIImage? = nil
                 if let tempImage = image?.lg_imageByDecoded {
-                    if let cornerRadiusImage = self?.cornerRadius(tempImage)
+                    if let cornerRadiusImage = weakSelf.cornerRadius(tempImage)
                     {
                         result = cornerRadiusImage
                     } else {
                         result = tempImage
                     }
                     DispatchQueue.main.async { [weak self] in
-                        self?.lg_setHighlightedImage(result)
+                        guard let weakSelf = self else {return}
+                        weakSelf.lg_setHighlightedImage(result)
                     }
                 }
             }
