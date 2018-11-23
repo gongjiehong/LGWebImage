@@ -2346,31 +2346,33 @@ public extension UIImage {
         return result
     }
     
-    public func lg_savetoAlbumWith(completionBlock: @escaping (Bool, PHAsset?) -> Void) {
+    public func lg_savetoAlbumWith(completionBlock: @escaping (Bool, PHAsset?, Error?) -> Void) {
         var localId: String?
         PHPhotoLibrary.shared().performChanges({
             let result = PHAssetChangeRequest.creationRequestForAsset(from: self)
             localId = result.placeholderForCreatedAsset?.localIdentifier
-        }) { (isSuccess, error) in
-            if isSuccess {
+        }) { (isSucceed, error) in
+            if isSucceed {
                 if localId != nil {
-                    let result = PHAsset.fetchAssets(withBurstIdentifier: localId!, options: nil)
-                    let asset = result[0]
-                    if Thread.current.isMainThread {
-                        completionBlock(true, asset)
-                    } else {
-                        DispatchQueue.main.async {
-                            completionBlock(true, asset)
+                    let result = PHAsset.fetchAssets(withLocalIdentifiers: [localId ?? ""], options: nil)
+                    if result.count > 0 {
+                        let asset = result[0]
+                        if Thread.current.isMainThread {
+                            completionBlock(true, asset, nil)
+                        } else {
+                            DispatchQueue.main.async {
+                                completionBlock(true, asset, nil)
+                            }
                         }
+                        return
                     }
-                    return
                 }
             }
             if Thread.current.isMainThread {
-                completionBlock(false, nil)
+                completionBlock(false, nil, error)
             } else {
                 DispatchQueue.main.async {
-                    completionBlock(false, nil)
+                    completionBlock(false, nil, error)
                 }
             }
         }
