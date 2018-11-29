@@ -853,6 +853,10 @@ public class LGWebImageManager {
                     /// 物理内存大于1GB的机器不取消下载
                     if UIDevice.physicalMemory <= 1_073_741_824 {
                         key.cancel()
+                        if let urlString = key.request?.url?.absoluteString {
+                            self.requestContainer[urlString] = nil
+                        }
+//                        self.requestContainer[]
                     }
                 }
             }
