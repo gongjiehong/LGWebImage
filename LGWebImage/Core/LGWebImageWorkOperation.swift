@@ -9,47 +9,6 @@
 import UIKit
 import LGHTTPRequest
 
-//fileprivate class LGRequestMap {
-//    var requestTable: NSMapTable<NSString, LGDataRequest>
-//    var lock: NSLock = NSLock()
-//
-//    init() {
-//        requestTable = NSMapTable<NSString, LGDataRequest>(keyOptions: NSPointerFunctions.Options.strongMemory,
-//                                                           valueOptions: NSPointerFunctions.Options.weakMemory,
-//                                                           capacity: 0)
-//    }
-//
-//    static let `default`: LGRequestMap = {
-//        return LGRequestMap()
-//    }()
-//
-//    func object(forKey aKey: NSString?) -> LGDataRequest? {
-//        lock.lock()
-//        defer {
-//            lock.unlock()
-//        }
-//
-//        return self.requestTable.object(forKey: aKey)
-//    }
-//
-//    func removeObject(forKey aKey: NSString?) {
-//        lock.lock()
-//        defer {
-//            lock.unlock()
-//        }
-//        self.requestTable.removeObject(forKey: aKey)
-//    }
-//
-//    func setObject(_ anObject: LGDataRequest?, forKey aKey: NSString?) {
-//        lock.lock()
-//        defer {
-//            lock.unlock()
-//        }
-//        self.requestTable.setObject(anObject, forKey: aKey)
-//    }
-//
-//}
-
 public class LGWebImageWorkOperation: Operation {
     private var _isFinished: Bool = false
     public override var isFinished: Bool {
@@ -344,13 +303,12 @@ public class LGWebImageWorkOperation: Operation {
                             decoder.imageType != LGImageType.unknow
                         {
                             if var image = decoder.largePictureCreateThumbnail() {
-                                self.cache.setImage(image: image, forKey: originURL.absoluteString)
-                                self.invokeCompletionBlocks(weakTargetRequest,
-                                                            image: image,
-                                                            url: originURL,
-                                                            sourceType: .memoryCacheFast,
-                                                            imageStatus: .finished,
-                                                            error: nil)
+                                imageCache.setImage(image: image, forKey: originURL.absoluteString)
+                                self.invokeCompletionOnMainThread(image,
+                                                                  remoteURL: originURL,
+                                                                  sourceType: LGWebImageSourceType.memoryCacheFast,
+                                                                  imageStage: LGWebImageStage.finished,
+                                                                  error: nil)
                             } else {
                                 checkNormalImage()
                             }
