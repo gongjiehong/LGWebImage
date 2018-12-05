@@ -100,7 +100,6 @@ public extension CALayer {
                     progressBlock?(progress)
                 }
         },
-                                                                                  transform: transformBlock,
                                                                                   completion:
             {[weak self] (resultImage, url, sourceType, imageStage, error) in
                 if resultImage != nil && error == nil {

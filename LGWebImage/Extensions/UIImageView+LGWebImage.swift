@@ -62,7 +62,6 @@ public extension UIImageView {
                                    placeholder: UIImage? = nil,
                                    options: LGWebImageOptions = LGWebImageOptions.default,
                                    progressBlock: LGWebImageProgressBlock? = nil,
-                                   transformBlock: LGWebImageTransformBlock? = nil,
                                    completionBlock: LGWebImageCompletionBlock? = nil)
     {
         self.lg_cancelCurrentNormalImageRequest()
@@ -103,7 +102,6 @@ public extension UIImageView {
                     progressBlock?(progress)
                 }
         },
-                                                                                  transform: transformBlock,
                                                                                   completion:
             {[weak self] (resultImage, url, sourceType, imageStage, error) in
                 if resultImage != nil && error == nil {
@@ -255,7 +253,6 @@ public extension UIImageView {
                     progressBlock?(progress)
                 }
         },
-                                                                                       transform: transformBlock,
                                                                                        completion:
             {[weak self] (resultImage, url, sourceType, imageStage, error) in
                 if resultImage != nil && error == nil {

@@ -193,15 +193,12 @@ public class LGWebImageManager {
     public func downloadImageWith(url: LGURLConvertible,
                                   options: LGWebImageOptions = LGWebImageOptions.default,
                                   progress: LGWebImageProgressBlock? = nil,
-                                  transform: LGWebImageTransformBlock? = nil,
                                   completion: LGWebImageCompletionBlock? = nil) -> LGWebImageCallbackToken
     {
         let token = UUID().uuidString + "\(CACurrentMediaTime())"
         
-        
         tokenValidMap[token] = true
-        
-        
+
         _cacheQueue.async { [unowned self] in
             // 处理忽略下载失败的URL和和名单
             if options.contains(LGWebImageOptions.ignoreFailedURL) &&
@@ -247,11 +244,6 @@ public class LGWebImageManager {
                 }
                 
                 if var image = self.cache.getImage(forKey: urlString, withType: cacheType) {
-                    if let transformBlock = transform {
-                        if let temp = transformBlock(image, remoteURL) {
-                            image = temp
-                        }
-                    }
                     if self.tokenValidMap[token] == true {
                         completion?(image,
                                     remoteURL,
@@ -271,6 +263,8 @@ public class LGWebImageManager {
                 /**
                  ** 处理唯一request，保证每个独立URL只处理一次
                  **/
+                
+                
                 var targetRequest: LGDataRequest?
                 let request = self.requestContainer[urlString]
                 if request != nil {
@@ -327,9 +321,9 @@ public class LGWebImageManager {
                         outputStream.open()
                         
                         while inputStream.hasBytesAvailable && outputStream.hasSpaceAvailable {
-                            var buffer = [UInt8](repeating: 0, count: 1024)
+                            var buffer = [UInt8](repeating: 0, count: 1_024)
                             
-                            let bytesRead = inputStream.read(&buffer, maxLength: 1024)
+                            let bytesRead = inputStream.read(&buffer, maxLength: 1_024)
                             if inputStream.streamError != nil || bytesRead < 0 {
                                 break
                             }
@@ -358,8 +352,7 @@ public class LGWebImageManager {
                         }
                         self.decodeDataToUIImageIfNeeded(receivedData,
                                                          options: options,
-                                                         targetRequest: weakTargetRequest,
-                                                         transform: transform)
+                                                         targetRequest: weakTargetRequest)
                     })
                     
                     /**
@@ -397,11 +390,6 @@ public class LGWebImageManager {
                                                                                      extendedData: nil),
                                                                          forKey: originURL.absoluteString,
                                                                          withCost: image.imageCost)
-                                        if let transformBlock = transform {
-                                            if let temp = transformBlock(image, remoteURL) {
-                                                image = temp
-                                            }
-                                        }
                                         self.invokeCompletionBlocks(weakTargetRequest,
                                                                     image: image,
                                                                     url: originURL,
@@ -411,11 +399,6 @@ public class LGWebImageManager {
                                     } else if var image = self.cache.getImage(forKey: originURL.absoluteString,
                                                                               withType: LGImageCacheType.disk)
                                     {
-                                        if let transformBlock = transform {
-                                            if let temp = transformBlock(image, remoteURL) {
-                                                image = temp
-                                            }
-                                        }
                                         self.invokeCompletionBlocks(weakTargetRequest,
                                                                     image: image,
                                                                     url: originURL,
@@ -447,11 +430,6 @@ public class LGWebImageManager {
                                         {
                                             if var image = decoder.largePictureCreateThumbnail() {
                                                 self.cache.setImage(image: image, forKey: originURL.absoluteString)
-                                                if let transformBlock = transform {
-                                                    if let temp = transformBlock(image, remoteURL) {
-                                                        image = temp
-                                                    }
-                                                }
                                                 self.invokeCompletionBlocks(weakTargetRequest,
                                                                             image: image,
                                                                             url: originURL,
@@ -652,8 +630,7 @@ public class LGWebImageManager {
     ///   - targetRequest: 对应的请求
     private func decodeDataToUIImageIfNeeded(_ data: Data,
                                              options: LGWebImageOptions,
-                                             targetRequest: LGDataRequest,
-                                             transform: LGWebImageTransformBlock? = nil)
+                                             targetRequest: LGDataRequest)
     {
         // 图片解码会占用大量内存，如果大于1MB则直接不进行处理
         if targetRequest.expectedContentLength >= _maxFileSize {
@@ -733,11 +710,6 @@ public class LGWebImageManager {
         if !progressiveBlur {
             let frame = progressiveDecoder?.frameAtIndex(index: 0, decodeForDisplay: true)
             if var tempImage = frame?.image {
-                if let transformBlock = transform {
-                    if let temp = transformBlock(tempImage, targetRequest.request?.url) {
-                        tempImage = temp
-                    }
-                }
                 self.invokeCompletionBlocks(targetRequest,
                                             image: tempImage,
                                             url: targetRequest.request?.url,
@@ -817,11 +789,6 @@ public class LGWebImageManager {
                                                   saturation: 1,
                                                   maskImage: nil)
             if temp != nil {
-                if let transformBlock = transform {
-                    if let tempImage = transformBlock(temp, targetRequest.request?.url) {
-                        temp = tempImage
-                    }
-                }
                 self.invokeCompletionBlocks(targetRequest,
                                             image: temp,
                                             url: targetRequest.request?.url,
@@ -924,21 +891,7 @@ fileprivate func networkIndicatorStop() {
     }
 }
 
-// MARK: - 填充最后个像素
-extension CGImage {
-    public func lastPixelFilled() -> Bool {
-        if let cfData = self.dataProvider?.data {
-            let dataLength = CFDataGetLength(cfData)
-            if let buffer = CFDataGetBytePtr(cfData), dataLength >= 1 {
-                let lastByte = buffer[dataLength - 1]
-                return lastByte == 0
-            }
-            return false
-        } else {
-            return false
-        }
-    }
-}
+
 
 // MARK: - LGHTTPRequest Hashable
 extension LGHTTPRequest: Hashable {

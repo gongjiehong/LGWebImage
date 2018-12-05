@@ -299,13 +299,13 @@ open class LGAnimatedImageView: UIImageView {
             return
         }
         if bytesCount == 0 {
-            bytesCount = 1024
+            bytesCount = 1_024
         }
         
         let total = lg_totalSizeOfTheDeviceMemory
         let free = LGDeviceMemoryFree()
         var maxCount = min(Double(total) * 0.2, Double(free) * 0.6)
-        maxCount = max(maxCount, 10 * 1024 * 1024)
+        maxCount = max(maxCount, 10 * 1_024 * 1_024)
         if maxBufferSize != 0 {
             maxCount = maxCount > Double(maxBufferSize) ? Double(maxBufferSize) : maxCount
         }

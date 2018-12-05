@@ -126,7 +126,7 @@ public class LGImageDecoder {
     
     /// CGContext.draw() 解压缩时会生成位图，导致内存暴增，所以超大的图片没有必要进行解压缩
     /// 此处限制像素点超过1024px * 1024px的图片不做解压缩，也可以修改此参数自定义最大大小
-    public static var maxDecompressImageSize: Int = 1024 * 1024
+    public static var maxDecompressImageSize: Int = 1_024 * 1_024
     
     
     deinit {

@@ -75,6 +75,8 @@
 		FE144F172074BA8100415B4E /* String+Extensions.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "String+Extensions.swift"; sourceTree = "<group>"; };
 		FE1F795D208D7117005189A1 /* CALayer+LGWebImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CALayer+LGWebImage.swift"; sourceTree = "<group>"; };
 		FE1F7963208D77DC005189A1 /* MKAnnotationView+LGWebImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MKAnnotationView+LGWebImage.swift"; sourceTree = "<group>"; };
+		FE4FB96921B682970067A8AA /* LGWebImage_watchOS.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LGWebImage_watchOS.h; sourceTree = "<group>"; };
+		FE4FB96A21B682970067A8AA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		FE77F8102089A0F800DC1A83 /* UIButton+LGWebImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UIButton+LGWebImage.swift"; sourceTree = "<group>"; };
 		FE77F8162089F68B00DC1A83 /* UIView+LGWebImage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "UIView+LGWebImage.swift"; sourceTree = "<group>"; };
 		FE919549214B6CAA00E340F5 /* LGWebImageWorkOperation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LGWebImageWorkOperation.swift; sourceTree = "<group>"; };
@@ -143,6 +145,15 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		FE4FB96821B682970067A8AA /* LGWebImage-watchOS */ = {
+			isa = PBXGroup;
+			children = (
+				FE4FB96921B682970067A8AA /* LGWebImage_watchOS.h */,
+				FE4FB96A21B682970067A8AA /* Info.plist */,
+			);
+			path = "LGWebImage-watchOS";
+			sourceTree = "<group>";
+		};
 		FEB7BA6620735FC000639C13 = {
 			isa = PBXGroup;
 			children = (
@@ -150,6 +161,7 @@
 				FE144EF52074B87600415B4E /* LGHTTPRequest.xcodeproj */,
 				FED3EAC1207B4BDA00AA224F /* WebP.framework */,
 				FEB7BA7220735FC000639C13 /* LGWebImage */,
+				FE4FB96821B682970067A8AA /* LGWebImage-watchOS */,
 				FEB7BA7120735FC000639C13 /* Products */,
 				FE144F042074B88000415B4E /* Frameworks */,
 			);
