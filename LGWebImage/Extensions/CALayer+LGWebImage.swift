@@ -176,7 +176,7 @@ extension CALayer {
     
     @objc func lg_setContents(_ contentsToSet: Any?) {
         if self.lg_needSetCornerRadius == true {
-            LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier)
+            lg_setImageQueue.async(flags: DispatchWorkItemFlags.barrier)
             { [weak self] in
                 guard let weakSelf = self else {return}
                 var result: UIImage? = nil

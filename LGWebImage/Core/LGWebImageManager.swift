@@ -12,91 +12,8 @@ import ImageIO
 import MapKit
 
 
-/// 将Dictionary封装为线程安全的Dictionary
-public struct LGThreadSafeDictionary<Key, Value>: Sequence where Key : Hashable {
-    
-    /// 原始Dictionary容器
-    private var container: Dictionary<Key, Value> = Dictionary<Key, Value>()
-    
-    /// 线程锁
-    private var lock: NSLock = NSLock()
-    
-    /// 元素类型定义
-    public typealias Element = (key: Key, value: Value)
-    
-    public init() {
-    }
-    
-    public subscript(key: Key) -> Value? {
-        get {
-            lock.lock()
-            defer {
-                lock.unlock()
-            }
-            return self.container[key]
-        } set {
-            lock.lock()
-            defer {
-                lock.unlock()
-            }
-            self.container[key] = newValue
-        }
-    }
-    
-    public var count: Int {
-        lock.lock()
-        defer {
-            lock.unlock()
-        }
-        return self.container.count
-    }
-    
-    public var isEmpty: Bool {
-        return self.count == 0
-    }
-    
-    @discardableResult
-    public mutating func removeValue(forKey key: Key) -> Value? {
-        lock.lock()
-        defer {
-            lock.unlock()
-        }
-        return self.container.removeValue(forKey: key)
-    }
-    
-    public mutating func removeAll(keepingCapacity keepCapacity: Bool = false) {
-        lock.lock()
-        defer {
-            lock.unlock()
-        }
-        self.container.removeAll(keepingCapacity: keepCapacity)
-    }
-    
-    
-    public var keys: Dictionary<Key, Value>.Keys {
-        lock.lock()
-        defer {
-            lock.unlock()
-        }
-        return self.container.keys
-    }
-    
-    
-    public var values: Dictionary<Key, Value>.Values {
-        lock.lock()
-        defer {
-            lock.unlock()
-        }
-        return self.container.values
-    }
-    
-    public func makeIterator() -> DictionaryIterator<Key, Value> {
-        lock.lock()
-        defer {
-            lock.unlock()
-        }
-        return self.container.makeIterator()
-    }
+internal var lg_setImageQueue: DispatchQueue {
+    return DispatchQueue.userInteractive
 }
 
 /// 标识请求回调的Token类型定义，用于取消回调，但不取消下载
@@ -106,7 +23,7 @@ public typealias LGWebImageCallbackToken = String
 public class LGWebImageManager {
     private lazy var workQueue: OperationQueue = {
         let queue = OperationQueue()
-        queue.qualityOfService = .utility
+        queue.qualityOfService = .userInitiated
         queue.maxConcurrentOperationCount = 10
         queue.isSuspended = false
         return queue
@@ -190,10 +107,8 @@ public class LGWebImageManager {
     ///
     /// - Parameter callbackToken: 某次请求对应的token
     public func cancelWith(callbackToken: LGWebImageCallbackToken) {
-        for operation in self.workQueue.operations {
-            if operation.isExecuting {
-                operation.cancel()
-            }
+        for operation in self.workQueue.operations where operation.name == callbackToken {
+            operation.cancel()
         }
     }
     
@@ -204,7 +119,7 @@ public class LGWebImageManager {
     public func clearAllCache(withBolck block: (() -> Void)?) {
         var clearCacheMark: Int = 0 {
             didSet {
-                if clearCacheMark == 2 {
+                if clearCacheMark == 1 {
                     block?()
                 }
             }
@@ -213,130 +128,5 @@ public class LGWebImageManager {
         LGImageCache.default.clearAllCache {
             clearCacheMark += 1
         }
-        DispatchQueue.background.async { [unowned self] in
-//            let dir = NSTemporaryDirectory() + self.tempDirSuffix
-//            do {
-//                try FileManager.default.removeItem(at: URL(fileURLWithPath: dir))
-//                self.createTempFileDirIfNeeded()
-//                clearCacheMark += 1
-//            } catch {
-//                clearCacheMark += 1
-//            }
-        }
-    }
-
-}
-
-fileprivate var currentActiveRequestCount: Int = 0 {
-    didSet {
-        UIApplication.shared.isNetworkActivityIndicatorVisible = currentActiveRequestCount > 0
-    }
-}
-
-fileprivate func networkIndicatorStart() {
-    if Thread.current.isMainThread {
-        currentActiveRequestCount += 1
-    } else {
-        DispatchQueue.main.async {
-            currentActiveRequestCount += 1
-        }
-    }
-}
-
-fileprivate func networkIndicatorStop() {
-    func reduceCurrentActiveRequestCount() {
-        currentActiveRequestCount -= 1
-        if currentActiveRequestCount < 0 {
-            currentActiveRequestCount = 0
-        }
-    }
-    if Thread.current.isMainThread {
-        reduceCurrentActiveRequestCount()
-    } else {
-        DispatchQueue.main.async {
-            reduceCurrentActiveRequestCount()
-        }
-    }
-}
-
-
-
-// MARK: - LGHTTPRequest Hashable
-extension LGHTTPRequest: Hashable {
-    public static func == (lhs: LGHTTPRequest, rhs: LGHTTPRequest) -> Bool {
-        return lhs === rhs
-    }
-    
-    public var hashValue: Int {
-        return self.delegate.hashValue
-    }
-}
-
-// MARK: -  在有设置的情况下将下载失败的URL加入黑名单进行忽略操作
-fileprivate class LGURLBlackList {
-    var blackListContainer: Set<URL>
-    var blackListContainerLock: DispatchSemaphore
-    init() {
-        blackListContainer = Set<URL>()
-        blackListContainerLock = DispatchSemaphore(value: 1)
-    }
-    
-    static let `default`: LGURLBlackList = {
-        return LGURLBlackList()
-    }()
-    
-    func isContains(url: LGURLConvertible) -> Bool {
-        do {
-            let tempUrl = try url.asURL()
-            _ = blackListContainerLock.wait(timeout: DispatchTime.distantFuture)
-            let contains = self.blackListContainer.contains(tempUrl)
-            _ = blackListContainerLock.signal()
-            return contains
-        } catch {
-            return false
-        }
-    }
-    
-    func addURL(_ url: LGURLConvertible) {
-        do {
-            let tempUrl = try url.asURL()
-            _ = blackListContainerLock.wait(timeout: DispatchTime.distantFuture)
-            self.blackListContainer.insert(tempUrl)
-            _ = blackListContainerLock.signal()
-        } catch {
-            // do nothing
-        }
-    }
-}
-
-fileprivate extension UIDevice {
-    static let physicalMemory: UInt64 = {
-        return ProcessInfo().physicalMemory
-    }()
-}
-
-
-// MARK: -  下载过程中出现的错误枚举
-
-/// 下载过程中出现的错误枚举
-///
-/// - cannotReadFile: 无法读取目标文件
-/// - targetURLOrOriginURLInvalid: 目标文件地址无效
-/// - urlIsInTheBlackList: 下载地址在黑名单中，无法重试
-fileprivate enum LGImageDownloadError: Error {
-    case cannotReadFile
-    case targetURLOrOriginURLInvalid(targetURL: URL?, originURL: URL?)
-    case urlIsInTheBlackList(url: LGURLConvertible)
-}
-
-fileprivate struct LGWebImageProgressiveContainer {
-    var progressiveDecoder: LGImageDecoder?
-    var progressiveIgnored: Bool = false
-    var lastProgressiveDecodeTimestamp: TimeInterval = CACurrentMediaTime()
-    var progressiveDetected = false
-    var progressiveScanedLength: Int = 0
-    var progressiveDisplayCount: Int = 0
-    
-    init() {
     }
 }

@@ -236,7 +236,7 @@ public extension UIImageView {
             !options.contains(LGWebImageOptions.ignorePlaceHolder) &&
             placeholder != nil
         {
-            LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier) { [weak self] in
+            lg_setImageQueue.async(flags: DispatchWorkItemFlags.barrier) { [weak self] in
                 self?.highlightedImage = placeholder
             }
         }
@@ -342,7 +342,7 @@ extension UIImageView {
     
     @objc func lg_setImage(_ image: UIImage?) {
         if self.lg_needSetCornerRadius == true {
-            LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier)
+            lg_setImageQueue.async(flags: DispatchWorkItemFlags.barrier)
             { [weak self] in
                 guard let weakSelf = self else {return}
                 var result: UIImage? = nil
@@ -366,7 +366,7 @@ extension UIImageView {
     
     @objc func lg_setHighlightedImage(_ image: UIImage?) {
         if self.lg_needSetCornerRadius == true {
-            LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier) { [weak self] in
+            lg_setImageQueue.async(flags: DispatchWorkItemFlags.barrier) { [weak self] in
                 guard let weakSelf = self else {return}
                 var result: UIImage? = nil
                 if let tempImage = image?.lg_imageByDecoded {

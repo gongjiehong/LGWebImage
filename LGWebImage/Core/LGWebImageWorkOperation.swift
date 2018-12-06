@@ -124,9 +124,11 @@ public class LGWebImageWorkOperation: Operation {
             cancelOperation()
             isFinished = true
         } else if isReady, !isFinished, !isExecuting {
+            self.isExecuting = true
             var localReadFinished: Bool = false
             getImageFromLoacal(finished: &localReadFinished)
             if localReadFinished {
+                finish()
             } else {
                 downloadImageFromRemote()
             }
@@ -140,6 +142,7 @@ public class LGWebImageWorkOperation: Operation {
             LGURLBlackList.default.isContains(url: url)
         {
             if !isCancelled {
+                println("cancel")
                 self.invokeCompletionOnMainThread(nil,
                                                   remoteURL: nil,
                                                   sourceType: LGWebImageSourceType.none,
@@ -185,6 +188,7 @@ public class LGWebImageWorkOperation: Operation {
             {
                 if isCancelled {
                     finished = true
+                    println("cancel")
                     return
                 }
                 
@@ -201,8 +205,14 @@ public class LGWebImageWorkOperation: Operation {
         catch {
             println(error)
             networkIndicatorStop()
+            println("cancel")
         }
     }
+    
+    
+    private var temporaryURL: URL?
+    
+    private var destinationURL: URL?
     
     func downloadImageFromRemote() {
         let request = LGURLSessionManager.default.streamDownload(self.url,
@@ -211,6 +221,7 @@ public class LGWebImageWorkOperation: Operation {
                                                                  encoding: LGURLEncoding.default,
                                                                  headers: nil,
                                                                  to: nil)
+        self.request = request
         request.validate().downloadProgress(queue: DispatchQueue.utility) { [weak self] (progress) in
             guard let weakSelf = self  else {return}
             if weakSelf.isCancelled || weakSelf.isFinished {
@@ -237,7 +248,8 @@ public class LGWebImageWorkOperation: Operation {
             
             weakSelf.downloadCompleteProcessor(response)
         }
-        self.request = request
+        self.temporaryURL = request.temporaryURL
+        self.destinationURL = request.destinationURL
     }
     
     func downloadCompleteProcessor(_ response: LGHTTPDataResponse<Data>){
@@ -250,9 +262,10 @@ public class LGWebImageWorkOperation: Operation {
         } else {
             if let originURL = response.request?.url
             {
-                guard let destinationURL = self.request?.destinationURL,
+                guard let destinationURL = self.destinationURL,
                     let imageCache = self.imageCache,
                     let receivedData = response.value else {
+                        println("returned")
                         return
                 }
                 
@@ -302,7 +315,7 @@ public class LGWebImageWorkOperation: Operation {
                             decoder.imageType != LGImageType.other &&
                             decoder.imageType != LGImageType.unknow
                         {
-                            if var image = decoder.largePictureCreateThumbnail() {
+                            if let image = decoder.largePictureCreateThumbnail() {
                                 imageCache.setImage(image: image, forKey: originURL.absoluteString)
                                 self.invokeCompletionOnMainThread(image,
                                                                   remoteURL: originURL,
@@ -328,13 +341,13 @@ public class LGWebImageWorkOperation: Operation {
                     LGURLBlackList.default.addURL(url)
                 }
                 let originalURL = response.request?.url
-                let error = LGImageDownloadError.targetURLOrOriginURLInvalid(targetURL: self.request?.destinationURL,
+                let error = LGImageDownloadError.targetURLOrOriginURLInvalid(targetURL: self.destinationURL,
                                                                              originURL: originalURL)
                 self.invokeCompletionOnMainThread(nil,
                                                   remoteURL: nil,
                                                   sourceType: LGWebImageSourceType.none,
                                                   imageStage: LGWebImageStage.finished,
-                                                  error: nil)
+                                                  error: error)
             }
         }
         networkIndicatorStop()
@@ -347,13 +360,18 @@ public class LGWebImageWorkOperation: Operation {
                                       imageStage: LGWebImageStage,
                                       error: Error?)
     {
+
+        guard let completion = self.completion else {return}
         DispatchQueue.main.async { [weak self] in
-            guard let weakSelf = self, let completion = weakSelf.completion else {return}
             completion(image,
                        remoteURL,
                        sourceType,
                        imageStage,
                        error)
+            guard let weakSelf = self else {return}
+            if imageStage != .progress {
+                weakSelf.finish()
+            }
         }
     }
     
@@ -437,11 +455,12 @@ public class LGWebImageWorkOperation: Operation {
                 return
             }
             let frame = progressiveDecoder?.frameAtIndex(index: 0, decodeForDisplay: true)
-            if let tempImage = frame?.image, let completion = self.completion {
-                DispatchQueue.main.async { [weak self] in
-                    guard let weakSelf = self else {return}
-                    completion(tempImage, weakSelf.request?.request?.url, .remoteServer, .progress, nil)
-                }
+            if let tempImage = frame?.image {
+                self.invokeCompletionOnMainThread(tempImage,
+                                                  remoteURL: self.request?.request?.url,
+                                                  sourceType: LGWebImageSourceType.remoteServer,
+                                                  imageStage: LGWebImageStage.progress,
+                                                  error: nil)
             }
             return
         } else {
@@ -525,11 +544,12 @@ public class LGWebImageWorkOperation: Operation {
                                                   saturation: 1,
                                                   maskImage: nil)
             
-            if let tempImage = temp, let completion = self.completion {
-                DispatchQueue.main.async { [weak self] in
-                    guard let weakSelf = self else {return}
-                    completion(tempImage, weakSelf.request?.request?.url, .remoteServer, .progress, nil)
-                }
+            if let tempImage = temp {
+                self.invokeCompletionOnMainThread(tempImage,
+                                                  remoteURL: self.request?.request?.url,
+                                                  sourceType: LGWebImageSourceType.remoteServer,
+                                                  imageStage: LGWebImageStage.progress,
+                                                  error: nil)
             }
         }
     }
@@ -573,10 +593,16 @@ public class LGWebImageWorkOperation: Operation {
     
     private func cancelOperation() {
         autoreleasepool { () -> Void in
-            if let completion = self.completion {
-                completion(nil, self.request?.request?.url, LGWebImageSourceType.none, LGWebImageStage.cancelled, nil)
-                endBackgroundTask()
-            }
+//            if let _ = self.completion {
+//                self.invokeCompletionOnMainThread(nil,
+//                                                  remoteURL: self.request?.request?.url,
+//                                                  sourceType: LGWebImageSourceType.none,
+//                                                  imageStage: LGWebImageStage.cancelled,
+//                                                  error: nil)
+//
+//            }
+            
+            endBackgroundTask()
             
             // 物理内存小于1GB，真取消，大于1GB，只是取消当前工作，不取消下载
             if UIDevice.physicalMemory <= 1_073_741_824 {
@@ -605,14 +631,11 @@ public class LGWebImageWorkOperation: Operation {
         }
         
         if isExecuting {
+            cancelOperation()
             isCancelled = true
             isFinished = true
-            
         }
-        
-        cancelOperation()
-        
-        println("LGWebImageWorkOperation deinit")
+//        println("LGWebImageWorkOperation deinit")
     }
 }
 

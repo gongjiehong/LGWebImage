@@ -316,7 +316,7 @@ extension UIButton {
     
     @objc func lg_setImage(_ image: UIImage?, for state: UIControl.State) {
         if self.lg_needSetCornerRadius == true {
-            LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier)
+            lg_setImageQueue.async(flags: DispatchWorkItemFlags.barrier)
             { [weak self] in
                 guard let weakSelf = self else {return}
                 var result: UIImage? = nil
@@ -340,7 +340,7 @@ extension UIButton {
     
     @objc func lg_setBackgroundImage(_ image: UIImage?, for state: UIControl.State) {
         if self.lg_needSetCornerRadius == true {
-            LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier) { [weak self] in
+            lg_setImageQueue.async(flags: DispatchWorkItemFlags.barrier) { [weak self] in
                 guard let weakSelf = self else {return}
                 var result: UIImage? = nil
                 if let tempImage = image?.lg_imageByDecoded {

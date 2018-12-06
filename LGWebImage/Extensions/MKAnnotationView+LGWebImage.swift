@@ -175,7 +175,7 @@ extension MKAnnotationView {
     
     @objc func lg_setImage(_ image: UIImage?) {
         if self.lg_needSetCornerRadius == true {
-            LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier)
+            lg_setImageQueue.async(flags: DispatchWorkItemFlags.barrier)
             { [weak self] in
                 guard let weakSelf = self else {return}
                 var result: UIImage? = nil
