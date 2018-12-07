@@ -1,5 +1,5 @@
 //
-//  LGWebImageWorkOperation.swift
+//  LGWebImageOperation.swift
 //  LGWebImage
 //
 //  Created by 龚杰洪 on 2018/9/14.
@@ -9,7 +9,7 @@
 import UIKit
 import LGHTTPRequest
 
-public class LGWebImageWorkOperation: Operation {
+public class LGWebImageOperation: Operation {
     private var _isFinished: Bool = false
     public override var isFinished: Bool {
         get {
@@ -142,7 +142,6 @@ public class LGWebImageWorkOperation: Operation {
             LGURLBlackList.default.isContains(url: url)
         {
             if !isCancelled {
-                println("cancel")
                 self.invokeCompletionOnMainThread(nil,
                                                   remoteURL: nil,
                                                   sourceType: LGWebImageSourceType.none,
@@ -188,7 +187,6 @@ public class LGWebImageWorkOperation: Operation {
             {
                 if isCancelled {
                     finished = true
-                    println("cancel")
                     return
                 }
                 
@@ -251,19 +249,12 @@ public class LGWebImageWorkOperation: Operation {
     }
     
     func downloadCompleteProcessor(_ response: LGHTTPDataResponse<Data>){
-        if let error = response.error {
-            self.invokeCompletionOnMainThread(nil,
-                                              remoteURL: nil,
-                                              sourceType: .none,
-                                              imageStage: .finished,
-                                              error: error)
-        } else {
+        func successProcessor() {
             if let originURL = response.request?.url
             {
                 guard let destinationURL = self.destinationURL,
                     let imageCache = self.imageCache,
                     let receivedData = response.value else {
-                        println("returned")
                         return
                 }
                 
@@ -348,6 +339,22 @@ public class LGWebImageWorkOperation: Operation {
                                                   error: error)
             }
         }
+        
+        if let error = response.error {
+            if let lgError = error as? LGError, let responseCode = lgError.responseCode, responseCode == 406 {
+                successProcessor()
+            } else {
+                self.invokeCompletionOnMainThread(nil,
+                                                  remoteURL: nil,
+                                                  sourceType: .none,
+                                                  imageStage: .finished,
+                                                  error: error)
+            }
+
+        } else {
+            successProcessor()
+        }
+        
         networkIndicatorStop()
     }
     
@@ -593,7 +600,7 @@ public class LGWebImageWorkOperation: Operation {
         autoreleasepool { () -> Void in            
             endBackgroundTask()
             
-            // 物理内存小于1GB，真取消，大于1GB，只是取消当前工作，不取消下载
+            // 物理内存小于1GB，取消下载，大于1GB，只是取消当前工作，不取消下载
             if UIDevice.physicalMemory <= 1_073_741_824 {
                 self.request?.cancel()
             }
@@ -624,7 +631,6 @@ public class LGWebImageWorkOperation: Operation {
             isCancelled = true
             isFinished = true
         }
-//        println("LGWebImageWorkOperation deinit")
     }
 }
 

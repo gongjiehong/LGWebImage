@@ -25,6 +25,7 @@ public class LGWebImageManager {
         let queue = OperationQueue()
         queue.qualityOfService = .userInitiated
         queue.isSuspended = false
+        queue.name = "com.LGWebImageManager.workQueue"
         return queue
     }()
     
@@ -77,6 +78,9 @@ public class LGWebImageManager {
         return LGWebImageManager()
     }()
     
+    
+    public typealias DownloadResult = (callbackToken: LGWebImageCallbackToken, operation: LGWebImageOperation)
+    
     /// 下载图片方法，支持断点续传，大图优化
     ///
     /// - Parameters:
@@ -89,9 +93,9 @@ public class LGWebImageManager {
     public func downloadImageWith(url: LGURLConvertible,
                                   options: LGWebImageOptions = LGWebImageOptions.default,
                                   progress: LGWebImageProgressBlock? = nil,
-                                  completion: LGWebImageCompletionBlock? = nil) -> LGWebImageCallbackToken
+                                  completion: LGWebImageCompletionBlock? = nil) -> DownloadResult
     {
-        let operation = LGWebImageWorkOperation(withURL: url,
+        let operation = LGWebImageOperation(withURL: url,
                                                 options: options,
                                                 imageCache: self.cache,
                                                 progress: progress,
@@ -100,7 +104,7 @@ public class LGWebImageManager {
         operation.name = token
         workQueue.addOperation(operation)
         println(workQueue.operationCount)
-        return token
+        return (token, operation)
     }
     
     /// 通过token取消回调，但不会取消下载

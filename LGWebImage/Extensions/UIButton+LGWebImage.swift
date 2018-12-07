@@ -12,87 +12,46 @@ import LGHTTPRequest
 public extension UIButton {
     // MARK: -  private containers
     private struct AssociatedKeys {
-        static var imageURLKey = "lg_imageURLKey"
-        static var backgroundImageURLKey = "lg_backgroundImageURLKey"
-        static var imageTokenKey = "lg_imageTokenKey"
-        static var backgroundImageTokenKey = "lg_backgroundImageTokenKey"
+        static var imageSetterKey = "lg_imageSetterKey"
+        static var backgroundImageSetterKey = "lg_backgroundImageSetterKey"
     }
     
-    private typealias CallbackTokenContainer = [UIControl.State.RawValue: LGWebImageCallbackToken]
-    private typealias URLContainer = [UIControl.State.RawValue: LGURLConvertible]
+    private typealias ImageSetterContainer = [UIControl.State.RawValue: LGWebImageOperationSetter]
     
-    private var imageTokenContainer: CallbackTokenContainer {
+    private var imageSetterContainer: ImageSetterContainer {
         set {
             objc_setAssociatedObject(self,
-                                     &AssociatedKeys.imageTokenKey,
+                                     &AssociatedKeys.imageSetterKey,
                                      newValue,
                                      objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-            
         } get {
-            let temp = objc_getAssociatedObject(self, &AssociatedKeys.imageTokenKey)
-            if let container = temp as? CallbackTokenContainer {
-                return container
+            if let temp = objc_getAssociatedObject(self, &AssociatedKeys.imageSetterKey),
+                let setters = temp as? ImageSetterContainer
+            {
+                return setters
             } else {
-                let container = CallbackTokenContainer()
-                self.imageTokenContainer = container
-                return container
+                let setters = ImageSetterContainer()
+                self.imageSetterContainer = setters
+                return setters
             }
         }
     }
     
-    private var imageUrlContainer: URLContainer {
+    private var backgroundImageSetterContainer: ImageSetterContainer {
         set {
             objc_setAssociatedObject(self,
-                                     &AssociatedKeys.imageURLKey,
+                                     &AssociatedKeys.backgroundImageSetterKey,
                                      newValue,
                                      objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-            
         } get {
-            let temp = objc_getAssociatedObject(self, &AssociatedKeys.imageURLKey)
-            if let container = temp as? URLContainer {
-                return container
+            if let temp = objc_getAssociatedObject(self, &AssociatedKeys.backgroundImageSetterKey),
+                let setters = temp as? ImageSetterContainer
+            {
+                return setters
             } else {
-                let container = URLContainer()
-                self.imageUrlContainer = container
-                return container
-            }
-        }
-    }
-    
-    private var backgroundImageTokenContainer: CallbackTokenContainer {
-        set {
-            objc_setAssociatedObject(self,
-                                     &AssociatedKeys.backgroundImageTokenKey,
-                                     newValue,
-                                     objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-            
-        } get {
-            let temp = objc_getAssociatedObject(self, &AssociatedKeys.backgroundImageTokenKey)
-            if let container = temp as? CallbackTokenContainer {
-                return container
-            } else {
-                let container = CallbackTokenContainer()
-                self.backgroundImageTokenContainer = container
-                return container
-            }
-        }
-    }
-    
-    private var backgroundImageUrlContainer: URLContainer {
-        set {
-            objc_setAssociatedObject(self,
-                                     &AssociatedKeys.backgroundImageURLKey,
-                                     newValue,
-                                     objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-            
-        } get {
-            let temp = objc_getAssociatedObject(self, &AssociatedKeys.backgroundImageURLKey)
-            if let container = temp as? URLContainer {
-                return container
-            } else {
-                let container = URLContainer()
-                self.imageUrlContainer = container
-                return container
+                let setters = ImageSetterContainer()
+                self.imageSetterContainer = setters
+                return setters
             }
         }
     }
@@ -100,13 +59,11 @@ public extension UIButton {
     // MARK: - public functions
     // MARK: - 普通Image
     public func lg_imageURLForState(_ state: UIControl.State) -> LGURLConvertible? {
-        return self.imageUrlContainer[state.rawValue]
+        return self.imageSetterContainer[state.rawValue]?.imageURL
     }
     
     public func lg_cancelImageRequestForState(_ state: UIControl.State) {
-        if let token = self.imageTokenContainer[state.rawValue] {
-            LGWebImageManager.default.cancelWith(callbackToken: token)
-        }
+        self.imageSetterContainer[state.rawValue]?.cancel()
     }
     
     public func lg_setImageWithURL(_ imageURL: LGURLConvertible,
@@ -117,13 +74,22 @@ public extension UIButton {
                                    transformBlock: LGWebImageTransformBlock? = nil,
                                    completionBlock: LGWebImageCompletionBlock? = nil)
     {
-        self.lg_cancelImageRequestForState(state)
-        self.imageTokenContainer[state.rawValue] = nil
+        var sentinel: LGWebImageOperationSetter.Sentinel
+        var setter: LGWebImageOperationSetter
+        if let temp = self.imageSetterContainer[state.rawValue] {
+            setter = temp
+            sentinel = setter.cancel(withNewURL: imageURL)
+        } else {
+            let temp = LGWebImageOperationSetter()
+            self.imageSetterContainer[state.rawValue] = temp
+            sentinel = temp.cancel(withNewURL: imageURL)
+            setter = temp
+        }
+        
         self.setImage(nil, for: state)
         
         do {
             let newURL = try imageURL.asURL()
-            self.imageUrlContainer[state.rawValue] = imageURL
             if  let image = LGImageCache.default.getImage(forKey: newURL.absoluteString,
                                                           withType: LGImageCacheType.memory)
             {
@@ -136,7 +102,6 @@ public extension UIButton {
                 return
             }
         } catch {
-            self.imageUrlContainer[state.rawValue] = nil
             println(error)
         }
         
@@ -148,60 +113,49 @@ public extension UIButton {
             self.setImage(placeholder, for: state)
         }
         
-        if self.imageUrlContainer[state.rawValue] == nil {
-            return
-        }
-        
-        
-        let token = LGWebImageManager.default.downloadImageWith(url: imageURL,
-                                                                options: options,
-                                                                progress:
+        var newSentinel: LGWebImageOperationSetter.Sentinel = 0
+        newSentinel = setter.setOperation(with: sentinel,
+                                          URL: imageURL,
+                                          options: options,
+                                          manager: LGWebImageManager.default,
+                                          progress:
             { (progress) in
-                DispatchQueue.main.async {
-                    progressBlock?(progress)
-                }
-        },
-                                                                completion:
-            {[weak self] (resultImage, url, sourceType, imageStage, error) in
-                if resultImage != nil && error == nil {
-                    let avoidSetImage = options.contains(LGWebImageOptions.avoidSetImage)
-                    
-                    
-                    let imageIsValid = (imageStage == .finished || imageStage == .progress)
-                    let canSetImage = (!avoidSetImage && imageIsValid)
-                    
-                    var result = resultImage
-                    if let cornerRadiusImage = self?.cornerRadius(resultImage) {
-                        result = cornerRadiusImage
-                    }
-                    
-                    if canSetImage {
-                        DispatchQueue.main.async { [weak self] in
-                            guard let weakSelf = self else {
-                                return
-                            }
-                            weakSelf.setImage(result, for: state)
-                        }
-                    }
+                progressBlock?(progress)
+        }, completion: { [weak self] (resultImage, url, sourceType, imageStage, error) in
+            guard let strongSelf = self, strongSelf.imageSetterContainer[state.rawValue]?.sentinel == newSentinel else {
+                completionBlock?(resultImage, url, sourceType, imageStage, error)
+                return
+            }
+            
+            if resultImage != nil && error == nil {
+                let avoidSetImage = options.contains(LGWebImageOptions.avoidSetImage)
+                
+                
+                let imageIsValid = (imageStage == .finished || imageStage == .progress)
+                let canSetImage = (!avoidSetImage && imageIsValid)
+                
+                var result = resultImage
+                if let cornerRadiusImage = self?.cornerRadius(resultImage) {
+                    result = cornerRadiusImage
                 }
                 
-                DispatchQueue.main.async {
-                    completionBlock?(resultImage, url, sourceType, imageStage, error)
+                if canSetImage {
+                    strongSelf.setImage(result, for: state)
                 }
+            }
+            
+            completionBlock?(resultImage, url, sourceType, imageStage, error)
         })
-        self.imageTokenContainer[state.rawValue] = token
     }
     
     // MARK: -  backgroundImage
     
     public func lg_backgroundImageURLForState(_ state: UIControl.State) -> LGURLConvertible? {
-        return self.backgroundImageUrlContainer[state.rawValue]
+        return self.backgroundImageSetterContainer[state.rawValue]?.imageURL
     }
     
     public func lg_cancelBackgroundImageRequestForState(_ state: UIControl.State) {
-        if let token = self.backgroundImageTokenContainer[state.rawValue] {
-            LGWebImageManager.default.cancelWith(callbackToken: token)
-        }
+        self.backgroundImageSetterContainer[state.rawValue]?.cancel()
     }
     
     public func lg_setBackgroundImageWithURL(_ imageURL: LGURLConvertible,
@@ -212,13 +166,22 @@ public extension UIButton {
                                              transformBlock: LGWebImageTransformBlock? = nil,
                                              completionBlock: LGWebImageCompletionBlock? = nil)
     {
-        self.lg_cancelBackgroundImageRequestForState(state)
-        self.backgroundImageTokenContainer[state.rawValue] = nil
+        var sentinel: LGWebImageOperationSetter.Sentinel
+        var setter: LGWebImageOperationSetter
+        if let temp = self.backgroundImageSetterContainer[state.rawValue] {
+            setter = temp
+            sentinel = setter.cancel(withNewURL: imageURL)
+        } else {
+            let temp = LGWebImageOperationSetter()
+            self.backgroundImageSetterContainer[state.rawValue] = temp
+            sentinel = temp.cancel(withNewURL: imageURL)
+            setter = temp
+        }
+        
         self.setBackgroundImage(nil, for: state)
         
         do {
             let newURL = try imageURL.asURL()
-            self.backgroundImageUrlContainer[state.rawValue] = imageURL
             if  let image = LGImageCache.default.getImage(forKey: newURL.absoluteString,
                                                           withType: LGImageCacheType.memory)
             {
@@ -232,8 +195,8 @@ public extension UIButton {
                 return
             }
         } catch {
-            self.backgroundImageTokenContainer[state.rawValue] = nil
             println(error)
+            return
         }
         
         if self.image(for: state) == nil &&
@@ -243,48 +206,39 @@ public extension UIButton {
             self.setBackgroundImage(placeholder, for: state)
         }
         
-        if self.backgroundImageTokenContainer[state.rawValue] == nil {
-            return
-        }
-        
-        
-        let token = LGWebImageManager.default.downloadImageWith(url: imageURL,
-                                                                options: options,
-                                                                progress:
+        var newSentinel: LGWebImageOperationSetter.Sentinel = 0
+        newSentinel = setter.setOperation(with: sentinel,
+                                          URL: imageURL,
+                                          options: options,
+                                          manager: LGWebImageManager.default,
+                                          progress:
             { (progress) in
-                DispatchQueue.main.async {
-                    progressBlock?(progress)
-                }
-        },
-                                                                completion:
-            {[weak self] (resultImage, url, sourceType, imageStage, error) in
-                if resultImage != nil && error == nil {
-                    let avoidSetImage = options.contains(LGWebImageOptions.avoidSetImage)
-                    
-                    
-                    let imageIsValid = (imageStage == .finished || imageStage == .progress)
-                    let canSetImage = (!avoidSetImage && imageIsValid)
-                    
-                    var result = resultImage
-                    if let cornerRadiusImage = self?.cornerRadius(resultImage) {
-                        result = cornerRadiusImage
-                    }
-                    
-                    if canSetImage {
-                        DispatchQueue.main.async { [weak self] in
-                            guard let weakSelf = self else {
-                                return
-                            }
-                            weakSelf.setBackgroundImage(result, for: state)
-                        }
-                    }
+                progressBlock?(progress)
+        }, completion: { [weak self] (resultImage, url, sourceType, imageStage, error) in
+            guard let strongSelf = self, strongSelf.imageSetterContainer[state.rawValue]?.sentinel == newSentinel else {
+                completionBlock?(resultImage, url, sourceType, imageStage, error)
+                return
+            }
+            
+            if resultImage != nil && error == nil {
+                let avoidSetImage = options.contains(LGWebImageOptions.avoidSetImage)
+                
+                
+                let imageIsValid = (imageStage == .finished || imageStage == .progress)
+                let canSetImage = (!avoidSetImage && imageIsValid)
+                
+                var result = resultImage
+                if let cornerRadiusImage = self?.cornerRadius(resultImage) {
+                    result = cornerRadiusImage
                 }
                 
-                DispatchQueue.main.async {
-                    completionBlock?(resultImage, url, sourceType, imageStage, error)
+                if canSetImage {
+                    strongSelf.setBackgroundImage(result, for: state)
                 }
+            }
+            
+            completionBlock?(resultImage, url, sourceType, imageStage, error)
         })
-        self.backgroundImageTokenContainer[state.rawValue] = token
     }
 }
 

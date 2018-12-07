@@ -12,37 +12,30 @@ import LGHTTPRequest
 
 public extension MKAnnotationView {
     private struct AssociatedKeys {
-        static var URLKey = "LGWebImageURLKey"
-        static var TokenKey = "LGWebImageTokenKey"
+        static var imageSetterKey = "LGWebImageOperationImageSetterKey"
     }
     
     /// 图片URL
-    public private(set) var lg_imageURL: LGURLConvertible? {
-        set {
-            do {
-                if let url = try newValue?.asURL() {
-                    objc_setAssociatedObject(self,
-                                             &AssociatedKeys.URLKey,
-                                             url,
-                                             objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-                }
-            } catch {
-                
-            }
-        } get {
-            return objc_getAssociatedObject(self, &AssociatedKeys.URLKey) as? URL
-        }
+    public var lg_imageURL: LGURLConvertible? {
+        return lg_imageSetter.imageURL
     }
     
-    /// 下载回调token
-    private var lg_callbackToken: LGWebImageCallbackToken? {
+    private var lg_imageSetter: LGWebImageOperationSetter {
         set {
             objc_setAssociatedObject(self,
-                                     &AssociatedKeys.TokenKey,
+                                     &AssociatedKeys.imageSetterKey,
                                      newValue,
                                      objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         } get {
-            return objc_getAssociatedObject(self, &AssociatedKeys.TokenKey) as? LGWebImageCallbackToken
+            if let temp = objc_getAssociatedObject(self, &AssociatedKeys.imageSetterKey),
+                let setter = temp as? LGWebImageOperationSetter
+            {
+                return setter
+            } else {
+                let setter = LGWebImageOperationSetter()
+                self.lg_imageSetter = setter
+                return setter
+            }
         }
     }
     
@@ -61,12 +54,11 @@ public extension MKAnnotationView {
                                    transformBlock: LGWebImageTransformBlock? = nil,
                                    completionBlock: LGWebImageCompletionBlock? = nil)
     {
-        self.lg_cancelCurrentImageRequest()
+        let sentinel = lg_imageSetter.cancel(withNewURL: imageURL)
         self.image = nil
         
         do {
             let newURL = try imageURL.asURL()
-            self.lg_imageURL = imageURL
             if let image = LGImageCache.default.getImage(forKey: newURL.absoluteString,
                                                          withType: LGImageCacheType.memory)
             {
@@ -79,82 +71,68 @@ public extension MKAnnotationView {
                 return
             }
         } catch {
-            self.lg_imageURL = nil
             println(error)
+            return
         }
         
         if self.image == nil && !options.contains(LGWebImageOptions.ignorePlaceHolder) && placeholder != nil {
             self.image = placeholder
         }
         
-        if self.lg_imageURL == nil {
-            return
-        }
-        
-        self.lg_callbackToken = LGWebImageManager.default.downloadImageWith(url: imageURL,
-                                                                            options: options,
-                                                                            progress:
+        var newSentinel: LGWebImageOperationSetter.Sentinel = 0
+        newSentinel = lg_imageSetter.setOperation(with: sentinel,
+                                                  URL: imageURL,
+                                                  options: options,
+                                                  manager: LGWebImageManager.default,
+                                                  progress:
             { (progress) in
-                DispatchQueue.main.async {
-                    progressBlock?(progress)
-                }
-        },
-                                                                            completion:
-            {[weak self] (resultImage, url, sourceType, imageStage, error) in
-                if resultImage != nil && error == nil {
-                    let needFadeAnimation = options.contains(LGWebImageOptions.setImageWithFadeAnimation)
-                    let avoidSetImage = options.contains(LGWebImageOptions.avoidSetImage)
-                    if  needFadeAnimation && !avoidSetImage
-                    {
-                        DispatchQueue.main.async { [weak self] in
-                            guard let weakSelf = self else {
-                                return
-                            }
-                            weakSelf.layer.removeAnimation(forKey: kLGWebImageFadeAnimationKey)
-                        }
-                    }
-                    
-                    let imageIsValid = (imageStage == .finished || imageStage == .progress)
-                    let canSetImage = (!avoidSetImage && imageIsValid)
-                    
-                    let result = resultImage
-                    
-                    if canSetImage {
-                        DispatchQueue.main.async { [weak self] in
-                            guard let weakSelf = self else {
-                                return
-                            }
-                            if needFadeAnimation {
-                                let transition = CATransition()
-                                var duration: CFTimeInterval
-                                if imageStage == LGWebImageStage.finished {
-                                    duration = CFTimeInterval.lg_imageFadeAnimationTime
-                                } else {
-                                    duration = CFTimeInterval.lg_imageProgressiveFadeAnimationTime
-                                }
-                                transition.duration = duration
-                                let functionName = CAMediaTimingFunctionName.easeInEaseOut
-                                transition.timingFunction = CAMediaTimingFunction(name: functionName)
-                                transition.type = CATransitionType.fade
-                                weakSelf.layer.add(transition, forKey: kLGWebImageFadeAnimationKey)
-                            }
-                            weakSelf.image = result
-                        }
-                    }
+                progressBlock?(progress)
+        }, completion: { [weak self] (resultImage, url, sourceType, imageStage, error) in
+            guard let strongSelf = self, strongSelf.lg_imageSetter.sentinel == newSentinel else {
+                completionBlock?(resultImage, url, sourceType, imageStage, error)
+                return
+            }
+            
+            if resultImage != nil && error == nil {
+                let needFadeAnimation = options.contains(LGWebImageOptions.setImageWithFadeAnimation)
+                let avoidSetImage = options.contains(LGWebImageOptions.avoidSetImage)
+                if  needFadeAnimation && !avoidSetImage
+                {
+                    strongSelf.layer.removeAnimation(forKey: kLGWebImageFadeAnimationKey)
                 }
                 
-                DispatchQueue.main.async {
-                    completionBlock?(resultImage, url, sourceType, imageStage, error)
+                let imageIsValid = (imageStage == .finished || imageStage == .progress)
+                let canSetImage = (!avoidSetImage && imageIsValid)
+                
+                let result = resultImage
+                
+                if canSetImage {
+                    
+                    if needFadeAnimation {
+                        let transition = CATransition()
+                        var duration: CFTimeInterval
+                        if imageStage == LGWebImageStage.finished {
+                            duration = CFTimeInterval.lg_imageFadeAnimationTime
+                        } else {
+                            duration = CFTimeInterval.lg_imageProgressiveFadeAnimationTime
+                        }
+                        transition.duration = duration
+                        let functionName = CAMediaTimingFunctionName.easeInEaseOut
+                        transition.timingFunction = CAMediaTimingFunction(name: functionName)
+                        transition.type = CATransitionType.fade
+                        strongSelf.layer.add(transition, forKey: kLGWebImageFadeAnimationKey)
+                    }
+                    strongSelf.image = result
                 }
+            }
+            
+            completionBlock?(resultImage, url, sourceType, imageStage, error)
         })
     }
     
     /// 取消普通图片请求
     public func lg_cancelCurrentImageRequest() {
-        if let token = self.lg_callbackToken {
-            LGWebImageManager.default.cancelWith(callbackToken: token)
-            self.lg_callbackToken = nil
-        }
+        lg_imageSetter.cancel()
     }
 }
 
