@@ -203,9 +203,7 @@ public class LGWebImageWorkOperation: Operation {
             }
         }
         catch {
-            println(error)
             networkIndicatorStop()
-            println("cancel")
         }
     }
     
@@ -592,16 +590,7 @@ public class LGWebImageWorkOperation: Operation {
     }
     
     private func cancelOperation() {
-        autoreleasepool { () -> Void in
-//            if let _ = self.completion {
-//                self.invokeCompletionOnMainThread(nil,
-//                                                  remoteURL: self.request?.request?.url,
-//                                                  sourceType: LGWebImageSourceType.none,
-//                                                  imageStage: LGWebImageStage.cancelled,
-//                                                  error: nil)
-//
-//            }
-            
+        autoreleasepool { () -> Void in            
             endBackgroundTask()
             
             // 物理内存小于1GB，真取消，大于1GB，只是取消当前工作，不取消下载

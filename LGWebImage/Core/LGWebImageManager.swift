@@ -24,7 +24,6 @@ public class LGWebImageManager {
     private lazy var workQueue: OperationQueue = {
         let queue = OperationQueue()
         queue.qualityOfService = .userInitiated
-        queue.maxConcurrentOperationCount = 10
         queue.isSuspended = false
         return queue
     }()
@@ -100,6 +99,7 @@ public class LGWebImageManager {
         let token = UUID().uuidString + "\(CACurrentMediaTime())"
         operation.name = token
         workQueue.addOperation(operation)
+        println(workQueue.operationCount)
         return token
     }
     
@@ -115,7 +115,6 @@ public class LGWebImageManager {
     /// 清理所有缓存，包含内存缓存，磁盘缓存，断点续传临时文件等
     ///
     /// - Parameter block: 清理完成后的回调
-    
     public func clearAllCache(withBolck block: (() -> Void)?) {
         var clearCacheMark: Int = 0 {
             didSet {
