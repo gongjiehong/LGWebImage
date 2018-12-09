@@ -25,7 +25,6 @@ public extension UIImageView {
     
     private var lg_imageSetter: LGWebImageOperationSetter {
         set {
-            dump(newValue)
             objc_setAssociatedObject(self,
                                      &AssociatedKeys.imageSetterKey,
                                      newValue,
@@ -138,7 +137,7 @@ public extension UIImageView {
     }
     
     /// 取消普通图片请求
-    public func lg_cancelCurrentImageRequest() {
+    public func lg_cancelCurrentNormalImageRequest() {
         lg_imageSetter.cancel()
     }
     
