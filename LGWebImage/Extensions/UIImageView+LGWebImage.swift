@@ -56,7 +56,7 @@ public extension UIImageView {
                                    progressBlock: LGWebImageProgressBlock? = nil,
                                    completionBlock: LGWebImageCompletionBlock? = nil)
     {
-        let sentinel = self.lg_imageSetter.cancel(withNewURL: imageURL)
+        let sentinel: LGWebImageOperationSetter.Sentinel = self.lg_imageSetter.cancel(withNewURL: imageURL)
         self.image = nil
         
         do {
@@ -85,7 +85,7 @@ public extension UIImageView {
             guard let strongSelf = self else {
                 return
             }
-            var newSentinel: LGWebImageOperationSetter.Sentinel = 0
+            var newSentinel: LGWebImageOperationSetter.Sentinel = sentinel
             newSentinel = strongSelf.lg_imageSetter.setOperation(with: sentinel,
                                                                  URL: imageURL,
                                                                  options: options,

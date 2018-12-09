@@ -23,10 +23,6 @@ internal class LGWebImageOperationSetter {
     
     private var _sentinel: Sentinel = 0
     var sentinel: Sentinel {
-        _ = lock.wait(timeout: DispatchTime.distantFuture)
-        defer {
-            _ = lock.signal()
-        }
         return _sentinel
     }
     
@@ -59,12 +55,13 @@ internal class LGWebImageOperationSetter {
         defer {
             _ = lock.signal()
         }
+        
         if tempSentinel == _sentinel {
             if self.operation != nil {
                 self.operation?.cancel()
             }
             self.operation = result.operation
-            tempSentinel = OSAtomicIncrement64(&_sentinel)
+            tempSentinel = OSAtomicIncrement64Barrier(&_sentinel)
         } else {
             result.operation.cancel()
         }
@@ -85,17 +82,19 @@ internal class LGWebImageOperationSetter {
         }
         
         _imageURL = url
-        tempSentinel = OSAtomicIncrement64(&_sentinel)
+        tempSentinel = OSAtomicIncrement64Barrier(&_sentinel)
         return tempSentinel
     }
     
     static let setterQueue: DispatchQueue = {
-        let queue = DispatchQueue(label: "cxylg.LGWebImageOperationSetter.setterQueue")
+        let queue = DispatchQueue(label: "cxylg.LGWebImageOperationSetter.setterQueue",
+                                  attributes: DispatchQueue.Attributes(rawValue: 1),
+                                  target: DispatchQueue.background)
         return queue
     }()
     
     deinit {
-        OSAtomicIncrement64(&_sentinel)
+        OSAtomicIncrement64Barrier(&_sentinel)
         if let operation = self.operation {
             operation.cancel()
         }

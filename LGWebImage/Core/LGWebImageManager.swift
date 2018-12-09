@@ -103,7 +103,6 @@ public class LGWebImageManager {
         let token = UUID().uuidString + "\(CACurrentMediaTime())"
         operation.name = token
         workQueue.addOperation(operation)
-        println(workQueue.operationCount)
         return (token, operation)
     }
     

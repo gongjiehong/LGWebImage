@@ -341,7 +341,7 @@ public class LGWebImageOperation: Operation {
         }
         
         if let error = response.error {
-            if let lgError = error as? LGError, let responseCode = lgError.responseCode, responseCode == 406 {
+            if let lgError = error as? LGError, let responseCode = lgError.responseCode, responseCode == 416 {
                 successProcessor()
             } else {
                 self.invokeCompletionOnMainThread(nil,
