@@ -224,9 +224,9 @@ public class LGWebImageOperation: Operation {
                 return
             }
             
-            if let receivedData = weakSelf.request?.delegate.receivedData {
-                weakSelf.decodeDataToUIImageIfNeeded(receivedData)
-            }
+//            if let receivedData = weakSelf.request?.delegate.receivedData {
+//                weakSelf.decodeDataToUIImageIfNeeded(receivedData)
+//            }
             
             DispatchQueue.main.async { [weak self] in
                 guard let weakSelf = self  else {return}
