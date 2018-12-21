@@ -889,6 +889,131 @@ extension UIImage {
         return nil
     }
     
+    /// 压缩图片到一个给定的文件大小
+    ///
+    /// - Parameter size: 给定文件大小，默认512KB
+    /// - Returns: 压缩后的图片压缩后的图片
+    public func lg_compress(_ toSize: Int = 524_288) -> UIImage? {
+        if let data = lg_compressToData(withSize: toSize) {
+            return UIImage(data: data)
+        } else {
+            return self
+        }
+    }
+    
+    /// 压缩图片到一个给定的文件大小
+    ///
+    /// - Parameter size: 给定文件大小，默认512KB
+    /// - Returns: 压缩后的图片jpeg data
+    public func lg_compressToData(withSize size: Int = 524_288) -> Data? {
+        var compression: CGFloat = 1.0
+        let minCompression: CGFloat = 0.2
+        let maxFileSize = size
+        
+        return autoreleasepool {
+            var imageData = self.jpegData(compressionQuality: compression)
+            while imageData != nil , imageData!.count > maxFileSize, compression > minCompression {
+                compression -= 0.1
+                imageData = self.jpegData(compressionQuality: compression)
+            }
+            return imageData
+        }
+    }
+    
+    public func lg_scaleImageTo(_ newSize: CGSize) -> UIImage? {
+        let imageSize = self.size
+        let width = self.size.width
+        let height = self.size.height
+        let targetWidth = newSize.width
+        let targetHeight = newSize.height
+        var scaleFactor: CGFloat = 0.0
+        var scaledWidth = targetWidth
+        var scaledHeight = targetHeight
+        var thumbnailPoint = CGPoint.zero
+        
+        if imageSize != newSize {
+            let widthFactor: CGFloat = targetWidth / width
+            let heightFactor: CGFloat = targetHeight / height
+            
+            if widthFactor > heightFactor {
+                scaleFactor = widthFactor // scale to fit height
+            } else {
+                scaleFactor = heightFactor // scale to fit width
+            }
+            
+            scaledWidth = width * scaleFactor
+            scaledHeight = height * scaleFactor
+            
+            if widthFactor > heightFactor {
+                thumbnailPoint.y = (targetHeight - scaledHeight) * 0.5
+            } else if widthFactor < heightFactor {
+                thumbnailPoint.x = (targetWidth - scaledWidth) * 0.5
+            }
+        }
+        
+        guard let cgImage = self.cgImage else { return self }
+        var bitmapInfo = cgImage.bitmapInfo
+        let colorSpace = cgImage.colorSpace
+        
+        if bitmapInfo == .none {
+            bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipLast.rawValue)
+        }
+        
+        var bitmapContext: CGContext?
+        
+        if self.imageOrientation == .up || self.imageOrientation == .down {
+            bitmapContext = CGContext(data: nil,
+                                      width: Int(targetWidth),
+                                      height: Int(targetHeight),
+                                      bitsPerComponent: cgImage.bitsPerComponent,
+                                      bytesPerRow: cgImage.bytesPerRow,
+                                      space: colorSpace ?? LGCGColorSpaceDeviceRGB,
+                                      bitmapInfo: bitmapInfo.rawValue)
+        } else {
+            bitmapContext = CGContext(data: nil,
+                                      width: Int(targetHeight),
+                                      height: Int(targetWidth),
+                                      bitsPerComponent: cgImage.bitsPerComponent,
+                                      bytesPerRow: cgImage.bytesPerRow,
+                                      space: colorSpace ?? LGCGColorSpaceDeviceRGB,
+                                      bitmapInfo: bitmapInfo.rawValue)
+        }
+        
+        // In the right or left cases, we need to switch scaledWidth and scaledHeight,
+        // and also the thumbnail point
+        if self.imageOrientation == .left {
+            thumbnailPoint = CGPoint(x: thumbnailPoint.y, y: thumbnailPoint.x)
+            let oldScaledWidth: CGFloat = scaledWidth
+            scaledWidth = scaledHeight
+            scaledHeight = oldScaledWidth
+            
+            bitmapContext?.rotate(by: CGFloat.pi / 2.0) // + 90 degrees
+            bitmapContext?.translateBy(x: 0, y: -targetHeight)
+        } else if self.imageOrientation == .right {
+            thumbnailPoint = CGPoint(x: thumbnailPoint.y, y: thumbnailPoint.x)
+            let oldScaledWidth: CGFloat = scaledWidth
+            scaledWidth = scaledHeight
+            scaledHeight = oldScaledWidth
+            
+            bitmapContext?.rotate(by: CGFloat.pi / -2.0) // - 90 degrees
+            bitmapContext?.translateBy(x: -targetWidth, y: 0)
+        } else if self.imageOrientation == .up {
+            // NOTHING
+        } else if self.imageOrientation == .down {
+            bitmapContext?.translateBy(x: targetWidth, y: targetHeight)
+            bitmapContext?.rotate(by: -CGFloat.pi) // - 180 degrees
+        }
+        
+        bitmapContext?.draw(cgImage, in: CGRect(x: thumbnailPoint.x,
+                                                y: thumbnailPoint.y,
+                                                width: scaledWidth,
+                                                height: scaledHeight))
+        
+        guard let resultCGImage = bitmapContext?.makeImage() else { return self }
+        let newImage = UIImage(cgImage: resultCGImage)
+        
+        return newImage
+    }
 }
 
 fileprivate func LGDegreesToRadians(degrees : CGFloat) -> CGFloat {
