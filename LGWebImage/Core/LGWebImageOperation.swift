@@ -211,41 +211,42 @@ public class LGWebImageOperation: Operation {
     private var destinationURL: URL?
     
     func downloadImageFromRemote() {
-        let request = LGURLSessionManager.default.streamDownload(self.url,
-                                                                 method: LGHTTPMethod.get,
-                                                                 parameters: nil,
-                                                                 encoding: LGURLEncoding.default,
-                                                                 headers: nil,
-                                                                 to: nil)
-        self.request = request
-        request.validate().downloadProgress(queue: DispatchQueue.utility) { [weak self] (progress) in
+        // 同步队列处理request生成
+        lg_generateOperationQueue.async { [weak self] in
             guard let weakSelf = self  else {return}
-            if weakSelf.isCancelled || weakSelf.isFinished {
-                return
-            }
+            let request = LGURLSessionManager.default.streamDownload(weakSelf.url,
+                                                                     method: LGHTTPMethod.get,
+                                                                     parameters: nil,
+                                                                     encoding: LGURLEncoding.default,
+                                                                     headers: nil,
+                                                                     to: nil)
+            weakSelf.request = request
             
-//            if let receivedData = weakSelf.request?.delegate.receivedData {
-//                weakSelf.decodeDataToUIImageIfNeeded(receivedData)
-//            }
-            
-            DispatchQueue.main.async { [weak self] in
+            request.validate().downloadProgress(queue: DispatchQueue.utility) { [weak self] (progress) in
                 guard let weakSelf = self  else {return}
-                if let progressBlock = weakSelf.progress {
-                    progressBlock(progress)
+                if weakSelf.isCancelled || weakSelf.isFinished {
+                    return
+                }
+                
+                DispatchQueue.main.async { [weak self] in
+                    guard let weakSelf = self  else {return}
+                    if let progressBlock = weakSelf.progress {
+                        progressBlock(progress)
+                    }
                 }
             }
-        }
-        
-        request.validate().responseData(queue: DispatchQueue.utility) { [weak self] (response) in
-            guard let weakSelf = self  else {return}
-            if weakSelf.isCancelled || weakSelf.isFinished {
-                return
-            }
             
-            weakSelf.downloadCompleteProcessor(response)
+            request.validate().responseData(queue: DispatchQueue.utility) { [weak self] (response) in
+                guard let weakSelf = self  else {return}
+                if weakSelf.isCancelled || weakSelf.isFinished {
+                    return
+                }
+                
+                weakSelf.downloadCompleteProcessor(response)
+            }
+            weakSelf.temporaryURL = request.temporaryURL
+            weakSelf.destinationURL = request.destinationURL
         }
-        self.temporaryURL = request.temporaryURL
-        self.destinationURL = request.destinationURL
     }
     
     func downloadCompleteProcessor(_ response: LGHTTPDataResponse<Data>){
@@ -738,3 +739,6 @@ fileprivate func networkIndicatorStop() {
         }
     }
 }
+
+
+fileprivate let lg_generateOperationQueue = DispatchQueue(label: "cxylg.lgwebimage.download.generate.queue")
