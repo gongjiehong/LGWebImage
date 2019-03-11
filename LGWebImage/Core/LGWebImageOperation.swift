@@ -268,8 +268,7 @@ public class LGWebImageOperation: Operation {
                     if let image: UIImage = LGImage.imageWith(data: receivedData) {
                         imageCache.memoryCache.setObject(LGCacheItem(data: image,
                                                                      extendedData: nil),
-                                                         forKey: originURL.absoluteString,
-                                                         withCost: image.imageCost)
+                                                         forKey: originURL.absoluteString)
                         self.invokeCompletionOnMainThread(image,
                                                           remoteURL: originURL,
                                                           sourceType: LGWebImageSourceType.memoryCacheFast,

@@ -112,7 +112,7 @@ class LGWebImageDisplayController: UIViewController {
     }
 
     func addImage(with imageName: String, text: String) {
-        let image = LGImage.imageWith(named: imageName)
+        let image = LGImage.image(named: imageName)
         if image != nil {
             DispatchQueue.main.async {
                 self.add(image: image!, text: text)

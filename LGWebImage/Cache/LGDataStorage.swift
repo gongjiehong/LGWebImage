@@ -26,24 +26,46 @@ public enum LGDataStorageType: Int {
     case mixed
 }
 
-fileprivate struct LGDataStorageConfig {
-    static let maxErrorRetryCount: Int = 5
-    static let minRetryTimeInterval: TimeInterval = 2.0
-    static let pathLengthMax: Int32 = PATH_MAX - 64
-    static let DBFileName: String = "manifest.sqlite"
-    static let DBShmFileName: String = "manifest.sqlite-shm"
-    static let DBWalFileName: String = "manifest.sqlite-wal"
-    static let DataDirectoryName: String = "data"
-    static let TrashDirectoryName: String = "trash"
-}
 
 fileprivate enum LGCacheError: Error {
     case execSqlFailed
 }
 
-
-
 public class LGDataStorage {
+    fileprivate struct Config {
+        static var maxErrorRetryCount: Int {
+            return 5
+        }
+        
+        static var minRetryTimeInterval: TimeInterval {
+            return 2.0
+        }
+        
+        static var pathLengthMax: Int32 {
+            return PATH_MAX - 64
+        }
+        
+        static var dbFileName: String {
+            return "manifest.sqlite"
+        }
+        
+        static var dbShmFileName: String {
+            return "manifest.sqlite-shm"
+        }
+        
+        static var dbWalFileName: String {
+            return "manifest.sqlite-wal"
+        }
+        
+        static var dataDirectoryName: String {
+            return "data"
+        }
+        
+        static var trashDirectoryName: String {
+            return "trash"
+        }
+    }
+
     
     fileprivate var _trashQueue: DispatchQueue?
     fileprivate var _path: String?
@@ -63,16 +85,16 @@ public class LGDataStorage {
     public private(set) var type: LGDataStorageType
     
     public init(path: String, type: LGDataStorageType) {
-        assert(path.count > 0 && path.count < LGDataStorageConfig.pathLengthMax, "路径不合法")
+        assert(path.count > 0 && path.count < Config.pathLengthMax, "路径不合法")
         assert(type.rawValue <= LGDataStorageType.mixed.rawValue, "存储数据类型无效")
         
         self.path = path
         self.type = type
         
         _path = path
-        _trashPath = path + "/" + LGDataStorageConfig.TrashDirectoryName
-        _dataPath = path + "/" + LGDataStorageConfig.DataDirectoryName
-        _dbPath = path + "/" + LGDataStorageConfig.DBFileName
+        _trashPath = path + "/" + Config.trashDirectoryName
+        _dataPath = path + "/" + Config.dataDirectoryName
+        _dbPath = path + "/" + Config.dbFileName
         _trashQueue = DispatchQueue(label: "com.LGDataStorage.cache.disk.trash")
         
         do {
@@ -663,8 +685,8 @@ fileprivate extension LGDataStorage {
     
     fileprivate func _dbCheck() -> Bool {
         if _db == nil {
-            if _dbOpenErrorCount < LGDataStorageConfig.maxErrorRetryCount &&
-                CACurrentMediaTime() - _dbLastOpenErrorTime > LGDataStorageConfig.minRetryTimeInterval {
+            if _dbOpenErrorCount < Config.maxErrorRetryCount &&
+                CACurrentMediaTime() - _dbLastOpenErrorTime > Config.minRetryTimeInterval {
                 return self._dbOpen() && self._dbInitlalize()
             }
             else {
@@ -1392,9 +1414,9 @@ fileprivate extension LGDataStorage {
     fileprivate func _reset() {
         do {
             let fileManager = FileManager.default
-            try fileManager.removeItem(atPath: _path! + "/" + LGDataStorageConfig.DBFileName)
-            try fileManager.removeItem(atPath: _path! + "/" + LGDataStorageConfig.DBShmFileName)
-            try fileManager.removeItem(atPath: _path! + "/" + LGDataStorageConfig.DBWalFileName)
+            try fileManager.removeItem(atPath: _path! + "/" + Config.dbFileName)
+            try fileManager.removeItem(atPath: _path! + "/" + Config.dbShmFileName)
+            try fileManager.removeItem(atPath: _path! + "/" + Config.dbWalFileName)
             _ = _fileMoveAllToTrash()
             _fileEmptyTrashInBackground()
         }

@@ -25,7 +25,6 @@ private var BundlePreferredScales: [CGFloat] {
 }
 
 extension String {
-    
     func lg_stringByAppendingNameScale(_ scale: CGFloat) -> String {
         if abs(scale - 1) <= CGFloat.ulpOfOne || self.count == 0 || self.hasSuffix("/") {
             return self
@@ -69,7 +68,7 @@ public class LGImage: UIImage {
         }
     }
     
-    public static func imageWith(named name: String) -> LGImage? {
+    public static func image(named name: String) -> LGImage? {
         if name.lg_length == 0 {
             return nil
         }
@@ -157,6 +156,9 @@ public class LGImage: UIImage {
                 result.decoder = decoder
                 result.bytesPerFrame = cgImage.bytesPerRow * cgImage.height
                 result.animatedImageMemorySize = result.bytesPerFrame * decoder.frameCount
+            } else {
+                result.bytesPerFrame = cgImage.bytesPerRow * cgImage.height
+                result.animatedImageMemorySize = result.bytesPerFrame
             }
             result.lg_isDecodedForDisplay = true
             return result

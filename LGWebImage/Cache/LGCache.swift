@@ -11,7 +11,7 @@ import Foundation
 public class LGCache {
     public private(set) var name: String = ""
     
-    public private(set) var memoryCache: LGMemoryCache
+    public private(set) var memoryCache: LGMemoryCache<String, LGCacheItem>
     
     public private(set) var diskCache: LGDiskCache
     
@@ -26,8 +26,8 @@ public class LGCache {
         let diskCache = LGDiskCache(path: path)
         let name = NSString(string: path).lastPathComponent
         
-        let memoryCache = LGMemoryCache()
-        memoryCache.name = name
+        let memoryCache = LGMemoryCache<String, LGCacheItem>()
+//        memoryCache.name = name
         
         self.diskCache = diskCache
         self.memoryCache = memoryCache
@@ -56,7 +56,7 @@ public class LGCache {
             return objcet
         } else {
             if let object = diskCache.object(forKey: key) {
-                memoryCache.setObject(object, forKey: key, withCost: 0)
+                memoryCache.setObject(object, forKey: key)
                 return object
             } else {
                 return nil
@@ -78,7 +78,7 @@ public class LGCache {
                     return
                 }
                 if item != nil && !weakSelf.memoryCache.containsObject(forKey: itemKey) {
-                    weakSelf.memoryCache.setObject(item, forKey: itemKey, withCost: 0)
+                    weakSelf.memoryCache.setObject(item, forKey: itemKey)
                 }
                 tempBlock(itemKey, item)
             })
@@ -87,12 +87,12 @@ public class LGCache {
     }
     
     public func setObject(_ object: LGCacheItem?, forKey key: String) {
-        memoryCache.setObject(object, forKey: key, withCost: 0)
+        memoryCache.setObject(object, forKey: key)
         diskCache.setObject(object, forKey: key)
     }
     
     public func setObject(_ object: LGCacheItem?, forKey key: String, withBlock block: (() -> Void)?) {
-        memoryCache.setObject(object, forKey: key, withCost: 0)
+        memoryCache.setObject(object, forKey: key)
         diskCache.setObject(object, forKey: key, withBlock: block)
     }
     
