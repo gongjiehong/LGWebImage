@@ -139,17 +139,19 @@ public class LGImageCache {
             }
         }
         if type.contains(LGImageCacheType.disk) {
-            if let imageItem = self.diskCache.object(forKey: key) {
-                let image = UIImage.imageFrom(cacheItem: imageItem,
-                                              isAllowAnimatedImage: isAllowAnimatedImage,
-                                              isDecodeForDisplay: isDecodeForDisplay)
-                if image != nil {
-                    self.memoryCache.setObject(LGCacheItem(data: image!, extendedData: imageItem.extendedData),
-                                               forKey: key)
+            return imageCacheDecodeQueue.sync {
+                if let imageItem = self.diskCache.object(forKey: key) {
+                    let image = UIImage.imageFrom(cacheItem: imageItem,
+                                                  isAllowAnimatedImage: isAllowAnimatedImage,
+                                                  isDecodeForDisplay: isDecodeForDisplay)
+                    if image != nil {
+                        self.memoryCache.setObject(LGCacheItem(data: image!, extendedData: imageItem.extendedData),
+                                                   forKey: key)
+                    }
+                    return image
+                } else {
+                    return nil
                 }
-                return image
-            } else {
-                return nil
             }
         }
         return nil

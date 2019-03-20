@@ -73,6 +73,8 @@ internal class LGWebImageOperationSetter {
     
     @discardableResult
     func cancel(withNewURL url: LGURLConvertible? = nil) -> Sentinel {
+        task?.cancel()
+        
         var tempSentinel: Sentinel
         _ = lock.wait(timeout: DispatchTime.distantFuture)
         defer {
@@ -82,13 +84,10 @@ internal class LGWebImageOperationSetter {
         if self.operation != nil {
             self.operation?.cancel()
             self.operation = nil
-//            println("to cancel")
         }
         
         _imageURL = url
-//        println("before: \(_sentinel), \(0)")
         tempSentinel = OSAtomicIncrement64Barrier(&_sentinel)
-//        println("after: \(_sentinel), \(tempSentinel)")
         return tempSentinel
     }
     
@@ -97,12 +96,17 @@ internal class LGWebImageOperationSetter {
         return queue
     }()
     
+    func runTask(_ task: DispatchWorkItem) {
+        self.task = task
+        LGWebImageOperationSetter.setterQueue.async(execute: task)
+    }
+    
     deinit {
         OSAtomicIncrement64Barrier(&_sentinel)
         if let operation = self.operation {
             operation.cancel()
         }
-        println("LGWebImageOperationSetter deinit")
+        task?.cancel()
     }
 }
 

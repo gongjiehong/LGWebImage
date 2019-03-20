@@ -56,9 +56,7 @@ public extension UIImageView {
                                    progressBlock: LGWebImageProgressBlock? = nil,
                                    completionBlock: LGWebImageCompletionBlock? = nil)
     {
-        lg_imageSetter.task?.cancel()
         let sentinel: LGWebImageOperationSetter.Sentinel = self.lg_imageSetter.cancel(withNewURL: imageURL)
-        self.image = nil
         
         do {
             let newURL = try imageURL.asURL()
@@ -80,6 +78,8 @@ public extension UIImageView {
         
         if self.image == nil && !options.contains(LGWebImageOptions.ignorePlaceHolder) && placeholder != nil {
             self.image = placeholder
+        } else {
+            self.image = nil
         }
         
         let task = DispatchWorkItem { [weak self] in
@@ -138,8 +138,7 @@ public extension UIImageView {
             })
         }
         
-        LGWebImageOperationSetter.setterQueue.async(execute: task)
-        lg_imageSetter.task = task
+        lg_imageSetter.runTask(task)
     }
     
     /// 取消普通图片请求
@@ -189,7 +188,6 @@ public extension UIImageView {
                                               completionBlock: LGWebImageCompletionBlock? = nil)
     {
         let sentinel = self.lg_highlightedImageSetter.cancel(withNewURL: imageURL)
-        self.highlightedImage = nil
         
         do {
             let newURL = try imageURL.asURL()
@@ -214,60 +212,68 @@ public extension UIImageView {
             !options.contains(LGWebImageOptions.ignorePlaceHolder) &&
             placeholder != nil
         {
-            lg_setImageQueue.async(flags: DispatchWorkItemFlags.barrier) { [weak self] in
-                self?.highlightedImage = placeholder
-            }
+            self.highlightedImage = placeholder
+        } else {
+            self.highlightedImage = nil
         }
         
-        var newSentinel: LGWebImageOperationSetter.Sentinel = 0
-        newSentinel = self.lg_highlightedImageSetter.setOperation(with: sentinel,
-                                                                  URL: imageURL,
-                                                                  options: options,
-                                                                  manager: LGWebImageManager.default,
-                                                                  progress:
-            { (progress) in
-                progressBlock?(progress)
-        }, completion: { [weak self] (resultImage, url, sourceType, imageStage, error) in
-            guard let strongSelf = self, strongSelf.lg_highlightedImageSetter.sentinel == newSentinel else {
-                completionBlock?(resultImage, url, sourceType, imageStage, error)
+        let task = DispatchWorkItem { [weak self] in
+            guard let strongSelf = self else {
                 return
             }
-            if resultImage != nil && error == nil {
-                let needFadeAnimation = options.contains(LGWebImageOptions.setImageWithFadeAnimation)
-                let avoidSetImage = options.contains(LGWebImageOptions.avoidSetImage)
-                if  needFadeAnimation && !avoidSetImage
-                {
-                    if strongSelf.isHighlighted {
-                        strongSelf.layer.removeAnimation(forKey: kLGWebImageFadeAnimationKey)
-                    }
+            
+            var newSentinel: LGWebImageOperationSetter.Sentinel = 0
+            newSentinel = strongSelf.lg_highlightedImageSetter.setOperation(with: sentinel,
+                                                                      URL: imageURL,
+                                                                      options: options,
+                                                                      manager: LGWebImageManager.default,
+                                                                      progress:
+                { (progress) in
+                    progressBlock?(progress)
+            }, completion: { [weak self] (resultImage, url, sourceType, imageStage, error) in
+                guard let strongSelf = self, strongSelf.lg_highlightedImageSetter.sentinel == newSentinel else {
+                    completionBlock?(resultImage, url, sourceType, imageStage, error)
+                    return
                 }
-                
-                let imageIsValid = (imageStage == .finished || imageStage == .progress)
-                let canSetImage = (!avoidSetImage && imageIsValid)
-                
-                let result = resultImage
-                
-                if canSetImage {
-                    
-                    if needFadeAnimation && !strongSelf.isHighlighted {
-                        let transition = CATransition()
-                        var duration: CFTimeInterval
-                        if imageStage == LGWebImageStage.finished {
-                            duration = CFTimeInterval.lg_imageFadeAnimationTime
-                        } else {
-                            duration = CFTimeInterval.lg_imageProgressiveFadeAnimationTime
+                if resultImage != nil && error == nil {
+                    let needFadeAnimation = options.contains(LGWebImageOptions.setImageWithFadeAnimation)
+                    let avoidSetImage = options.contains(LGWebImageOptions.avoidSetImage)
+                    if  needFadeAnimation && !avoidSetImage
+                    {
+                        if strongSelf.isHighlighted {
+                            strongSelf.layer.removeAnimation(forKey: kLGWebImageFadeAnimationKey)
                         }
-                        transition.duration = duration
-                        let functionName = CAMediaTimingFunctionName.easeInEaseOut
-                        transition.timingFunction = CAMediaTimingFunction(name: functionName)
-                        transition.type = CATransitionType.fade
-                        strongSelf.layer.add(transition, forKey: kLGWebImageFadeAnimationKey)
                     }
-                    strongSelf.highlightedImage = result
+                    
+                    let imageIsValid = (imageStage == .finished || imageStage == .progress)
+                    let canSetImage = (!avoidSetImage && imageIsValid)
+                    
+                    let result = resultImage
+                    
+                    if canSetImage {
+                        
+                        if needFadeAnimation && !strongSelf.isHighlighted {
+                            let transition = CATransition()
+                            var duration: CFTimeInterval
+                            if imageStage == LGWebImageStage.finished {
+                                duration = CFTimeInterval.lg_imageFadeAnimationTime
+                            } else {
+                                duration = CFTimeInterval.lg_imageProgressiveFadeAnimationTime
+                            }
+                            transition.duration = duration
+                            let functionName = CAMediaTimingFunctionName.easeInEaseOut
+                            transition.timingFunction = CAMediaTimingFunction(name: functionName)
+                            transition.type = CATransitionType.fade
+                            strongSelf.layer.add(transition, forKey: kLGWebImageFadeAnimationKey)
+                        }
+                        strongSelf.highlightedImage = result
+                    }
                 }
-            }
-            completionBlock?(resultImage, url, sourceType, imageStage, error)
-        })
+                completionBlock?(resultImage, url, sourceType, imageStage, error)
+            })
+        }
+        
+        lg_highlightedImageSetter.runTask(task)
     }
     
     /// 取消普通图片请求

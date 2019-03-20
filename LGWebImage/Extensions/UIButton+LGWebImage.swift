@@ -86,8 +86,6 @@ public extension UIButton {
             setter = temp
         }
         
-        self.setImage(nil, for: state)
-        
         do {
             let newURL = try imageURL.asURL()
             if  let image = LGImageCache.default.getImage(forKey: newURL.absoluteString,
@@ -111,41 +109,47 @@ public extension UIButton {
             placeholder != nil
         {
             self.setImage(placeholder, for: state)
+        } else {
+            self.setImage(nil, for: state)
         }
         
-        var newSentinel: LGWebImageOperationSetter.Sentinel = 0
-        newSentinel = setter.setOperation(with: sentinel,
-                                          URL: imageURL,
-                                          options: options,
-                                          manager: LGWebImageManager.default,
-                                          progress:
-            { (progress) in
-                progressBlock?(progress)
-        }, completion: { [weak self] (resultImage, url, sourceType, imageStage, error) in
-            guard let strongSelf = self, strongSelf.imageSetterContainer[state.rawValue]?.sentinel == newSentinel else {
+        let task = DispatchWorkItem {
+            var newSentinel: LGWebImageOperationSetter.Sentinel = 0
+            newSentinel = setter.setOperation(with: sentinel,
+                                              URL: imageURL,
+                                              options: options,
+                                              manager: LGWebImageManager.default,
+                                              progress:
+                { (progress) in
+                    progressBlock?(progress)
+            }, completion: { [weak self] (resultImage, url, sourceType, imageStage, error) in
+                guard let strongSelf = self, strongSelf.imageSetterContainer[state.rawValue]?.sentinel == newSentinel else {
+                    completionBlock?(resultImage, url, sourceType, imageStage, error)
+                    return
+                }
+                
+                if resultImage != nil && error == nil {
+                    let avoidSetImage = options.contains(LGWebImageOptions.avoidSetImage)
+                    
+                    
+                    let imageIsValid = (imageStage == .finished || imageStage == .progress)
+                    let canSetImage = (!avoidSetImage && imageIsValid)
+                    
+                    var result = resultImage
+                    if let cornerRadiusImage = self?.cornerRadius(resultImage) {
+                        result = cornerRadiusImage
+                    }
+                    
+                    if canSetImage {
+                        strongSelf.setImage(result, for: state)
+                    }
+                }
+                
                 completionBlock?(resultImage, url, sourceType, imageStage, error)
-                return
-            }
-            
-            if resultImage != nil && error == nil {
-                let avoidSetImage = options.contains(LGWebImageOptions.avoidSetImage)
-                
-                
-                let imageIsValid = (imageStage == .finished || imageStage == .progress)
-                let canSetImage = (!avoidSetImage && imageIsValid)
-                
-                var result = resultImage
-                if let cornerRadiusImage = self?.cornerRadius(resultImage) {
-                    result = cornerRadiusImage
-                }
-                
-                if canSetImage {
-                    strongSelf.setImage(result, for: state)
-                }
-            }
-            
-            completionBlock?(resultImage, url, sourceType, imageStage, error)
-        })
+            })
+        }
+        
+        setter.runTask(task)
     }
     
     // MARK: -  backgroundImage
@@ -178,8 +182,6 @@ public extension UIButton {
             setter = temp
         }
         
-        self.setBackgroundImage(nil, for: state)
-        
         do {
             let newURL = try imageURL.asURL()
             if  let image = LGImageCache.default.getImage(forKey: newURL.absoluteString,
@@ -204,41 +206,47 @@ public extension UIButton {
             placeholder != nil
         {
             self.setBackgroundImage(placeholder, for: state)
+        } else {
+            self.setBackgroundImage(nil, for: state)
         }
         
-        var newSentinel: LGWebImageOperationSetter.Sentinel = 0
-        newSentinel = setter.setOperation(with: sentinel,
-                                          URL: imageURL,
-                                          options: options,
-                                          manager: LGWebImageManager.default,
-                                          progress:
-            { (progress) in
-                progressBlock?(progress)
-        }, completion: { [weak self] (resultImage, url, sourceType, imageStage, error) in
-            guard let strongSelf = self, strongSelf.imageSetterContainer[state.rawValue]?.sentinel == newSentinel else {
+        let task = DispatchWorkItem {
+            var newSentinel: LGWebImageOperationSetter.Sentinel = 0
+            newSentinel = setter.setOperation(with: sentinel,
+                                              URL: imageURL,
+                                              options: options,
+                                              manager: LGWebImageManager.default,
+                                              progress:
+                { (progress) in
+                    progressBlock?(progress)
+            }, completion: { [weak self] (resultImage, url, sourceType, imageStage, error) in
+                guard let strongSelf = self, strongSelf.imageSetterContainer[state.rawValue]?.sentinel == newSentinel else {
+                    completionBlock?(resultImage, url, sourceType, imageStage, error)
+                    return
+                }
+                
+                if resultImage != nil && error == nil {
+                    let avoidSetImage = options.contains(LGWebImageOptions.avoidSetImage)
+                    
+                    
+                    let imageIsValid = (imageStage == .finished || imageStage == .progress)
+                    let canSetImage = (!avoidSetImage && imageIsValid)
+                    
+                    var result = resultImage
+                    if let cornerRadiusImage = self?.cornerRadius(resultImage) {
+                        result = cornerRadiusImage
+                    }
+                    
+                    if canSetImage {
+                        strongSelf.setBackgroundImage(result, for: state)
+                    }
+                }
+                
                 completionBlock?(resultImage, url, sourceType, imageStage, error)
-                return
-            }
-            
-            if resultImage != nil && error == nil {
-                let avoidSetImage = options.contains(LGWebImageOptions.avoidSetImage)
-                
-                
-                let imageIsValid = (imageStage == .finished || imageStage == .progress)
-                let canSetImage = (!avoidSetImage && imageIsValid)
-                
-                var result = resultImage
-                if let cornerRadiusImage = self?.cornerRadius(resultImage) {
-                    result = cornerRadiusImage
-                }
-                
-                if canSetImage {
-                    strongSelf.setBackgroundImage(result, for: state)
-                }
-            }
-            
-            completionBlock?(resultImage, url, sourceType, imageStage, error)
-        })
+            })
+        }
+        
+        setter.runTask(task)
     }
 }
 
