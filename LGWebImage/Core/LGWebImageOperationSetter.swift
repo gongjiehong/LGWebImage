@@ -10,6 +10,9 @@ import Foundation
 import LGHTTPRequest
 
 internal class LGWebImageOperationSetter {
+    
+    weak var task: DispatchWorkItem?
+    
     private var _imageURL: LGURLConvertible?
     var imageURL: LGURLConvertible? {
         _ = lock.wait(timeout: DispatchTime.distantFuture)
@@ -79,17 +82,18 @@ internal class LGWebImageOperationSetter {
         if self.operation != nil {
             self.operation?.cancel()
             self.operation = nil
+//            println("to cancel")
         }
         
         _imageURL = url
+//        println("before: \(_sentinel), \(0)")
         tempSentinel = OSAtomicIncrement64Barrier(&_sentinel)
+//        println("after: \(_sentinel), \(tempSentinel)")
         return tempSentinel
     }
     
     static let setterQueue: DispatchQueue = {
-        let queue = DispatchQueue(label: "cxylg.LGWebImageOperationSetter.setterQueue",
-                                  attributes: DispatchQueue.Attributes(rawValue: 1),
-                                  target: DispatchQueue.background)
+        let queue = DispatchQueue(label: "cxylg.LGWebImageOperationSetter.setterQueue")
         return queue
     }()
     
@@ -98,6 +102,7 @@ internal class LGWebImageOperationSetter {
         if let operation = self.operation {
             operation.cancel()
         }
+        println("LGWebImageOperationSetter deinit")
     }
 }
 

@@ -40,10 +40,10 @@ public struct LGImageCacheType: OptionSet {
 public class LGImageCache {
     public var name: String?
     public private(set) var memoryCache: LGMemoryCache<String, LGCacheItem>
-    public private(set) var diskCache: LGDiskCache
+    public private(set) var diskCache: LGDiskCache<String, LGCacheItem>
     
-    fileprivate let imageCacheIOQueue = DispatchQueue.global(qos: DispatchQoS.QoSClass.utility)
-    fileprivate let imageCacheDecodeQueue = DispatchQueue.global(qos: DispatchQoS.QoSClass.background)
+    fileprivate let imageCacheIOQueue = DispatchQueue(label: "LGImageCache.Queue.IO")
+    fileprivate let imageCacheDecodeQueue = DispatchQueue(label: "LGImageCache.Queue.Decode")
     
     public var isAllowAnimatedImage: Bool = true
     public var isDecodeForDisplay: Bool = true
@@ -56,19 +56,12 @@ public class LGImageCache {
     }()
     
     public init(cachePath path: String) {
-        let memoryCache = LGMemoryCache<String, LGCacheItem>()
+        let memoryConfig = LGMemoryConfig(name: "LGImageCache.Memory")
+        let memoryCache = LGMemoryCache<String, LGCacheItem>(config: memoryConfig)
         
-//        /// 12（小时） * 60（分） * 60（秒）
-//        memoryCache.ageLimit = 12 * 60 * 60
-//        
-//        /// 物理内存的百分之五用作缓存内存缓存
-//        memoryCache.costLimit = Int(Double(ProcessInfo().physicalMemory) * 0.05)
-        
-        let diskCache = LGDiskCache(path: path)
-        // 最大占用1GB磁盘 1024 * 1024 * 1024
-        diskCache.costLimit = 1_024 * 1_024 * 1_024
-        // 最多存储30天，30天 * 24小时 * 60分 * 60秒
-        diskCache.ageLimit = 2_592_000
+        let diskConfig = LGDiskConfig(name: "LGImageCache.Disk")
+        let diskCache = LGDiskCache<String, LGCacheItem>(diskConfig)
+
         self.memoryCache = memoryCache
         self.diskCache = diskCache
     }
@@ -130,7 +123,6 @@ public class LGImageCache {
                         let cacheItem = LGCacheItem(data: data, extendedData: image!.scale)
                         weakSelf.diskCache.setObject(cacheItem, forKey: key)
                     }
-                    
                 }
             }
         }
@@ -159,7 +151,6 @@ public class LGImageCache {
             } else {
                 return nil
             }
-            
         }
         return nil
     }

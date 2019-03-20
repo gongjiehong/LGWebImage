@@ -11,7 +11,7 @@ import Foundation
 // MARK: - LGCacheItem
 /// 缓存对象，包含主要数据和附加数据，附加数据可以为空
 /// 附件数据可以用户存储图片缩放信息等内容
-public struct LGCacheItem {
+public final class LGCacheItem {
     public var data: LGDataConvertible
     public var extendedData: LGDataConvertible?
     public var time: TimeInterval

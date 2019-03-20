@@ -129,13 +129,19 @@ public class LGMemoryCache<KeyType: Hashable, ValueType: LGMemoryCost> {
         
         _lru[key] = toSaveObj
         
-        if _lru.totalCost > config.totalCostLimit {
-            _workQueue.async {
-                self.trimToCost(self.config.totalCostLimit)
+        switch config.totalCostLimit {
+        case .unlimited, .zero:
+            break
+        case let .byte(cost):
+            if _lru.totalCost > cost {
+                _workQueue.async {
+                    self.trimToCost(cost)
+                }
             }
+            break
         }
         
-        if _lru.totalCount > config.countLimit {
+        if config.countLimit != LGCountLimit.unlimited, _lru.totalCount > config.countLimit {
             _workQueue.async {
                 self.trimToCount(self.config.countLimit)
             }
@@ -214,7 +220,13 @@ fileprivate extension LGMemoryCache {
     
     fileprivate func _trimInBackground() {
         _workQueue.async {
-            self._trimToCost(self.config.totalCostLimit)
+            switch self.config.totalCostLimit {
+            case .unlimited, .zero:
+                break
+            case let .byte(cost):
+                self._trimToCost(cost)
+                break
+            }
             self._trimToCount(self.config.countLimit)
             switch self.config.expiry {
             case let .ageLimit(seconds):

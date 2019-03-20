@@ -56,6 +56,7 @@ public extension UIImageView {
                                    progressBlock: LGWebImageProgressBlock? = nil,
                                    completionBlock: LGWebImageCompletionBlock? = nil)
     {
+        lg_imageSetter.task?.cancel()
         let sentinel: LGWebImageOperationSetter.Sentinel = self.lg_imageSetter.cancel(withNewURL: imageURL)
         self.image = nil
         
@@ -81,11 +82,13 @@ public extension UIImageView {
             self.image = placeholder
         }
         
-        LGWebImageOperationSetter.setterQueue.async { [weak self] in
+        let task = DispatchWorkItem { [weak self] in
             guard let strongSelf = self else {
                 return
             }
+            
             var newSentinel: LGWebImageOperationSetter.Sentinel = sentinel
+            
             newSentinel = strongSelf.lg_imageSetter.setOperation(with: sentinel,
                                                                  URL: imageURL,
                                                                  options: options,
@@ -134,6 +137,9 @@ public extension UIImageView {
                 completionBlock?(resultImage, url, sourceType, imageStage, error)
             })
         }
+        
+        LGWebImageOperationSetter.setterQueue.async(execute: task)
+        lg_imageSetter.task = task
     }
     
     /// 取消普通图片请求
