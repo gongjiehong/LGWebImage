@@ -73,10 +73,15 @@ public extension UIImageView {
             }
         } catch {
             println(error)
+            if !options.contains(LGWebImageOptions.ignorePlaceHolder) && placeholder != nil {
+                self.image = placeholder
+            } else {
+                self.image = nil
+            }
             return
         }
         
-        if self.image == nil && !options.contains(LGWebImageOptions.ignorePlaceHolder) && placeholder != nil {
+        if !options.contains(LGWebImageOptions.ignorePlaceHolder) && placeholder != nil {
             self.image = placeholder
         } else {
             self.image = nil
@@ -205,11 +210,17 @@ public extension UIImageView {
             }
         } catch {
             println(error)
+            if !options.contains(LGWebImageOptions.ignorePlaceHolder) &&
+                placeholder != nil
+            {
+                self.highlightedImage = placeholder
+            } else {
+                self.highlightedImage = nil
+            }
             return
         }
         
-        if self.highlightedImage == nil &&
-            !options.contains(LGWebImageOptions.ignorePlaceHolder) &&
+        if !options.contains(LGWebImageOptions.ignorePlaceHolder) &&
             placeholder != nil
         {
             self.highlightedImage = placeholder

@@ -71,10 +71,15 @@ public extension CALayer {
             }
         } catch {
             println(error)
+            if !options.contains(LGWebImageOptions.ignorePlaceHolder) && placeholder != nil {
+                self.contents = placeholder?.cgImage
+            } else {
+                self.contents = nil
+            }
             return
         }
         
-        if self.contents == nil && !options.contains(LGWebImageOptions.ignorePlaceHolder) && placeholder != nil {
+        if !options.contains(LGWebImageOptions.ignorePlaceHolder) && placeholder != nil {
             self.contents = placeholder?.cgImage
         } else {
             self.contents = nil

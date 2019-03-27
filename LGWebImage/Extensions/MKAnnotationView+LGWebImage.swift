@@ -71,10 +71,15 @@ public extension MKAnnotationView {
             }
         } catch {
             println(error)
+            if !options.contains(LGWebImageOptions.ignorePlaceHolder) && placeholder != nil {
+                self.image = placeholder
+            } else {
+                self.image = nil
+            }
             return
         }
         
-        if self.image == nil && !options.contains(LGWebImageOptions.ignorePlaceHolder) && placeholder != nil {
+        if !options.contains(LGWebImageOptions.ignorePlaceHolder) && placeholder != nil {
             self.image = placeholder
         } else {
             self.image = nil

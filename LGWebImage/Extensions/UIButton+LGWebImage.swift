@@ -101,11 +101,18 @@ public extension UIButton {
             }
         } catch {
             println(error)
+            if !options.contains(LGWebImageOptions.ignorePlaceHolder) &&
+                placeholder != nil
+            {
+                self.setImage(placeholder, for: state)
+            } else {
+                self.setImage(nil, for: state)
+            }
+            return 
         }
         
         
-        if self.image(for: state) == nil &&
-            !options.contains(LGWebImageOptions.ignorePlaceHolder) &&
+        if !options.contains(LGWebImageOptions.ignorePlaceHolder) &&
             placeholder != nil
         {
             self.setImage(placeholder, for: state)
@@ -198,11 +205,17 @@ public extension UIButton {
             }
         } catch {
             println(error)
+            if !options.contains(LGWebImageOptions.ignorePlaceHolder) &&
+                placeholder != nil
+            {
+                self.setBackgroundImage(placeholder, for: state)
+            } else {
+                self.setBackgroundImage(nil, for: state)
+            }
             return
         }
         
-        if self.image(for: state) == nil &&
-            !options.contains(LGWebImageOptions.ignorePlaceHolder) &&
+        if !options.contains(LGWebImageOptions.ignorePlaceHolder) &&
             placeholder != nil
         {
             self.setBackgroundImage(placeholder, for: state)
