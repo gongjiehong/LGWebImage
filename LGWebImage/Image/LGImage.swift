@@ -49,7 +49,7 @@ fileprivate func LGImageSupportExtensions() -> [String] {
     return ["", "png", "jpeg", "jpg", "gif", "webp", "apng", "jp2", "bmp", "ico", "heic", "tiff"]
 }
 
-public class LGImage: UIImage {
+public final class LGImage: UIImage {
     
     fileprivate var decoder: LGImageDecoder?
     fileprivate var preloadedFrames: [Any] = [Any]()
