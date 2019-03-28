@@ -11,38 +11,31 @@ import LGHTTPRequest
 
 public extension CALayer {
     private struct AssociatedKeys {
-        static var URLKey = "LGWebImageURLKey"
-        static var TokenKey = "LGWebImageTokenKey"
         static var cornerRadiusKey = "lg_cornerRadius"
+        static var imageSetterKey = "LGWebImageOperationImageSetterKey"
     }
     
     /// 图片URL
-    public private(set) var lg_imageURL: LGURLConvertible? {
-        set {
-            do {
-                if let url = try newValue?.asURL() {
-                    objc_setAssociatedObject(self,
-                                             &AssociatedKeys.URLKey,
-                                             url,
-                                             objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-                }
-            } catch {
-                
-            }
-        } get {
-            return objc_getAssociatedObject(self, &AssociatedKeys.URLKey) as? URL
-        }
+    public var lg_imageURL: LGURLConvertible? {
+        return lg_imageSetter.imageURL
     }
     
-    /// 下载回调token
-    private var lg_callbackToken: LGWebImageCallbackToken? {
+    private var lg_imageSetter: LGWebImageOperationSetter {
         set {
             objc_setAssociatedObject(self,
-                                     &AssociatedKeys.TokenKey,
+                                     &AssociatedKeys.imageSetterKey,
                                      newValue,
                                      objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         } get {
-            return objc_getAssociatedObject(self, &AssociatedKeys.TokenKey) as? LGWebImageCallbackToken
+            if let temp = objc_getAssociatedObject(self, &AssociatedKeys.imageSetterKey),
+                let setter = temp as? LGWebImageOperationSetter
+            {
+                return setter
+            } else {
+                let setter = LGWebImageOperationSetter()
+                self.lg_imageSetter = setter
+                return setter
+            }
         }
     }
     
@@ -61,13 +54,10 @@ public extension CALayer {
                                    transformBlock: LGWebImageTransformBlock? = nil,
                                    completionBlock: LGWebImageCompletionBlock? = nil)
     {
-        self.lg_cancelCurrentImageRequest()
-        self.contents = nil
-
+        let sentinel = lg_imageSetter.cancel(withNewURL: imageURL)
         
         do {
             let newURL = try imageURL.asURL()
-            self.lg_imageURL = imageURL
             if let image = LGImageCache.default.getImage(forKey: newURL.absoluteString,
                                                          withType: LGImageCacheType.memory)
             {
@@ -80,48 +70,46 @@ public extension CALayer {
                 return
             }
         } catch {
-            self.lg_imageURL = nil
             println(error)
-        }
-        
-        if self.contents == nil && !options.contains(LGWebImageOptions.ignorePlaceHolder) && placeholder != nil {
-            LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier) { [weak self] in
-                var placeholderImage: UIImage? = nil
-                if let image = placeholder?.lg_imageByDecoded {
-                    placeholderImage = image
-                    DispatchQueue.main.async { [weak self] in
-                        self?.contents = placeholderImage?.cgImage
-                    }
-                }
+            if !options.contains(LGWebImageOptions.ignorePlaceHolder) && placeholder != nil {
+                self.contents = placeholder?.cgImage
+            } else {
+                self.contents = nil
             }
-        }
-        
-        if self.lg_imageURL == nil {
             return
         }
         
-        self.lg_callbackToken = LGWebImageManager.default.downloadImageWith(url: imageURL,
-                                                                                  options: options,
-                                                                                  progress:
-            { (progress) in
-                DispatchQueue.main.async {
+        if !options.contains(LGWebImageOptions.ignorePlaceHolder) && placeholder != nil {
+            self.contents = placeholder?.cgImage
+        } else {
+            self.contents = nil
+        }
+        
+        let task = DispatchWorkItem { [weak self] in
+            guard let strongSelf = self else {
+                return
+            }
+            
+            var newSentinel: LGWebImageOperationSetter.Sentinel = 0
+            newSentinel = strongSelf.lg_imageSetter.setOperation(with: sentinel,
+                                                                 URL: imageURL,
+                                                                 options: options,
+                                                                 manager: LGWebImageManager.default,
+                                                                 progress:
+                { (progress) in
                     progressBlock?(progress)
+            }, completion: { [weak self] (resultImage, url, sourceType, imageStage, error) in
+                guard let strongSelf = self, strongSelf.lg_imageSetter.sentinel == newSentinel else {
+                    completionBlock?(resultImage, url, sourceType, imageStage, error)
+                    return
                 }
-        },
-                                                                                  transform: transformBlock,
-                                                                                  completion:
-            {[weak self] (resultImage, url, sourceType, imageStage, error) in
+                
                 if resultImage != nil && error == nil {
                     let needFadeAnimation = options.contains(LGWebImageOptions.setImageWithFadeAnimation)
                     let avoidSetImage = options.contains(LGWebImageOptions.avoidSetImage)
                     if  needFadeAnimation && !avoidSetImage
                     {
-                        DispatchQueue.main.async { [weak self] in
-                            guard let weakSelf = self else {
-                                return
-                            }
-                            weakSelf.removeAnimation(forKey: kLGWebImageFadeAnimationKey)
-                        }
+                        strongSelf.removeAnimation(forKey: kLGWebImageFadeAnimationKey)
                     }
                     
                     let imageIsValid = (imageStage == .finished || imageStage == .progress)
@@ -130,41 +118,35 @@ public extension CALayer {
                     let result = resultImage
                     
                     if canSetImage {
-                        DispatchQueue.main.async { [weak self] in
-                            guard let weakSelf = self else {
-                                return
+                        
+                        if needFadeAnimation {
+                            let transition = CATransition()
+                            var duration: CFTimeInterval
+                            if imageStage == LGWebImageStage.finished {
+                                duration = CFTimeInterval.lg_imageFadeAnimationTime
+                            } else {
+                                duration = CFTimeInterval.lg_imageProgressiveFadeAnimationTime
                             }
-                            if needFadeAnimation {
-                                let transition = CATransition()
-                                var duration: CFTimeInterval
-                                if imageStage == LGWebImageStage.finished {
-                                    duration = CFTimeInterval.lg_imageFadeAnimationTime
-                                } else {
-                                    duration = CFTimeInterval.lg_imageProgressiveFadeAnimationTime
-                                }
-                                transition.duration = duration
-                                let functionName = kCAMediaTimingFunctionEaseInEaseOut
-                                transition.timingFunction = CAMediaTimingFunction(name: functionName)
-                                transition.type = kCATransitionFade
-                                weakSelf.add(transition, forKey: kLGWebImageFadeAnimationKey)
-                            }
-                            weakSelf.contents = result?.cgImage
+                            transition.duration = duration
+                            let functionName = CAMediaTimingFunctionName.easeInEaseOut
+                            transition.timingFunction = CAMediaTimingFunction(name: functionName)
+                            transition.type = CATransitionType.fade
+                            strongSelf.add(transition, forKey: kLGWebImageFadeAnimationKey)
                         }
+                        strongSelf.contents = result?.cgImage
                     }
                 }
                 
-                DispatchQueue.main.async {
-                    completionBlock?(resultImage, url, sourceType, imageStage, error)
-                }
-        })
+                completionBlock?(resultImage, url, sourceType, imageStage, error)
+            })
+        }
+        
+        lg_imageSetter.runTask(task)
     }
     
     /// 取消普通图片请求
     public func lg_cancelCurrentImageRequest() {
-        if let token = self.lg_callbackToken {
-            LGWebImageManager.default.cancelWith(callbackToken: token)
-            self.lg_callbackToken = nil
-        }
+        lg_imageSetter.cancel()
     }
 }
 
@@ -185,22 +167,24 @@ extension CALayer {
     
     @objc func lg_setContents(_ contentsToSet: Any?) {
         if self.lg_needSetCornerRadius == true {
-            LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier)
+            lg_setImageQueue.async(flags: DispatchWorkItemFlags.barrier)
             { [weak self] in
+                guard let weakSelf = self else {return}
                 var result: UIImage? = nil
                 if contentsToSet == nil {
                     return
                 }
                 let tempCGImage: CGImage = contentsToSet as! CGImage
                 let tempImage = UIImage(cgImage: tempCGImage).lg_imageByDecoded
-                if let cornerRadiusImage = self?.cornerRadius(tempImage)
+                if let cornerRadiusImage = weakSelf.cornerRadius(tempImage)
                 {
                     result = cornerRadiusImage
                 } else {
                     result = tempImage
                 }
                 DispatchQueue.main.async { [weak self] in
-                    self?.lg_setContents(result?.cgImage)
+                    guard let weakSelf = self else {return}
+                    weakSelf.lg_setContents(result?.cgImage)
                 }
             }
         } else {
@@ -233,7 +217,7 @@ public extension CALayer {
         }
         if let corner = self.lg_cornerRadius, corner.needSetCornerRadius == true {
             let size = self.bounds.size
-            let contentMode = LGCALayerContentsGravityToUIViewContentMode(self.contentsGravity)
+            let contentMode = self.contentsGravity.asUIViewContentMode()
             var result = image?.lg_imageByResizeToSize(size, contentMode: contentMode)
             result = result?.lg_imageByRoundCornerRadius(corner.cornerRadius,
                                                          corners: corner.corners,
@@ -246,33 +230,35 @@ public extension CALayer {
     }
 }
 
-fileprivate func LGCALayerContentsGravityToUIViewContentMode(_ contentsGravity: String) -> UIViewContentMode {
-    switch contentsGravity {
-    case kCAGravityTop:
-        return .top
-    case kCAGravityBottom:
-        return .bottom
-    case kCAGravityLeft:
-        return .left
-    case kCAGravityRight:
-        return .right
-    case kCAGravityTopLeft:
-        return .topLeft
-    case kCAGravityBottomLeft:
-        return .bottomLeft
-    case kCAGravityTopRight:
-        return .topRight
-    case kCAGravityBottomRight:
-        return .bottomRight
-    case kCAGravityCenter:
-        return .center
-    case kCAGravityResize:
-        return .scaleToFill
-    case kCAGravityResizeAspect:
-        return .scaleAspectFit
-    case kCAGravityResizeAspectFill:
-        return .scaleAspectFill
-    default:
-        return .scaleAspectFill
+extension CALayerContentsGravity {
+    public func asUIViewContentMode() -> UIView.ContentMode {
+        switch self {
+        case CALayerContentsGravity.top:
+            return .top
+        case CALayerContentsGravity.bottom:
+            return .bottom
+        case CALayerContentsGravity.left:
+            return .left
+        case CALayerContentsGravity.right:
+            return .right
+        case CALayerContentsGravity.topLeft:
+            return .topLeft
+        case CALayerContentsGravity.bottomLeft:
+            return .bottomLeft
+        case CALayerContentsGravity.topRight:
+            return .topRight
+        case CALayerContentsGravity.bottomRight:
+            return .bottomRight
+        case CALayerContentsGravity.center:
+            return .center
+        case CALayerContentsGravity.resize:
+            return .scaleToFill
+        case CALayerContentsGravity.resizeAspect:
+            return .scaleAspectFit
+        case CALayerContentsGravity.resizeAspectFill:
+            return .scaleAspectFill
+        default:
+            return .scaleAspectFill
+        }
     }
 }

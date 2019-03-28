@@ -13,40 +13,32 @@ let kLGWebImageFadeAnimationKey = "LGWebImageFadeAnimation"
 
 public extension UIImageView {
     private struct AssociatedKeys {
-        static var normalURLKey = "LGWebImageNormalURLKey"
-        static var highlightedURLKey = "LGWebImageHighlightedURLKey"
-        static var normalTokenKey = "LGWebImageNormalTokenKey"
-        static var highlightedTokenKey = "LGWebImageHighlightedTokenKey"
+        static var imageSetterKey = "LGWebImageOperationImageSetterKey"
+        static var highlightedImageSetterKey = "LGWebImageOperationHighlightedImageSetterKey"
     }
     
     // MARK: -  普通状态
     /// 普通状态图片URL
-    public private(set) var lg_imageURL: LGURLConvertible? {
-        set {
-            do {
-                if let url = try newValue?.asURL() {
-                    objc_setAssociatedObject(self,
-                                             &AssociatedKeys.normalURLKey,
-                                             url,
-                                             objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-                }
-            } catch {
-                
-            }
-        } get {
-            return objc_getAssociatedObject(self, &AssociatedKeys.normalURLKey) as? URL
-        }
+    public var lg_imageURL: LGURLConvertible? {
+        return lg_imageSetter.imageURL
     }
     
-    /// 普通状态下的下载回调token
-    private var lg_normalCallbackToken: LGWebImageCallbackToken? {
+    private var lg_imageSetter: LGWebImageOperationSetter {
         set {
             objc_setAssociatedObject(self,
-                                     &AssociatedKeys.normalTokenKey,
+                                     &AssociatedKeys.imageSetterKey,
                                      newValue,
                                      objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         } get {
-            return objc_getAssociatedObject(self, &AssociatedKeys.normalTokenKey) as? LGWebImageCallbackToken
+            if let temp = objc_getAssociatedObject(self, &AssociatedKeys.imageSetterKey),
+                let setter = temp as? LGWebImageOperationSetter
+            {
+                return setter
+            } else {
+                let setter = LGWebImageOperationSetter()
+                self.lg_imageSetter = setter
+                return setter
+            }
         }
     }
     
@@ -62,15 +54,12 @@ public extension UIImageView {
                                    placeholder: UIImage? = nil,
                                    options: LGWebImageOptions = LGWebImageOptions.default,
                                    progressBlock: LGWebImageProgressBlock? = nil,
-                                   transformBlock: LGWebImageTransformBlock? = nil,
                                    completionBlock: LGWebImageCompletionBlock? = nil)
     {
-        self.lg_cancelCurrentNormalImageRequest()
-        self.image = nil
+        let sentinel: LGWebImageOperationSetter.Sentinel = self.lg_imageSetter.cancel(withNewURL: imageURL)
         
         do {
             let newURL = try imageURL.asURL()
-            self.lg_imageURL = imageURL
             if  let image = LGImageCache.default.getImage(forKey: newURL.absoluteString,
                                                           withType: LGImageCacheType.memory)
             {
@@ -83,47 +72,47 @@ public extension UIImageView {
                 return
             }
         } catch {
-            self.lg_imageURL = nil
             println(error)
-        }
-        
-        if self.image == nil && !options.contains(LGWebImageOptions.ignorePlaceHolder) && placeholder != nil {
-            LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier) { [weak self] in
-                if let image = placeholder?.lg_imageByDecoded {
-                    DispatchQueue.main.async { [weak self] in
-                        self?.image = image
-                    }
-                }
+            if !options.contains(LGWebImageOptions.ignorePlaceHolder) && placeholder != nil {
+                self.image = placeholder
+            } else {
+                self.image = nil
             }
-        }
-        
-        if self.lg_imageURL == nil {
             return
         }
         
-        self.lg_normalCallbackToken = LGWebImageManager.default.downloadImageWith(url: imageURL,
-                                                                                  options: options,
-                                                                                  progress:
-            { (progress) in
-                DispatchQueue.main.async {
+        if !options.contains(LGWebImageOptions.ignorePlaceHolder) && placeholder != nil {
+            self.image = placeholder
+        } else {
+            self.image = nil
+        }
+        
+        let task = DispatchWorkItem { [weak self] in
+            guard let strongSelf = self else {
+                return
+            }
+            
+            var newSentinel: LGWebImageOperationSetter.Sentinel = sentinel
+            
+            newSentinel = strongSelf.lg_imageSetter.setOperation(with: sentinel,
+                                                                 URL: imageURL,
+                                                                 options: options,
+                                                                 manager: LGWebImageManager.default,
+                                                                 progress:
+                { (progress) in
                     progressBlock?(progress)
+            }, completion: { [weak self] (resultImage, url, sourceType, imageStage, error) in
+                guard let strongSelf = self, strongSelf.lg_imageSetter.sentinel == newSentinel else {
+                    completionBlock?(resultImage, url, sourceType, imageStage, error)
+                    return
                 }
-        },
-                                                                                  transform: transformBlock,
-                                                                                  completion:
-            {[weak self] (resultImage, url, sourceType, imageStage, error) in
+                
                 if resultImage != nil && error == nil {
                     let needFadeAnimation = options.contains(LGWebImageOptions.setImageWithFadeAnimation)
                     let avoidSetImage = options.contains(LGWebImageOptions.avoidSetImage)
-                    if  needFadeAnimation && !avoidSetImage
-                    {
-                        DispatchQueue.main.async { [weak self] in
-                            guard let weakSelf = self else {
-                                return
-                            }
-                            if !weakSelf.isHighlighted {
-                                weakSelf.layer.removeAnimation(forKey: kLGWebImageFadeAnimationKey)
-                            }
+                    if  needFadeAnimation && !avoidSetImage {
+                        if strongSelf.isHighlighted {
+                            strongSelf.layer.removeAnimation(forKey: kLGWebImageFadeAnimationKey)
                         }
                     }
                     
@@ -131,74 +120,60 @@ public extension UIImageView {
                     let canSetImage = (!avoidSetImage && imageIsValid)
                     
                     let result = resultImage
-
+                    
                     if canSetImage {
-                        DispatchQueue.main.async { [weak self] in
-                            guard let weakSelf = self else {
-                                return
+                        if needFadeAnimation && !strongSelf.isHighlighted {
+                            let transition = CATransition()
+                            var duration: CFTimeInterval
+                            if imageStage == LGWebImageStage.finished {
+                                duration = CFTimeInterval.lg_imageFadeAnimationTime
+                            } else {
+                                duration = CFTimeInterval.lg_imageProgressiveFadeAnimationTime
                             }
-                            if needFadeAnimation && !weakSelf.isHighlighted {
-                                let transition = CATransition()
-                                var duration: CFTimeInterval
-                                if imageStage == LGWebImageStage.finished {
-                                    duration = CFTimeInterval.lg_imageFadeAnimationTime
-                                } else {
-                                    duration = CFTimeInterval.lg_imageProgressiveFadeAnimationTime
-                                }
-                                transition.duration = duration
-                                let functionName = kCAMediaTimingFunctionEaseInEaseOut
-                                transition.timingFunction = CAMediaTimingFunction(name: functionName)
-                                transition.type = kCATransitionFade
-                                weakSelf.layer.add(transition, forKey: kLGWebImageFadeAnimationKey)
-                            }
-                            weakSelf.image = result
+                            transition.duration = duration
+                            let functionName = CAMediaTimingFunctionName.easeInEaseOut
+                            transition.timingFunction = CAMediaTimingFunction(name: functionName)
+                            transition.type = CATransitionType.fade
+                            strongSelf.layer.add(transition, forKey: kLGWebImageFadeAnimationKey)
                         }
+                        strongSelf.image = result
                     }
                 }
-                
-                DispatchQueue.main.async {
-                    completionBlock?(resultImage, url, sourceType, imageStage, error)
-                }
-        })
+                completionBlock?(resultImage, url, sourceType, imageStage, error)
+            })
+        }
+        
+        lg_imageSetter.runTask(task)
     }
     
     /// 取消普通图片请求
     public func lg_cancelCurrentNormalImageRequest() {
-        if let token = self.lg_normalCallbackToken {
-            LGWebImageManager.default.cancelWith(callbackToken: token)
-            self.lg_normalCallbackToken = nil
-        }
+        lg_imageSetter.cancel()
     }
     
     // MARK: -  高亮状态
     
     /// 高亮状态图片URL
-    public private(set) var lg_highlightedImageURL: LGURLConvertible? {
-        set {
-            do {
-                if let url = try newValue?.asURL() {
-                    objc_setAssociatedObject(self,
-                                             &AssociatedKeys.highlightedURLKey,
-                                             url,
-                                             objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-                }
-            } catch {
-            }
-        }
-        get {
-            return objc_getAssociatedObject(self, &AssociatedKeys.highlightedURLKey) as? URL
-        }
+    public var lg_highlightedImageURL: LGURLConvertible? {
+        return lg_highlightedImageSetter.imageURL
     }
     
-    /// 高亮状态下的下载回调token
-    private var lg_highlightedCallbackToken: LGWebImageCallbackToken? {
+    private var lg_highlightedImageSetter: LGWebImageOperationSetter {
         set {
             objc_setAssociatedObject(self,
-                                     &AssociatedKeys.highlightedTokenKey,
+                                     &AssociatedKeys.highlightedImageSetterKey,
                                      newValue,
                                      objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         } get {
-            return objc_getAssociatedObject(self, &AssociatedKeys.highlightedTokenKey) as? LGWebImageCallbackToken
+            if let temp = objc_getAssociatedObject(self, &AssociatedKeys.highlightedImageSetterKey),
+                let setter = temp as? LGWebImageOperationSetter
+            {
+                return setter
+            } else {
+                let setter = LGWebImageOperationSetter()
+                self.lg_highlightedImageSetter = setter
+                return setter
+            }
         }
     }
     
@@ -217,12 +192,10 @@ public extension UIImageView {
                                               transformBlock: LGWebImageTransformBlock? = nil,
                                               completionBlock: LGWebImageCompletionBlock? = nil)
     {
-        self.lg_cancelCurrentHighlightedImageRequest()
-        self.highlightedImage = nil
+        let sentinel = self.lg_highlightedImageSetter.cancel(withNewURL: imageURL)
         
         do {
             let newURL = try imageURL.asURL()
-            self.lg_highlightedImageURL = imageURL
             if let image = LGImageCache.default.getImage(forKey: newURL.absoluteString,
                                                          withType: LGImageCacheType.memory)
             {
@@ -236,50 +209,50 @@ public extension UIImageView {
                 return
             }
         } catch {
-            self.lg_highlightedImageURL = nil
             println(error)
-        }
-        
-        if self.highlightedImage == nil &&
-            !options.contains(LGWebImageOptions.ignorePlaceHolder) &&
-            placeholder != nil
-        {
-            LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier) { [weak self] in
-                if let image = placeholder?.lg_imageByDecoded {
-                    DispatchQueue.main.async { [weak self] in
-                        self?.highlightedImage = image
-                    }
-                }
+            if !options.contains(LGWebImageOptions.ignorePlaceHolder) &&
+                placeholder != nil
+            {
+                self.highlightedImage = placeholder
+            } else {
+                self.highlightedImage = nil
             }
-        }
-        
-        if self.lg_highlightedImageURL == nil {
             return
         }
         
-        self.lg_highlightedCallbackToken = LGWebImageManager.default.downloadImageWith(url: imageURL,
-                                                                                       options: options,
-                                                                                       progress:
-            { (progress) in
-                DispatchQueue.main.async {
+        if !options.contains(LGWebImageOptions.ignorePlaceHolder) &&
+            placeholder != nil
+        {
+            self.highlightedImage = placeholder
+        } else {
+            self.highlightedImage = nil
+        }
+        
+        let task = DispatchWorkItem { [weak self] in
+            guard let strongSelf = self else {
+                return
+            }
+            
+            var newSentinel: LGWebImageOperationSetter.Sentinel = 0
+            newSentinel = strongSelf.lg_highlightedImageSetter.setOperation(with: sentinel,
+                                                                      URL: imageURL,
+                                                                      options: options,
+                                                                      manager: LGWebImageManager.default,
+                                                                      progress:
+                { (progress) in
                     progressBlock?(progress)
+            }, completion: { [weak self] (resultImage, url, sourceType, imageStage, error) in
+                guard let strongSelf = self, strongSelf.lg_highlightedImageSetter.sentinel == newSentinel else {
+                    completionBlock?(resultImage, url, sourceType, imageStage, error)
+                    return
                 }
-        },
-                                                                                       transform: transformBlock,
-                                                                                       completion:
-            {[weak self] (resultImage, url, sourceType, imageStage, error) in
                 if resultImage != nil && error == nil {
                     let needFadeAnimation = options.contains(LGWebImageOptions.setImageWithFadeAnimation)
                     let avoidSetImage = options.contains(LGWebImageOptions.avoidSetImage)
                     if  needFadeAnimation && !avoidSetImage
                     {
-                        DispatchQueue.main.async { [weak self] in
-                            guard let weakSelf = self else {
-                                return
-                            }
-                            if weakSelf.isHighlighted {
-                                weakSelf.layer.removeAnimation(forKey: kLGWebImageFadeAnimationKey)
-                            }
+                        if strongSelf.isHighlighted {
+                            strongSelf.layer.removeAnimation(forKey: kLGWebImageFadeAnimationKey)
                         }
                     }
                     
@@ -289,41 +262,34 @@ public extension UIImageView {
                     let result = resultImage
                     
                     if canSetImage {
-                        DispatchQueue.main.async { [weak self] in
-                            guard let weakSelf = self else {
-                                return
+                        
+                        if needFadeAnimation && !strongSelf.isHighlighted {
+                            let transition = CATransition()
+                            var duration: CFTimeInterval
+                            if imageStage == LGWebImageStage.finished {
+                                duration = CFTimeInterval.lg_imageFadeAnimationTime
+                            } else {
+                                duration = CFTimeInterval.lg_imageProgressiveFadeAnimationTime
                             }
-                            if needFadeAnimation && !weakSelf.isHighlighted {
-                                let transition = CATransition()
-                                var duration: CFTimeInterval
-                                if imageStage == LGWebImageStage.finished {
-                                    duration = CFTimeInterval.lg_imageFadeAnimationTime
-                                } else {
-                                    duration = CFTimeInterval.lg_imageProgressiveFadeAnimationTime
-                                }
-                                transition.duration = duration
-                                let functionName = kCAMediaTimingFunctionEaseInEaseOut
-                                transition.timingFunction = CAMediaTimingFunction(name: functionName)
-                                transition.type = kCATransitionFade
-                                weakSelf.layer.add(transition, forKey: kLGWebImageFadeAnimationKey)
-                            }
-                            weakSelf.highlightedImage = result
+                            transition.duration = duration
+                            let functionName = CAMediaTimingFunctionName.easeInEaseOut
+                            transition.timingFunction = CAMediaTimingFunction(name: functionName)
+                            transition.type = CATransitionType.fade
+                            strongSelf.layer.add(transition, forKey: kLGWebImageFadeAnimationKey)
                         }
+                        strongSelf.highlightedImage = result
                     }
                 }
-                
-                DispatchQueue.main.async {
-                    completionBlock?(resultImage, url, sourceType, imageStage, error)
-                }
-        })
+                completionBlock?(resultImage, url, sourceType, imageStage, error)
+            })
+        }
+        
+        lg_highlightedImageSetter.runTask(task)
     }
     
-    /// 取消高亮图片请求
-    public func lg_cancelCurrentHighlightedImageRequest() {
-        if let token = self.lg_highlightedCallbackToken {
-            LGWebImageManager.default.cancelWith(callbackToken: token)
-            self.lg_highlightedCallbackToken = nil
-        }
+    /// 取消普通图片请求
+    public func lg_cancelCurrentHilightedImageRequest() {
+        lg_highlightedImageSetter.cancel()
     }
 }
 
@@ -355,18 +321,20 @@ extension UIImageView {
     
     @objc func lg_setImage(_ image: UIImage?) {
         if self.lg_needSetCornerRadius == true {
-            LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier)
+            lg_setImageQueue.async(flags: DispatchWorkItemFlags.barrier)
             { [weak self] in
+                guard let weakSelf = self else {return}
                 var result: UIImage? = nil
                 if let tempImage = image?.lg_imageByDecoded {
-                    if let cornerRadiusImage = self?.cornerRadius(tempImage)
+                    if let cornerRadiusImage = weakSelf.cornerRadius(tempImage)
                     {
                         result = cornerRadiusImage
                     } else {
                         result = tempImage
                     }
                     DispatchQueue.main.async { [weak self] in
-                        self?.lg_setImage(result)
+                        guard let weakSelf = self else {return}
+                        weakSelf.lg_setImage(result)
                     }
                 }
             }
@@ -377,17 +345,19 @@ extension UIImageView {
     
     @objc func lg_setHighlightedImage(_ image: UIImage?) {
         if self.lg_needSetCornerRadius == true {
-            LGWebImageManager.default.workQueue.async(flags: DispatchWorkItemFlags.barrier) { [weak self] in
+            lg_setImageQueue.async(flags: DispatchWorkItemFlags.barrier) { [weak self] in
+                guard let weakSelf = self else {return}
                 var result: UIImage? = nil
                 if let tempImage = image?.lg_imageByDecoded {
-                    if let cornerRadiusImage = self?.cornerRadius(tempImage)
+                    if let cornerRadiusImage = weakSelf.cornerRadius(tempImage)
                     {
                         result = cornerRadiusImage
                     } else {
                         result = tempImage
                     }
                     DispatchQueue.main.async { [weak self] in
-                        self?.lg_setHighlightedImage(result)
+                        guard let weakSelf = self else {return}
+                        weakSelf.lg_setHighlightedImage(result)
                     }
                 }
             }

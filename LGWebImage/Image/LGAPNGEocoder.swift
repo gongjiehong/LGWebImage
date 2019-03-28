@@ -253,10 +253,11 @@ fileprivate func swapEndianUInt16(value: UInt16) -> UInt16 {
 }
 
 fileprivate func swapEndianUInt32(value: UInt32) -> UInt32 {
-    return ((value & 0x000000FF) << 24) |
-        ((value & 0x0000FF00) <<  8) |
-        ((value & 0x00FF0000) >>  8) |
-        ((value & 0xFF000000) >> 24)
+//    return ((value & 0x000000FF) << 24) |
+//        ((value & 0x0000FF00) <<  8) |
+//        ((value & 0x00FF0000) >>  8) |
+//        ((value & 0xFF000000) >> 24)
+    return 0
 }
 
 

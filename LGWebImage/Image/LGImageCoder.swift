@@ -126,7 +126,7 @@ public class LGImageDecoder {
     
     /// CGContext.draw() 解压缩时会生成位图，导致内存暴增，所以超大的图片没有必要进行解压缩
     /// 此处限制像素点超过1024px * 1024px的图片不做解压缩，也可以修改此参数自定义最大大小
-    public static var maxDecompressImageSize: Int = 1024 * 1024
+    public static var maxDecompressImageSize: Int = 1_024 * 1_024
     
     
     deinit {
@@ -245,7 +245,7 @@ public class LGImageDecoder {
     
     fileprivate var _webpSource: OpaquePointer? // WebpDemux struct
     
-    fileprivate var _orientation: UIImageOrientation = UIImageOrientation.up
+    fileprivate var _orientation: UIImage.Orientation = UIImage.Orientation.up
     
     fileprivate var _framesLock: DispatchSemaphore = DispatchSemaphore(value: 1)
     
@@ -305,7 +305,7 @@ fileprivate extension LGImageDecoder {
     fileprivate func _updateSourceImageIO() {
         width = 0
         height = 0
-        _orientation = UIImageOrientation.up
+        _orientation = UIImage.Orientation.up
         loopCount = 0
         _ = _framesLock.wait(timeout: DispatchTime.distantFuture)
         _frames.removeAll()
@@ -1045,7 +1045,7 @@ extension LGImageEncoder {
         }
         let bitmapInfoValue = LGCGBitmapByteOrder32Host.rawValue | CGImageAlphaInfo.premultipliedFirst.rawValue
         let bitmapInfo = CGBitmapInfo(rawValue: bitmapInfoValue)
-        if uiImage!.imageOrientation != UIImageOrientation.up {
+        if uiImage!.imageOrientation != UIImage.Orientation.up {
             return LGCGImageCreateCopyWith(image: cgImage,
                                            orientation: uiImage!.imageOrientation,
                                            destBitmapInfo: bitmapInfo)
@@ -1519,44 +1519,42 @@ public func LGImageTypeGetExtension(type: LGImageType) -> String? {
 }
 
 
-/// 将CGImagePropertyOrientation转换为UIImageOrientation，两者的rawValue并不一致且无对应关系，所以需要转换，而不能直接赋值
+/// 将CGImagePropertyOrientation转换为UIImage.Orientation，两者的rawValue并不一致且无对应关系，所以需要转换，而不能直接赋值
 ///
 /// - Parameter value: CGImagePropertyOrientation.*.rawValue
-/// - Returns: UIImageOrientation
-public func LGUIImageOrientationFromCGImagePropertyOrientationValue(value: UInt32) -> UIImageOrientation {
+/// - Returns: UIImage.Orientation
+public func LGUIImageOrientationFromCGImagePropertyOrientationValue(value: UInt32) -> UIImage.Orientation {
     if let type = CGImagePropertyOrientation(rawValue: value) {
-        var result = UIImageOrientation.up
+        var result = UIImage.Orientation.up
         switch type {
         case CGImagePropertyOrientation.up:
-            result = UIImageOrientation.up
+            result = UIImage.Orientation.up
             break
         case CGImagePropertyOrientation.down:
-            result = UIImageOrientation.down
+            result = UIImage.Orientation.down
             break
         case CGImagePropertyOrientation.downMirrored:
-            result = UIImageOrientation.downMirrored
+            result = UIImage.Orientation.downMirrored
             break
         case CGImagePropertyOrientation.upMirrored:
-            result = UIImageOrientation.upMirrored
+            result = UIImage.Orientation.upMirrored
             break
         case CGImagePropertyOrientation.left:
-            result = UIImageOrientation.left
+            result = UIImage.Orientation.left
             break
         case CGImagePropertyOrientation.leftMirrored:
-            result = UIImageOrientation.leftMirrored
+            result = UIImage.Orientation.leftMirrored
             break
         case CGImagePropertyOrientation.right:
-            result = UIImageOrientation.right
+            result = UIImage.Orientation.right
             break
         case CGImagePropertyOrientation.rightMirrored:
-            result = UIImageOrientation.rightMirrored
+            result = UIImage.Orientation.rightMirrored
             break
-            //        default:
-            //            break
         }
         return result
     } else {
-        return UIImageOrientation.up
+        return UIImage.Orientation.up
     }
 }
 
@@ -2027,7 +2025,7 @@ public func LGCGImageCreateEncodedWebPData(image: CGImage?,
 }
 
 public func LGCGImageCreateCopyWith(image: CGImage?,
-                                    orientation: UIImageOrientation,
+                                    orientation: UIImage.Orientation,
                                     destBitmapInfo: CGBitmapInfo) -> CGImage? {
     func LGDegreesToRadians(degrees : CGFloat) -> CGFloat {
         return degrees * CGFloat.pi / 180.0
@@ -2037,7 +2035,7 @@ public func LGCGImageCreateCopyWith(image: CGImage?,
         return nil
     }
     
-    if orientation == UIImageOrientation.up {
+    if orientation == UIImage.Orientation.up {
         return image
     }
     
@@ -2047,35 +2045,35 @@ public func LGCGImageCreateCopyWith(image: CGImage?,
     var transform = CGAffineTransform.identity
     var swapWidthAndHeight = false
     switch orientation {
-    case UIImageOrientation.left:
+    case UIImage.Orientation.left:
         transform = transform.rotated(by: LGDegreesToRadians(degrees: 90.0))
         transform = transform.translatedBy(x: -width, y: -height)
         swapWidthAndHeight = true
         break
-    case UIImageOrientation.right:
+    case UIImage.Orientation.right:
         transform = transform.rotated(by: LGDegreesToRadians(degrees: -90.0))
         transform = transform.translatedBy(x: -width, y: 0)
         swapWidthAndHeight = true
         break
-    case UIImageOrientation.down:
+    case UIImage.Orientation.down:
         transform = transform.rotated(by: LGDegreesToRadians(degrees: 180.0))
         transform = transform.translatedBy(x: 0, y: -height)
         break
-    case UIImageOrientation.upMirrored:
+    case UIImage.Orientation.upMirrored:
         transform = transform.translatedBy(x: width, y: 0)
         transform = transform.scaledBy(x: -1, y: 1)
         break
-    case UIImageOrientation.downMirrored:
+    case UIImage.Orientation.downMirrored:
         transform = transform.translatedBy(x: 0, y: height)
         transform = transform.scaledBy(x: 1, y: -1)
         break
-    case UIImageOrientation.leftMirrored:
+    case UIImage.Orientation.leftMirrored:
         transform = transform.rotated(by: LGDegreesToRadians(degrees: -90.0))
         transform = transform.scaledBy(x: 1, y: -1)
         transform = transform.translatedBy(x: -width, y: -height)
         swapWidthAndHeight = true
         break
-    case UIImageOrientation.rightMirrored:
+    case UIImage.Orientation.rightMirrored:
         transform = transform.rotated(by: LGDegreesToRadians(degrees: 90.0))
         transform = transform.scaledBy(x: 1, y: -1)
         swapWidthAndHeight = true
@@ -2324,7 +2322,7 @@ public extension UIImage {
                     hasAlpha = true
                 }
                 
-                if self.imageOrientation != UIImageOrientation.up {
+                if self.imageOrientation != UIImage.Orientation.up {
                     let tempBitmapInfo = CGBitmapInfo(rawValue: bitmapInfo.rawValue | alphaInfo)
                     if let rotated = LGCGImageCreateCopyWith(image: cgImage,
                                                              orientation: self.imageOrientation,
@@ -2334,45 +2332,47 @@ public extension UIImage {
                 }
                 let newImage = UIImage(cgImage: cgImage)
                 if hasAlpha {
-                    result = UIImagePNGRepresentation(newImage)
+                    result = newImage.pngData()
                 } else {
-                    result = UIImageJPEGRepresentation(newImage, 1.0)
+                    result = newImage.jpegData(compressionQuality: 1.0)
                 }
                 
             }
         }
         
         if result == nil {
-            result = UIImagePNGRepresentation(self)
+            result = self.pngData()
         }
         return result
     }
     
-    public func lg_savetoAlbumWith(completionBlock: @escaping (Bool, PHAsset?) -> Void) {
+    public func lg_savetoAlbumWith(completionBlock: @escaping (Bool, PHAsset?, Error?) -> Void) {
         var localId: String?
         PHPhotoLibrary.shared().performChanges({
             let result = PHAssetChangeRequest.creationRequestForAsset(from: self)
             localId = result.placeholderForCreatedAsset?.localIdentifier
-        }) { (isSuccess, error) in
-            if isSuccess {
+        }) { (isSucceed, error) in
+            if isSucceed {
                 if localId != nil {
-                    let result = PHAsset.fetchAssets(withBurstIdentifier: localId!, options: nil)
-                    let asset = result[0]
-                    if Thread.current.isMainThread {
-                        completionBlock(true, asset)
-                    } else {
-                        DispatchQueue.main.async {
-                            completionBlock(true, asset)
+                    let result = PHAsset.fetchAssets(withLocalIdentifiers: [localId ?? ""], options: nil)
+                    if result.count > 0 {
+                        let asset = result[0]
+                        if Thread.current.isMainThread {
+                            completionBlock(true, asset, nil)
+                        } else {
+                            DispatchQueue.main.async {
+                                completionBlock(true, asset, nil)
+                            }
                         }
+                        return
                     }
-                    return
                 }
             }
             if Thread.current.isMainThread {
-                completionBlock(false, nil)
+                completionBlock(false, nil, error)
             } else {
                 DispatchQueue.main.async {
-                    completionBlock(false, nil)
+                    completionBlock(false, nil, error)
                 }
             }
         }

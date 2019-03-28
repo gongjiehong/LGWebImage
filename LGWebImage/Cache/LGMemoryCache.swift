@@ -8,34 +8,13 @@
 
 import Foundation
 
-@inline(__always) fileprivate func LGMemoryCacheGetReleaseQueue() -> DispatchQueue {
-    return DispatchQueue.global(qos: DispatchQoS.QoSClass.utility)
-}
-
-public class LGMemoryCache {
+public class LGMemoryCache<KeyType: Hashable, ValueType: LGMemoryCost> {
     
     fileprivate var _lock: pthread_mutex_t = pthread_mutex_t()
-    fileprivate var _lru: LGLinkedMap = LGLinkedMap()
-    fileprivate var _queue: DispatchQueue = DispatchQueue(label: "com.cxylg.cache.memory")
+    fileprivate var _lru: LGLinkedList<KeyType, ValueType> = LGLinkedList<KeyType, ValueType>()
+    fileprivate var _workQueue: DispatchQueue = DispatchQueue(label: "com.cxylg.cache.memory")
     
-    /// 缓存的名字
-    public var name: String? = nil
-    
-    /// 缓存中最多保存多少个对象
-    public var countLimit: Int = Int.max
-    
-    /// 队列开始赶出最后的对象时最大容纳数
-    public var costLimit: Int = Int.max
-    
-    /// 缓存对象的过期时间
-    public var ageLimit: TimeInterval = Double.greatestFiniteMagnitude
-    
-    /// 多长时间检查一次自动修整，默认60秒
-    public var autoTrimInterval: TimeInterval = 5
-    
-    public var shouldRemoveAllObjectsOnMemoryWarning: Bool = true
-    
-    public var shouldRemoveAllObjectsWhenEnteringBackground: Bool = true
+    public let config: LGMemoryConfig
     
     public var didReceiveMemoryWarningBlock: ((_ cache: LGMemoryCache) -> Void)?
     
@@ -44,13 +23,17 @@ public class LGMemoryCache {
     public var releaseOnMainThread: Bool {
         set {
             pthread_mutex_lock(&_lock)
-            _lru.releaseOnMainThread = newValue
-            pthread_mutex_unlock(&_lock)
+            defer {
+                pthread_mutex_unlock(&_lock)
+            }
+            _lru.isReleaseOnMainThread = newValue
         }
         get {
             pthread_mutex_lock(&_lock)
-            let value = _lru.releaseOnMainThread
-            pthread_mutex_unlock(&_lock)
+            defer {
+                pthread_mutex_unlock(&_lock)
+            }
+            let value = _lru.isReleaseOnMainThread
             return value
         }
     }
@@ -58,42 +41,58 @@ public class LGMemoryCache {
     public var releaseAsynchronously: Bool {
         set {
             pthread_mutex_lock(&_lock)
-            _lru.releaseAsynchronously = newValue
-            pthread_mutex_unlock(&_lock)
+            defer {
+                pthread_mutex_unlock(&_lock)
+            }
+            _lru.isReleaseAsynchronously = newValue
         }
         get {
             pthread_mutex_lock(&_lock)
-            let value = _lru.releaseAsynchronously
-            pthread_mutex_unlock(&_lock)
+            defer {
+                pthread_mutex_unlock(&_lock)
+            }
+            let value = _lru.isReleaseAsynchronously
             return value
         }
     }
     
-    public var totalCount: Int {
+    public var totalCount: UInt64 {
         pthread_mutex_lock(&_lock)
+        defer {
+            pthread_mutex_unlock(&_lock)
+        }
         let count = _lru.totalCount
-        pthread_mutex_unlock(&_lock)
         return count
     }
 
-    public var totalCost: Int {
+    public var totalCost: UInt64 {
         pthread_mutex_lock(&_lock)
+        defer {
+            pthread_mutex_unlock(&_lock)
+        }
         let cost = _lru.totalCost
-        pthread_mutex_unlock(&_lock)
         return cost
     }
     
-    public init() {
+    public init(config: LGMemoryConfig = LGMemoryConfig(name: "LGWebImage.default")) {
+        self.config = config
+
         _ = pthread_mutex_init(&_lock, nil)
+        
+        _lru.isReleaseOnMainThread = config.isReleaseOnMainThread
+        _lru.isReleaseAsynchronously = config.isReleaseAsynchronously
+        
         NotificationCenter.default.addObserver(self,
                                                selector: #selector(_appDidEnterBackgroundNotification(_:)),
-                                               name: NSNotification.Name.UIApplicationDidEnterBackground,
+                                               name: UIApplication.didEnterBackgroundNotification,
                                                object: nil)
         NotificationCenter.default.addObserver(self,
                                                selector: #selector(_appDidReceiveMemoryWarningNotification(_:)),
-                                               name: NSNotification.Name.UIApplicationDidReceiveMemoryWarning,
+                                               name: UIApplication.didReceiveMemoryWarningNotification,
                                                object: nil)
         _trimRecursively()
+        
+        
     }
     
     deinit {
@@ -102,97 +101,71 @@ public class LGMemoryCache {
         _lru.removeAll()
     }
     
-    public func containsObject(forKey key: String) -> Bool  {
+    public func containsObject(forKey key: KeyType) -> Bool  {
         pthread_mutex_lock(&_lock)
-        let contains = (_lru.dic[key] != nil)
-        pthread_mutex_unlock(&_lock)
-        return contains
+        defer {
+            pthread_mutex_unlock(&_lock)
+        }
+        return _lru.containsValue(forKey: key)
     }
     
-    public func object(forKey key: String) -> LGCacheItem? {
+    public func object(forKey key: KeyType) -> ValueType? {
         pthread_mutex_lock(&_lock)
-        let node = _lru.dic[key]
-        if node != nil {
-            node?.time = CACurrentMediaTime()
-            _lru.bringNode(toHead: node)
-        }
+        let node = _lru[key]
         pthread_mutex_unlock(&_lock)
-        return node?.value ?? nil
+        return node
     }
     
-    public func setObject(_ object: LGCacheItem?, forKey key: String, withCost cost: Int) {
-        if key.lg_length == 0 {
-            return
-        }
-        
+    public func setObject(_ object: ValueType?, forKey key: KeyType) {
         guard let toSaveObj = object else {
             removeObject(forKey: key)
             return
         }
         
         pthread_mutex_lock(&_lock)
-        var node = _lru.dic[key]
-        let now: TimeInterval = CACurrentMediaTime()
-        if node != nil {
-            _lru.totalCost -= node!.cost
-            _lru.totalCost += cost
-            node?.cost = cost
-            node?.time = now
-            node?.value = toSaveObj
-            _lru.bringNode(toHead: node)
-        } else {
-            node = LGLinkedMapNode(key: key, value: toSaveObj, cost: cost, time: now)
-            _lru.insertNode(atHead: node!)
+        defer {
+            pthread_mutex_unlock(&_lock)
         }
         
-        if _lru.totalCount > countLimit {
-            _queue.async {
-                _ = node?.key
+        _lru[key] = toSaveObj
+        
+        switch config.totalCostLimit {
+        case .unlimited, .zero:
+            break
+        case let .byte(cost):
+            if _lru.totalCost > cost {
+                _workQueue.async {
+                    self.trimToCost(cost)
+                }
             }
+            break
         }
         
-        if _lru.releaseAsynchronously {
-            let tempQueue = _lru.releaseOnMainThread ? DispatchQueue.main : LGMemoryCacheGetReleaseQueue()
-            tempQueue.async {
-                _ = node?.key
-            }
-        } else if _lru.releaseOnMainThread && pthread_main_np() == 0 {
-            DispatchQueue.main.async {
-                _ = node?.key
+        if config.countLimit != LGCountLimit.unlimited, _lru.totalCount > config.countLimit {
+            _workQueue.async {
+                self.trimToCount(self.config.countLimit)
             }
         }
-        pthread_mutex_unlock(&_lock)
     }
     
-    public func removeObject(forKey key: String) {
-        if key.lg_length == 0 {
-            return
-        }
+    public func removeObject(forKey key: KeyType) {
+
         pthread_mutex_lock(&_lock)
-        let node = _lru.dic[key]
-        if node != nil {
-            _lru.removeNode(node: node!)
+        defer {
+            pthread_mutex_unlock(&_lock)
         }
-        if _lru.releaseAsynchronously {
-            let tempQueue = _lru.releaseOnMainThread ? DispatchQueue.main : LGMemoryCacheGetReleaseQueue()
-            tempQueue.async {
-                _ = node?.key
-            }
-        } else if _lru.releaseOnMainThread && pthread_main_np() == 0 {
-            DispatchQueue.main.async {
-                _ = node?.key
-            }
-        }
-        pthread_mutex_unlock(&_lock)
+        _lru[key] = nil
     }
     
     public func removeAllObjects() {
         pthread_mutex_lock(&_lock)
+        defer {
+            pthread_mutex_unlock(&_lock)
+        }
         _lru.removeAll()
-        pthread_mutex_unlock(&_lock)
     }
     
-    public func trimToCount(_ count: Int) {
+    public func trimToCount(_ count: UInt64) {
         if count == 0 {
             removeAllObjects()
             return
@@ -200,19 +173,43 @@ public class LGMemoryCache {
         _trimToCount(count)
     }
 
-    public func trimToCost(_ cost: Int) {
+    public func trimToCost(_ cost: UInt64) {
         _trimToCost(cost)
     }
     
     public func trimToAge(age: TimeInterval) {
-        _trimToAge(age)
+        switch self.config.expiry {
+        case let .ageLimit(seconds):
+            _trimToAge(seconds)
+            break
+        default:
+            break
+        }
+    }
+    
+    
+    @objc fileprivate func _appDidEnterBackgroundNotification(_ noti: Notification) {
+        if didEnterBackgroundBlock != nil {
+            didEnterBackgroundBlock!(self)
+        }
+        if config.shouldRemoveAllObjectsWhenEnteringBackground {
+            self.removeAllObjects()
+        }
+    }
+    
+    @objc fileprivate func _appDidReceiveMemoryWarningNotification(_ noti: Notification) {
+        if didReceiveMemoryWarningBlock != nil {
+            didReceiveMemoryWarningBlock!(self)
+        }
+        if config.shouldRemoveAllObjectsOnMemoryWarning {
+            self.removeAllObjects()
+        }
     }
 }
 
 fileprivate extension LGMemoryCache {
     fileprivate func _trimRecursively() {
-        let tempQueue = DispatchQueue.global(qos: DispatchQoS.QoSClass.utility)
-        tempQueue.asyncAfter(deadline: DispatchTime.now() + autoTrimInterval) { [weak self] in
+        _workQueue.asyncAfter(deadline: DispatchTime.now() + config.autoTrimInterval) { [weak self] in
             guard let weakSelf = self else {
                 return
             }
@@ -222,15 +219,26 @@ fileprivate extension LGMemoryCache {
     }
     
     fileprivate func _trimInBackground() {
-        _queue.async {
-            self._trimToCost(self.costLimit)
-            self._trimToCount(self.countLimit)
-            self._trimToAge(self.ageLimit)
-            
+        _workQueue.async {
+            switch self.config.totalCostLimit {
+            case .unlimited, .zero:
+                break
+            case let .byte(cost):
+                self._trimToCost(cost)
+                break
+            }
+            self._trimToCount(self.config.countLimit)
+            switch self.config.expiry {
+            case let .ageLimit(seconds):
+                self._trimToAge(seconds)
+                break
+            default:
+                break
+            }
         }
     }
     
-    fileprivate func _trimToCost(_ costLimit: Int) {
+    fileprivate func _trimToCost(_ costLimit: UInt64) {
         var finish = false
         pthread_mutex_lock(&_lock)
         if costLimit == 0 {
@@ -244,7 +252,9 @@ fileprivate extension LGMemoryCache {
         if finish {
             return
         }
-        var holder = [LGLinkedMapNode]()
+        
+        var holder: [Any] = []
+        
         while !finish {
             if pthread_mutex_trylock(&_lock) == 0 {
                 if _lru.totalCost > costLimit {
@@ -256,17 +266,26 @@ fileprivate extension LGMemoryCache {
                 }
                 pthread_mutex_unlock(&_lock)
             } else {
-                usleep(10 * 1000) // 10 秒钟
+                usleep(10 * 1000) // 10
             }
         }
+        
         if holder.count > 0 {
-            let tempQueue = _lru.releaseOnMainThread ? DispatchQueue.main : LGMemoryCacheGetReleaseQueue()
-            tempQueue.async {
-                _ = holder.count // 随意调用个方法，方法结束后在当前队列释放
+            if config.isReleaseAsynchronously {
+                let tempQueue = config.isReleaseOnMainThread ? DispatchQueue.main: DispatchQueue.global(qos: .background)
+                tempQueue.async {
+                    _ = holder.count
+                }
+            } else if config.isReleaseOnMainThread && pthread_main_np() == 0 {
+                DispatchQueue.main.async {
+                    _ = holder.count
+                }
+            } else {
             }
         }
     }
-    fileprivate func _trimToCount(_ countLimit: Int) {
+        
+    fileprivate func _trimToCount(_ countLimit: UInt64) {
         var finish = false
         pthread_mutex_lock(&_lock)
         if countLimit == 0 {
@@ -280,7 +299,9 @@ fileprivate extension LGMemoryCache {
         if finish {
             return
         }
-        var holder = [LGLinkedMapNode]()
+        
+        var holder: [Any] = []
+        
         while !finish {
             if pthread_mutex_trylock(&_lock) == 0 {
                 if _lru.totalCount > countLimit {
@@ -292,13 +313,21 @@ fileprivate extension LGMemoryCache {
                 }
                 pthread_mutex_unlock(&_lock)
             } else {
-                usleep(10 * 1000) // 10 秒钟
+                usleep(10 * 1000) // 10
             }
         }
+        
         if holder.count > 0 {
-            let tempQueue = _lru.releaseOnMainThread ? DispatchQueue.main : LGMemoryCacheGetReleaseQueue()
-            tempQueue.async {
-                _ = holder.count // 随意调用个方法，方法结束后在当前队列释放
+            if config.isReleaseAsynchronously {
+                let tempQueue = config.isReleaseOnMainThread ? DispatchQueue.main: DispatchQueue.global(qos: .background)
+                tempQueue.async {
+                    _ = holder.count
+                }
+            } else if config.isReleaseOnMainThread && pthread_main_np() == 0 {
+                DispatchQueue.main.async {
+                    _ = holder.count
+                }
+            } else {
             }
         }
     }
@@ -316,10 +345,12 @@ fileprivate extension LGMemoryCache {
         if finish {
             return
         }
-        var holder = [LGLinkedMapNode]()
+        
+        var holder: [Any] = []
+
         while !finish {
             if pthread_mutex_trylock(&_lock) == 0 {
-                if _lru.tail != nil && (now - TimeInterval((_lru.tail)!.time) > ageLimit) {
+                if let last = _lru.tail, now - last.time > ageLimit {
                     if let node = _lru.removeTailNode() {
                         holder.append(node)
                     }
@@ -328,157 +359,203 @@ fileprivate extension LGMemoryCache {
                 }
                 pthread_mutex_unlock(&_lock)
             } else {
-                usleep(10 * 1000) // 10 秒钟
+                usleep(10 * 1000) // 10
             }
         }
-        if holder.count > 0 {
-            let tempQueue = _lru.releaseOnMainThread ? DispatchQueue.main : LGMemoryCacheGetReleaseQueue()
-            tempQueue.async {
-                _ = holder.count // 随意调用个方法，方法结束后在当前队列释放
-            }
-        }
-    }
-    
-    @objc fileprivate func _appDidEnterBackgroundNotification(_ noti: Notification) {
-        if didEnterBackgroundBlock != nil {
-            didEnterBackgroundBlock!(self)
-        }
-        if shouldRemoveAllObjectsWhenEnteringBackground {
-            self.removeAllObjects()
-        }
-    }
-    
-    @objc fileprivate func _appDidReceiveMemoryWarningNotification(_ noti: Notification) {
-        if didReceiveMemoryWarningBlock != nil {
-            didReceiveMemoryWarningBlock!(self)
-        }
-        if self.shouldRemoveAllObjectsOnMemoryWarning {
-            self.removeAllObjects()
-        }
-    }
-}
-
-fileprivate class LGLinkedMapNode {
-    fileprivate var prev: LGLinkedMapNode?
-    fileprivate var next: LGLinkedMapNode?
-    fileprivate var key: String
-    fileprivate var value: LGCacheItem
-    fileprivate var cost: Int
-    fileprivate var time: TimeInterval
-    fileprivate init(key: String, value: LGCacheItem, cost: Int = 0, time: TimeInterval = 0.0) {
-        self.key = key
-        self.value = value
-        self.cost = cost
-        self.time = time
-    }
-}
-
-fileprivate class LGLinkedMap {
-    fileprivate var dic: [String: LGLinkedMapNode] = [String: LGLinkedMapNode]()
-    fileprivate var totalCost: Int = 0
-    fileprivate var totalCount: Int = 0
-    fileprivate var head: LGLinkedMapNode?
-    fileprivate var tail: LGLinkedMapNode?
-    fileprivate var releaseOnMainThread: Bool = false
-    fileprivate var releaseAsynchronously: Bool = true
-    
-    fileprivate init() {
         
+        if holder.count > 0 {
+            if config.isReleaseAsynchronously {
+                let tempQueue = config.isReleaseOnMainThread ? DispatchQueue.main: DispatchQueue.global(qos: .background)
+                tempQueue.async {
+                    _ = holder.count
+                }
+            } else if config.isReleaseOnMainThread && pthread_main_np() == 0 {
+                DispatchQueue.main.async {
+                    _ = holder.count
+                }
+            } else {
+            }
+        }
+    }
+}
+
+public final class LGLinkedList<KeyType: Hashable, ValueType: LGMemoryCost> {
+    public class LinkedListNode {
+        weak var previous: LinkedListNode?
+        var next: LinkedListNode?
+        var key: KeyType
+        var value: ValueType
+        var cost: UInt64
+        var time: TimeInterval
+        
+        public init(key: KeyType, value: ValueType, time: TimeInterval = 0.0) {
+            self.key = key
+            self.value = value
+            self.cost = value.memoryCost()
+            self.time = time
+        }
+        
+        static func == (lhs: LGLinkedList.LinkedListNode, rhs: LGLinkedList.LinkedListNode?) -> Bool {
+            return lhs.key == rhs?.key
+        }
+        
+        static func == (lhs: LGLinkedList.LinkedListNode?, rhs: LGLinkedList.LinkedListNode) -> Bool {
+            return lhs?.key == rhs.key
+        }
     }
     
-    fileprivate func insertNode(atHead node: LGLinkedMapNode) {
-        dic[node.key] = node
+
+    
+    public typealias Node = LinkedListNode
+    
+    private var cache: [KeyType: Node] = [KeyType: Node]()
+
+    public private(set) var totalCost: UInt64 = 0
+    public private(set) var totalCount: UInt64 = 0
+    
+    public var isReleaseOnMainThread: Bool = false
+    public var isReleaseAsynchronously: Bool = true
+    
+    public private(set) var head: Node?
+    public private(set) weak var tail: Node?
+    
+    public init() {}
+    
+    public func containsValue(forKey key: KeyType) -> Bool {
+        return self.cache.contains(where: { (item) -> Bool in
+            return key == item.key
+        })
+    }
+    
+    public func insertNode(atHead node: Node) {
+        cache[node.key] = node
         totalCost += node.cost
         totalCount += 1
         
-        if head != nil {
+        if let head = head {
             node.next = head
-            head?.prev = node
-            head = node
-        }
-        else {
+            head.previous = node
+            self.head = node
+        } else {
             head = node
             tail = node
         }
     }
     
-    fileprivate func bringNode(toHead node: LGLinkedMapNode?) {
-        if head === node {
+    public func bringNode(toHead node: Node) {
+        if head == node {
             return
         }
         
-        if tail === node {
-            tail = node?.prev
+        if tail == node {
+            tail = node.previous
             tail?.next = nil
         } else {
-            node?.next?.prev = node?.prev
-            node?.prev?.next = node?.next
+            node.next?.previous = node.previous
+            node.previous?.next = node.next
         }
         
-        node?.next = head
-        node?.prev = nil
+        node.next = head
+        node.previous = nil
         
-        head?.prev = node
-        head = node
-        
+        self.head?.previous = node
+        self.head = node
     }
-    
-    fileprivate func removeNode(node: LGLinkedMapNode) {
-        dic[node.key] = nil
+
+    public func removeNode(_ node: Node) {
+        cache[node.key] = nil
         totalCost -= node.cost
         totalCount -= 1
-        if node.next != nil {
-            node.next?.prev = node.prev
+        if let next = node.next {
+            next.previous = node.previous
         }
         
-        if node.prev != nil {
-            node.prev?.next = node.next
+        if let previous = node.previous {
+            previous.next = node.next
         }
-        if head === node {
+        
+        if head == node {
             head = node.next
         }
-        if tail === node {
-            tail = node.prev
-        }
-    }
-    
-    fileprivate func removeTailNode() -> LGLinkedMapNode? {
-        guard let tailItem = tail else {
-            return nil
-        }
         
-        dic[tailItem.key] = nil
-        totalCost -= tailItem.cost
-        totalCount -= 1
-        if head === tail {
-            head = nil
-            tail = nil
-        } else {
-            tail = tail?.prev
-            tail?.next = nil
+        if tail == node {
+            tail = node.previous
         }
-        return tailItem
+    }
+
+    @discardableResult
+    public func removeTailNode() -> Node? {
+        guard let tail = self.tail else { return nil }
+        cache[tail.key] = nil
+        
+        totalCost -= tail.cost
+        totalCount -= 1
+        
+        if head == tail {
+            head = nil
+            self.tail = nil
+        } else {
+            self.tail = tail.previous
+            tail.next = nil
+        }
+        return tail
     }
     
-    fileprivate func removeAll() {
-        totalCost = 0
+    public func removeAll() {
         totalCount = 0
+        totalCost = 0
+        
         head = nil
         tail = nil
-        if dic.count > 0 {
-            if releaseAsynchronously {
-                let queue = releaseOnMainThread ? DispatchQueue.main : LGMemoryCacheGetReleaseQueue()
-                queue.async { [weak self] in
-                    self?.dic.removeAll()
+        
+        if self.cache.count > 0 {
+            if isReleaseAsynchronously {
+                var queue: DispatchQueue
+                if isReleaseOnMainThread {
+                    queue = DispatchQueue.main
+                } else {
+                    queue = DispatchQueue.global(qos: DispatchQoS.QoSClass.background)
                 }
-            } else if releaseOnMainThread && pthread_main_np() == 0 {
+                queue.async { [weak self] in
+                    guard let strongSelf = self else {return}
+                    strongSelf.cache.removeAll()
+                }
+            } else if isReleaseOnMainThread, pthread_main_np() == 0 {
                 DispatchQueue.main.async { [weak self] in
-                    self?.dic.removeAll()
+                    guard let strongSelf = self else {return}
+                    strongSelf.cache.removeAll()
                 }
             } else {
-                self.dic.removeAll()
+                self.cache.removeAll()
             }
         }
     }
 }
 
+extension LGLinkedList {
+    public subscript(_ key: KeyType) -> ValueType? {
+        get {
+            if let value = self.cache[key] {
+                self.bringNode(toHead: value)
+                return value.value
+            } else {
+                return nil
+            }
+        } set {
+            if let value = newValue {
+                if let node = self.cache[key] {
+                    node.value = value
+                    node.time = CACurrentMediaTime()
+                    self.bringNode(toHead: node)
+                } else {
+                    let node = Node(key: key, value: value, time: CACurrentMediaTime())
+                    self.insertNode(atHead: node)
+                }
+            } else {
+                if let node = self.cache[key] {
+                    self.removeNode(node)
+                }
+            }
+        }
+    }
+}

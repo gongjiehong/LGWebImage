@@ -14,33 +14,36 @@ public struct LGImageCacheType: OptionSet {
         self.rawValue = rawValue
     }
     
-    public static let none: LGImageCacheType = {
+    public static var none: LGImageCacheType {
         return LGImageCacheType(rawValue: 0)
-    }()
+    }
     
-    public static let disk: LGImageCacheType = {
+    public static var disk: LGImageCacheType {
         return LGImageCacheType(rawValue: 1 << 0)
-    }()
+    }
     
-    public static let memory: LGImageCacheType = {
+    public static var memory: LGImageCacheType {
         return LGImageCacheType(rawValue: 1 << 1)
-    }()
+    }
     
-    public static let all: LGImageCacheType = {
+    public static var all: LGImageCacheType {
         return [LGImageCacheType.disk, LGImageCacheType.memory]
-    }()
+    }
     
-    public static let `default`: LGImageCacheType = {
+    public static var `default`: LGImageCacheType {
         return LGImageCacheType.all
-    }()
+    }
 }
 
 
 
 public class LGImageCache {
     public var name: String?
-    public private(set) var memoryCache: LGMemoryCache
-    public private(set) var diskCache: LGDiskCache
+    public private(set) var memoryCache: LGMemoryCache<String, LGCacheItem>
+    public private(set) var diskCache: LGDiskCache<String, LGCacheItem>
+    
+    fileprivate let imageCacheIOQueue = DispatchQueue(label: "LGImageCache.Queue.IO")
+    fileprivate let imageCacheDecodeQueue = DispatchQueue(label: "LGImageCache.Queue.Decode")
     
     public var isAllowAnimatedImage: Bool = true
     public var isDecodeForDisplay: Bool = true
@@ -53,19 +56,12 @@ public class LGImageCache {
     }()
     
     public init(cachePath path: String) {
-        let memoryCache = LGMemoryCache()
+        let memoryConfig = LGMemoryConfig(name: "LGImageCache.Memory")
+        let memoryCache = LGMemoryCache<String, LGCacheItem>(config: memoryConfig)
         
-        /// 12（小时） * 60（分） * 60（秒）
-        memoryCache.ageLimit = 12 * 60 * 60
-        
-        /// 物理内存的百分之五用作缓存内存缓存
-        memoryCache.costLimit = Int(Double(ProcessInfo().physicalMemory) * 0.05)
-        
-        let diskCache = LGDiskCache(path: path)
-        // 最大占用1GB磁盘 1024 * 1024 * 1024
-        diskCache.costLimit = 1024 * 1024 * 1024
-        // 最多存储30天，30天 * 24小时 * 60分 * 60秒
-        diskCache.ageLimit = 2592000
+        let diskConfig = LGDiskConfig(name: "LGImageCache.Disk")
+        let diskCache = LGDiskCache<String, LGCacheItem>(diskConfig)
+
         self.memoryCache = memoryCache
         self.diskCache = diskCache
     }
@@ -83,18 +79,21 @@ public class LGImageCache {
             if image != nil {
                 if image!.lg_isDecodedForDisplay {
                     self.memoryCache.setObject(LGCacheItem(data: image!, extendedData: nil),
-                                               forKey: key,
-                                               withCost: image!.imageCost)
+                                               forKey: key)
                 } else {
-                    lg_imageCacheIOQueue.async { [weak self] in
-                        self?.memoryCache.setObject(LGCacheItem(data: image!.lg_imageByDecoded, extendedData: nil),
-                                                    forKey: key,
-                                                    withCost: image!.imageCost)
+                    let workItem = DispatchWorkItem(flags: DispatchWorkItemFlags.barrier)
+                    { [weak self] in
+                        guard let weakSelf = self else {
+                            return
+                        }
+                        weakSelf.memoryCache.setObject(LGCacheItem(data: image!.lg_imageByDecoded, extendedData: nil),
+                                                    forKey: key)
                     }
+                    imageCacheDecodeQueue.async(execute: workItem)
                 }
             } else if imageData != nil {
-                let workItem = DispatchWorkItem(qos: DispatchQoS.utility,
-                                                flags: DispatchWorkItemFlags.barrier)
+
+                let workItem = DispatchWorkItem(flags: DispatchWorkItemFlags.barrier)
                 { [weak self] in
                     guard let weakSelf = self else {
                         return
@@ -103,11 +102,11 @@ public class LGImageCache {
                                                         isAllowAnimatedImage: weakSelf.isAllowAnimatedImage,
                                                         isDecodeForDisplay: weakSelf.isDecodeForDisplay) {
                         weakSelf.memoryCache.setObject(LGCacheItem(data: newImage, extendedData: nil),
-                                                       forKey: key,
-                                                       withCost: newImage.imageCost)
+                                                       forKey: key)
                     }
                 }
-                lg_imageCacheDecodeQueue.async(execute: workItem)
+
+                imageCacheDecodeQueue.async(execute: workItem)
             }
         }
         
@@ -118,7 +117,7 @@ public class LGImageCache {
                     self.diskCache.setObject(cacheItem, forKey: key)
                 }
             } else if image != nil {
-                lg_imageCacheIOQueue.async { [weak self] in
+                imageCacheIOQueue.async { [weak self] in
                     guard let weakSelf = self else {
                         return
                     }
@@ -126,7 +125,6 @@ public class LGImageCache {
                         let cacheItem = LGCacheItem(data: data, extendedData: image!.scale)
                         weakSelf.diskCache.setObject(cacheItem, forKey: key)
                     }
-                    
                 }
             }
         }
@@ -143,20 +141,20 @@ public class LGImageCache {
             }
         }
         if type.contains(LGImageCacheType.disk) {
-            if let imageItem = self.diskCache.object(forKey: key) {
-                let image = UIImage.imageFrom(cacheItem: imageItem,
-                                              isAllowAnimatedImage: isAllowAnimatedImage,
-                                              isDecodeForDisplay: isDecodeForDisplay)
-                if image != nil {
-                    self.memoryCache.setObject(LGCacheItem(data: image!, extendedData: imageItem.extendedData),
-                                               forKey: key,
-                                               withCost: image!.imageCost)
+            return imageCacheDecodeQueue.sync {
+                if let imageItem = self.diskCache.object(forKey: key) {
+                    let image = UIImage.imageFrom(cacheItem: imageItem,
+                                                  isAllowAnimatedImage: isAllowAnimatedImage,
+                                                  isDecodeForDisplay: isDecodeForDisplay)
+                    if image != nil {
+                        self.memoryCache.setObject(LGCacheItem(data: image!, extendedData: imageItem.extendedData),
+                                                   forKey: key)
+                    }
+                    return image
+                } else {
+                    return nil
                 }
-                return image
-            } else {
-                return nil
             }
-            
         }
         return nil
     }
@@ -187,8 +185,7 @@ public class LGImageCache {
                                               isDecodeForDisplay: self.isDecodeForDisplay)
                     if image != nil {
                         self.memoryCache.setObject(LGCacheItem(data: image!, extendedData: cacheItem.extendedData),
-                                                   forKey: key,
-                                                   withCost: image!.imageCost)
+                                                   forKey: key)
                         DispatchQueue.main.async {
                             block(image, LGImageCacheType.disk)
                         }
@@ -289,9 +286,10 @@ extension UIImage {
         }
         let scaleData = cacheItem.extendedData
         var scale: CGFloat = 0
-        if scaleData != nil {
-            scale = NSKeyedUnarchiver.unarchiveObject(with: scaleData!.asData()) as? CGFloat ?? 0.0
+        if let scaleData = scaleData, let scaleValue = CGFloat.createWith(convertedData: scaleData.asData()) {
+            scale = scaleValue
         }
+        
         if scale <= 0 {
             scale = UIScreen.main.scale
         }
@@ -315,5 +313,4 @@ extension UIImage {
     }
 }
 
-fileprivate let lg_imageCacheIOQueue = DispatchQueue.global(qos: DispatchQoS.QoSClass.userInitiated)
-fileprivate let lg_imageCacheDecodeQueue = DispatchQueue.global(qos: DispatchQoS.QoSClass.utility)
+

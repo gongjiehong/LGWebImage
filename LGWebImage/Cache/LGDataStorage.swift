@@ -10,6 +10,7 @@ import Foundation
 import SQLite3
 
 
+/// 持久存储对象
 public struct LGDataStorageItem {
     public var key: String
     public var data: Data
@@ -20,68 +21,120 @@ public struct LGDataStorageItem {
     public var extendedData: Data?
 }
 
-public enum LGDataStorageType: Int {
-    case file
-    case SQLite
-    case mixed
+fileprivate enum LGDataStorageError: Error {
+    case execSqlFailed(String)
+    case invalidPath(String)
 }
 
-fileprivate struct LGDataStorageConfig {
-    static let maxErrorRetryCount: Int = 5
-    static let minRetryTimeInterval: TimeInterval = 2.0
-    static let pathLengthMax: Int32 = PATH_MAX - 64
-    static let DBFileName: String = "manifest.sqlite"
-    static let DBShmFileName: String = "manifest.sqlite-shm"
-    static let DBWalFileName: String = "manifest.sqlite-wal"
-    static let DataDirectoryName: String = "data"
-    static let TrashDirectoryName: String = "trash"
+extension LGDataStorageError: CustomDebugStringConvertible {
+    var debugDescription: String {
+        switch self {
+        case let .execSqlFailed(sql):
+            return "执行SQL语句失败: \(sql)"
+        case let .invalidPath(reson):
+            return "无效的文件路径: \(reson)"
+        default:
+            return ""
+        }
+    }
 }
 
-fileprivate enum LGCacheError: Error {
-    case execSqlFailed
-}
-
-
-
+/// 将文件写入磁盘存储
 public class LGDataStorage {
+    /// 存储类型
+    ///
+    /// - file: 文件
+    /// - SQLite: SQLite
+    /// - mixed: 文件&SQLite混合
+    public enum StorageType {
+        case file
+        case SQLite
+        case mixed
+    }
     
-    fileprivate var _trashQueue: DispatchQueue?
-    fileprivate var _path: String?
-    fileprivate var _dbPath: String?
-    fileprivate var _dataPath: String?
-    fileprivate var _trashPath: String?
+    /// 静态配置，包含文件夹和文件名相关内容
+    fileprivate struct Config {
+        static var maxErrorRetryCount: Int {
+            return 5
+        }
+        
+        static var minRetryTimeInterval: TimeInterval {
+            return 2.0
+        }
+        
+        static var pathLengthMax: Int32 {
+            return PATH_MAX - 64
+        }
+        
+        static var dbFileName: String {
+            return "manifest.sqlite"
+        }
+        
+        static var dbShmFileName: String {
+            return "manifest.sqlite-shm"
+        }
+        
+        static var dbWalFileName: String {
+            return "manifest.sqlite-wal"
+        }
+        
+        static var dataDirectoryName: String {
+            return "data"
+        }
+        
+        static var trashDirectoryName: String {
+            return "trash"
+        }
+    }
+
+    
+    fileprivate var _trashQueue: DispatchQueue
+    fileprivate var _path: String
+    fileprivate var _dbPath: String
+    fileprivate var _dataPath: String
+    fileprivate var _trashPath: String
     fileprivate var _db: OpaquePointer? = nil
     fileprivate var _dbStmtCache: [String: OpaquePointer]?
     fileprivate var _dbLastOpenErrorTime: TimeInterval = 0
     fileprivate var _dbOpenErrorCount: Int = 0
     fileprivate var _needCreateDir: Bool = true
-    
+    fileprivate let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
     
     
     
     public private(set) var path: String
-    public private(set) var type: LGDataStorageType
+    public private(set) var type: LGDataStorage.StorageType
     
-    public init(path: String, type: LGDataStorageType) {
-        assert(path.count > 0 && path.count < LGDataStorageConfig.pathLengthMax, "路径不合法")
-        assert(type.rawValue <= LGDataStorageType.mixed.rawValue, "存储数据类型无效")
-        
+    public init(path: String, type: LGDataStorage.StorageType) throws {
+        guard path.count > 0 && path.count < Config.pathLengthMax else {
+            throw LGDataStorageError.invalidPath(path)
+        }
+
         self.path = path
         self.type = type
         
         _path = path
-        _trashPath = path + "/" + LGDataStorageConfig.TrashDirectoryName
-        _dataPath = path + "/" + LGDataStorageConfig.DataDirectoryName
-        _dbPath = path + "/" + LGDataStorageConfig.DBFileName
+        _trashPath = path + "/" + Config.trashDirectoryName
+        _dataPath = path + "/" + Config.dataDirectoryName
+        _dbPath = path + "/" + Config.dbFileName
         _trashQueue = DispatchQueue(label: "com.LGDataStorage.cache.disk.trash")
         
-        do {
-            let fileManager = FileManager.default
-            try fileManager.createDirectory(atPath: path, withIntermediateDirectories: true, attributes: nil)
-            try fileManager.createDirectory(atPath: _dataPath!, withIntermediateDirectories: true, attributes: nil)
-            try fileManager.createDirectory(atPath: _trashPath!, withIntermediateDirectories: true, attributes: nil)
-        } catch {
-            println("初始化失败", #file, #function, #line, #column)
+        let fileManager = FileManager.default
+        var isDirectory: ObjCBool = false
+        if fileManager.fileExists(atPath: _trashPath, isDirectory: &isDirectory) {
+            if !isDirectory.boolValue {
+                throw LGDataStorageError.invalidPath(_trashPath)
+            }
+        } else {
+            try fileManager.createDirectory(atPath: path,
+                                            withIntermediateDirectories: true,
+                                            attributes: nil)
+            try fileManager.createDirectory(atPath: _dataPath,
+                                            withIntermediateDirectories: true,
+                                            attributes: nil)
+            try fileManager.createDirectory(atPath: _trashPath,
+                                            withIntermediateDirectories: true,
+                                            attributes: nil)
         }
         
         if !_dbOpen() || !_dbInitlalize() {
@@ -97,7 +150,7 @@ public class LGDataStorage {
     }
     
     public func filePathURL(withFileName filename: String) -> URL {
-        let path = _dataPath! + "/" + filename
+        let path = _dataPath + "/" + filename
         return URL(fileURLWithPath: path)
     }
     
@@ -113,7 +166,7 @@ public class LGDataStorage {
             return false
         }
         
-        if type == LGDataStorageType.file && (filename == nil || filename?.lg_length == 0) {
+        if type == LGDataStorage.StorageType.file && (filename == nil || filename?.lg_length == 0) {
             return false
         }
         
@@ -128,7 +181,7 @@ public class LGDataStorage {
             }
             return true
         } else {
-            if type != LGDataStorageType.SQLite {
+            if type != LGDataStorage.StorageType.SQLite {
                 let tempFileName = _dbGetFileName(withKey: key)
                 if tempFileName != nil {
                     _ = _fileDelete(with: tempFileName!)
@@ -148,7 +201,7 @@ public class LGDataStorage {
             return false
         }
         
-        if type == LGDataStorageType.file && (filename == nil || filename?.lg_length == 0) {
+        if type == LGDataStorage.StorageType.file && (filename == nil || filename?.lg_length == 0) {
             return false
         }
         
@@ -163,7 +216,7 @@ public class LGDataStorage {
             }
             return true
         } else {
-            if type != LGDataStorageType.SQLite {
+            if type != LGDataStorage.StorageType.SQLite {
                 let tempFileName = _dbGetFileName(withKey: key)
                 if tempFileName != nil {
                     _ = _fileDelete(with: tempFileName!)
@@ -504,7 +557,7 @@ public class LGDataStorage {
         }
         
         var items = _dbGetItem(withKeys: keys, excludeInlineData: false)
-        if type == LGDataStorageType.SQLite {
+        if type == LGDataStorage.StorageType.SQLite {
             for index in 0..<items.count {
                 var item = items[index]
                 if item.fileName != nil {
@@ -564,7 +617,7 @@ public class LGDataStorage {
         }
         _dbClose()
         
-        if taskId != UIBackgroundTaskInvalid {
+        if taskId != UIBackgroundTaskIdentifier.invalid {
             UIApplication.shared.endBackgroundTask(taskId)
         }
     }
@@ -573,7 +626,7 @@ public class LGDataStorage {
 }
 
 
-fileprivate let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+
 
 // MARK: - 数据库私有操作
 fileprivate extension LGDataStorage {
@@ -582,18 +635,13 @@ fileprivate extension LGDataStorage {
             return true
         }
         
-        if _dbPath == nil || _dbPath?.count == 0 {
-            return false
-        }
-        
         let result = sqlite3_open(_dbPath, &_db)
         if result == SQLITE_OK {
             _dbStmtCache = [String: OpaquePointer]()
             _dbLastOpenErrorTime = 0
             _dbOpenErrorCount = 0
             return true
-        }
-        else {
+        } else {
             _db = nil
             if _dbStmtCache != nil {
                 _dbStmtCache = nil
@@ -653,18 +701,19 @@ fileprivate extension LGDataStorage {
     }
     
     fileprivate func _dbInitlalize() -> Bool {
-        let sql =   "pragma journal_mode = wal; pragma synchronous = normal; create table if not exists manifest" +
-                    " (key text, filename text, size integer, inline_data blob, modification_time integer," +
-                    " last_access_time integer, extended_data blob, primary key(key)); " +
-                    "create index if not exists last_access_time_idx on manifest(last_access_time);"
+        let sql = "pragma journal_mode = wal; pragma synchronous = normal; create table if not exists manifest" +
+                  " (key text, filename text, size integer, inline_data blob, modification_time integer," +
+                  " last_access_time integer, extended_data blob, primary key(key)); " +
+                  "create index if not exists last_access_time_idx on manifest(last_access_time);" +
+                  "create index if not exists key_idx on manifest(key);"
         
         return _dbExecute(sql: sql)
     }
     
     fileprivate func _dbCheck() -> Bool {
         if _db == nil {
-            if _dbOpenErrorCount < LGDataStorageConfig.maxErrorRetryCount &&
-                CACurrentMediaTime() - _dbLastOpenErrorTime > LGDataStorageConfig.minRetryTimeInterval {
+            if _dbOpenErrorCount < Config.maxErrorRetryCount &&
+                CACurrentMediaTime() - _dbLastOpenErrorTime > Config.minRetryTimeInterval {
                 return self._dbOpen() && self._dbInitlalize()
             }
             else {
@@ -689,11 +738,11 @@ fileprivate extension LGDataStorage {
             var error: UnsafeMutablePointer<Int8>? = nil
             let result = sqlite3_exec(_db!, sql, nil, nil, &error)
             guard result == SQLITE_OK, error == nil else {
-                throw LGCacheError.execSqlFailed
+                throw LGDataStorageError.execSqlFailed(sql)
             }
             return true
         } catch {
-            println("执行SQL语句失败：", #file, #function, #line, #column, sql)
+            println(error, #file, #function, #line, #column, sql)
             return false
         }
     }
@@ -1280,7 +1329,7 @@ fileprivate extension LGDataStorage {
     
     
     fileprivate func _fileWrite(with fileName: String, data: Data) -> Bool {
-        let path = _dataPath! + "/" + fileName
+        let path = _dataPath + "/" + fileName
         do {
             try data.write(to: URL(fileURLWithPath: path))
         }
@@ -1291,7 +1340,7 @@ fileprivate extension LGDataStorage {
     }
     
     fileprivate func _fileRead(with fileName: String) -> Data? {
-        let path = _dataPath! + "/" + fileName
+        let path = _dataPath + "/" + fileName
         do {
             let data = try Data(contentsOf: URL(fileURLWithPath: path))
             return data
@@ -1302,7 +1351,7 @@ fileprivate extension LGDataStorage {
     }
     
     fileprivate func _fileDelete(with fileName: String) -> Bool {
-        let path = _dataPath! + "/" + fileName
+        let path = _dataPath + "/" + fileName
         do {
             try FileManager.default.removeItem(atPath: path)
             return true
@@ -1313,7 +1362,7 @@ fileprivate extension LGDataStorage {
     }
     
     fileprivate func _fileMove(with fileName: String, originURL: URL) -> Bool {
-        let path = _dataPath! + "/" + fileName
+        let path = _dataPath + "/" + fileName
         let pathURL = URL(fileURLWithPath: path)
         
         // 就是原始路径，直接返回
@@ -1353,12 +1402,12 @@ fileprivate extension LGDataStorage {
     
     fileprivate func _fileMoveAllToTrash() -> Bool {
         let uuid = UUID()
-        let tempPath = _trashPath! + "/" + uuid.uuidString
+        let tempPath = _trashPath + "/" + uuid.uuidString
         
         do {
-            try FileManager.default.moveItem(at: URL(fileURLWithPath: _dataPath!),
+            try FileManager.default.moveItem(at: URL(fileURLWithPath: _dataPath),
                                              to: URL(fileURLWithPath: tempPath))
-            try FileManager.default.createDirectory(at: URL(fileURLWithPath: _dataPath!),
+            try FileManager.default.createDirectory(at: URL(fileURLWithPath: _dataPath),
                                                     withIntermediateDirectories: true,
                                                     attributes: nil)
             return true
@@ -1369,8 +1418,8 @@ fileprivate extension LGDataStorage {
     }
     
     fileprivate func _fileEmptyTrashInBackground() {
-        let trashPath = _trashPath!
-        let trashQueue = _trashQueue!
+        let trashPath = _trashPath
+        let trashQueue = _trashQueue
         trashQueue.async {
             let fileManager = FileManager.default
             do {
@@ -1392,9 +1441,9 @@ fileprivate extension LGDataStorage {
     fileprivate func _reset() {
         do {
             let fileManager = FileManager.default
-            try fileManager.removeItem(atPath: _path! + "/" + LGDataStorageConfig.DBFileName)
-            try fileManager.removeItem(atPath: _path! + "/" + LGDataStorageConfig.DBShmFileName)
-            try fileManager.removeItem(atPath: _path! + "/" + LGDataStorageConfig.DBWalFileName)
+            try fileManager.removeItem(atPath: _path + "/" + Config.dbFileName)
+            try fileManager.removeItem(atPath: _path + "/" + Config.dbShmFileName)
+            try fileManager.removeItem(atPath: _path + "/" + Config.dbWalFileName)
             _ = _fileMoveAllToTrash()
             _fileEmptyTrashInBackground()
         }

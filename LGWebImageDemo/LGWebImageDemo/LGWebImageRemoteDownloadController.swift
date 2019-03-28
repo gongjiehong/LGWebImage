@@ -23,10 +23,11 @@ class LGRemoteDownloadCell: UITableViewCell {
         }
     }
     
-    override init(style: UITableViewCellStyle, reuseIdentifier: String?) {
+    override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         exampleImageView = LGAnimatedImageView(frame: self.contentView.bounds)
-        exampleImageView.contentMode = UIViewContentMode.scaleAspectFit
+        exampleImageView.contentMode = UIView.ContentMode.scaleAspectFill
+        exampleImageView.clipsToBounds = true
         self.contentView.addSubview(exampleImageView)
         
         progressView = UIProgressView(frame: CGRect(x: 0, y: 0, width: self.contentView.bounds.width, height: 20))
@@ -36,11 +37,11 @@ class LGRemoteDownloadCell: UITableViewCell {
 //        borderWidth: 2.0,
 //        borderColor: UIColor.orange,
 //        borderLineJoin: CGLineJoin.miter
-        exampleImageView.lg_cornerRadius = LGCornerRadiusConfig(cornerRadius: 10.0,
-                                                                corners: UIRectCorner.allCorners,
-                                                                borderWidth: 2.0,
-                                                                borderColor: UIColor.orange,
-                                                                borderLineJoin: CGLineJoin.miter)
+//        exampleImageView.lg_cornerRadius = LGCornerRadiusConfig(cornerRadius: 10.0,
+//                                                                corners: UIRectCorner.allCorners,
+//                                                                borderWidth: 2.0,
+//                                                                borderColor: UIColor.orange,
+//                                                                borderLineJoin: CGLineJoin.miter)
     }
     
     required init?(coder aDecoder: NSCoder) {
@@ -65,13 +66,14 @@ class LGRemoteDownloadCell: UITableViewCell {
     }
     
     func downloadImageAndShow() {
-        exampleImageView.lg_setImageWithURL(self.imageURL!,
-                                            placeholder: UIImage(named: "avatar_default"),
-                                            options: LGWebImageOptions.default,
-                                            progressBlock:
-            { (progress) in
-                self.progressView.progress = Float(progress.fractionCompleted)
-        }, transformBlock: {[weak self] (image, url) -> UIImage? in
+        exampleImageView.lg_setImageWithURL(self.imageURL!)
+//        exampleImageView.lg_setImageWithURL(self.imageURL!,
+//                                            placeholder: UIImage(named: "avatar_default"),
+//                                            options: LGWebImageOptions.default,
+//                                            progressBlock:
+//            { (progress) in
+//                self.progressView.progress = Float(progress.fractionCompleted)
+//        }, transformBlock: {[weak self] (image, url) -> UIImage? in
 //            if let tempImage = image as? LGImage {
 //                if tempImage.animatedImageFrameCount() > 1 {
 //                    return image
@@ -81,7 +83,7 @@ class LGRemoteDownloadCell: UITableViewCell {
 //                    }
 //
 //                    var result = tempImage.lg_imageByResizeToSize(weakSelf.exampleImageViewSize,
-//                                                                  contentMode: UIViewContentMode.scaleAspectFill)
+//                                                                  contentMode: UIView.ContentMode.scaleAspectFill)
 //                    result = result?.lg_imageByRoundCornerRadius(10.0,
 //                                                                 corners: UIRectCorner.allCorners,
 //                                                                 borderWidth: 2.0,
@@ -95,7 +97,7 @@ class LGRemoteDownloadCell: UITableViewCell {
 //                }
 //
 //                var result = image?.lg_imageByResizeToSize(weakSelf.exampleImageViewSize,
-//                                                           contentMode: UIViewContentMode.scaleAspectFill)
+//                                                           contentMode: UIView.ContentMode.scaleAspectFill)
 //                result = result?.lg_imageByRoundCornerRadius(10.0,
 //                                                             corners: UIRectCorner.allCorners,
 //                                                             borderWidth: 2.0,
@@ -103,10 +105,10 @@ class LGRemoteDownloadCell: UITableViewCell {
 //                                                             borderLineJoin: CGLineJoin.miter)
 //                return result
 //            }
-            return image
-        }) { (resultImage, url, sourceType, imageStage, error) in
-            
-        }
+//            return image
+//        }) { (resultImage, url, sourceType, imageStage, error) in
+//
+//        }
         
     }
 }
@@ -143,9 +145,9 @@ class LGWebImageRemoteDownloadController: UITableViewController {
         dataArray.append("https://s3-us-west-2.amazonaws.com/julyforcd/100/normal_png.png")
         dataArray.append("https://s3-us-west-2.amazonaws.com/julyforcd/100/static_gif.gif")
         dataArray.append("https://s3-us-west-2.amazonaws.com/julyforcd/100/twitter_fav_icon_300.png")
-        
-        // Only supports iOS11 and above
-        dataArray.append("http://staticfile.cxylg.com/IMG_0392.heic")
+//
+//        // Only supports iOS11 and above
+//        dataArray.append("http://staticfile.cxylg.com/IMG_0392.heic")
     }
     
     override func didReceiveMemoryWarning() {
@@ -166,7 +168,7 @@ class LGWebImageRemoteDownloadController: UITableViewController {
         {
             cell = tempCell
         } else {
-            cell = LGRemoteDownloadCell(style: UITableViewCellStyle.default, reuseIdentifier: kLGRemoteDownloadCellReuse)
+            cell = LGRemoteDownloadCell(style: UITableViewCell.CellStyle.default, reuseIdentifier: kLGRemoteDownloadCellReuse)
         }
         cell.imageURL = dataArray[indexPath.row]
         return cell

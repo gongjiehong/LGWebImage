@@ -8,12 +8,12 @@
 
 import Foundation
 
-public class LGCache {
+public class LGCache<KeyType: Hashable, ValueType: LGCacheItem> {
     public private(set) var name: String = ""
     
-    public private(set) var memoryCache: LGMemoryCache
+    public private(set) var memoryCache: LGMemoryCache<KeyType, ValueType>
     
-    public private(set) var diskCache: LGDiskCache
+    public private(set) var diskCache: LGDiskCache<KeyType, ValueType>
     
     public convenience init(withName name: String) {
         assert(name.lg_length > 0, "缓存名字不合法")
@@ -23,22 +23,25 @@ public class LGCache {
     
     public init(withPath path: String) {
         assert(path.lg_length > 0, "缓存路径不合法")
-        let diskCache = LGDiskCache(path: path)
         let name = NSString(string: path).lastPathComponent
         
-        let memoryCache = LGMemoryCache()
-        memoryCache.name = name
+        let diskCacheConfig = LGDiskConfig(name: "LGCache.Disk.\(name)",
+                                           directory: URL(fileURLWithPath: path))
+        let diskCache = LGDiskCache<KeyType, ValueType>.cache(withConfig: diskCacheConfig)
+        
+        let memoryCacheConfig = LGMemoryConfig(name: "LGCache.Memory.\(name)")
+        let memoryCache = LGMemoryCache<KeyType, ValueType>(config: memoryCacheConfig)
         
         self.diskCache = diskCache
         self.memoryCache = memoryCache
-        self.name = name
+        self.name = "LGCache.\(name)"
     }
     
-    public func containsObject(forKey key: String) -> Bool {
+    public func containsObject(forKey key: KeyType) -> Bool {
         return memoryCache.containsObject(forKey: key) || diskCache.containsObject(forKey: key)
     }
     
-    public func containsObject(forKey key: String, withBlock block: ((_ key: String, _ contains: Bool) -> Void)?) {
+    public func containsObject(forKey key: KeyType, withBlock block: ((_ key: KeyType, _ contains: Bool) -> Void)?) {
         guard let tempBlock = block else {
             return
         }
@@ -51,12 +54,12 @@ public class LGCache {
         }
     }
     
-    public func object(forKey key: String) -> LGCacheItem? {
+    public func object(forKey key: KeyType) -> ValueType? {
         if let objcet = memoryCache.object(forKey: key) {
             return objcet
         } else {
             if let object = diskCache.object(forKey: key) {
-                memoryCache.setObject(object, forKey: key, withCost: 0)
+                memoryCache.setObject(object, forKey: key)
                 return object
             } else {
                 return nil
@@ -64,7 +67,7 @@ public class LGCache {
         }
     }
     
-    public func object(forKey key: String, withBlock block: ((String, LGCacheItem?) -> Void)?) {
+    public func object(forKey key: KeyType, withBlock block: ((KeyType, ValueType?) -> Void)?) {
         guard let tempBlock = block else {
             return
         }
@@ -78,7 +81,7 @@ public class LGCache {
                     return
                 }
                 if item != nil && !weakSelf.memoryCache.containsObject(forKey: itemKey) {
-                    weakSelf.memoryCache.setObject(item, forKey: itemKey, withCost: 0)
+                    weakSelf.memoryCache.setObject(item, forKey: itemKey)
                 }
                 tempBlock(itemKey, item)
             })
@@ -86,23 +89,23 @@ public class LGCache {
         
     }
     
-    public func setObject(_ object: LGCacheItem?, forKey key: String) {
-        memoryCache.setObject(object, forKey: key, withCost: 0)
+    public func setObject(_ object: ValueType?, forKey key: KeyType) {
+        memoryCache.setObject(object, forKey: key)
         diskCache.setObject(object, forKey: key)
     }
     
-    public func setObject(_ object: LGCacheItem?, forKey key: String, withBlock block: (() -> Void)?) {
-        memoryCache.setObject(object, forKey: key, withCost: 0)
+    public func setObject(_ object: ValueType?, forKey key: KeyType, withBlock block: (() -> Void)?) {
+        memoryCache.setObject(object, forKey: key)
         diskCache.setObject(object, forKey: key, withBlock: block)
     }
     
-    public func removeObject(forKey key: String) {
+    public func removeObject(forKey key: KeyType) {
         memoryCache.removeObject(forKey: key)
         diskCache.removeObject(forKey: key)
     }
 
     
-    public func removeObject(forKey key: String, withBlock block: ((String) -> Void)?) {
+    public func removeObject(forKey key: KeyType, withBlock block: ((KeyType) -> Void)?) {
         memoryCache.removeObject(forKey: key)
         diskCache.removeObject(forKey: key, withBlock: block)
     }

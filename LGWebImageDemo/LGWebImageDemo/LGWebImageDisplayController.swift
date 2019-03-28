@@ -112,7 +112,7 @@ class LGWebImageDisplayController: UIViewController {
     }
 
     func addImage(with imageName: String, text: String) {
-        let image = LGImage.imageWith(named: imageName)
+        let image = LGImage.image(named: imageName)
         if image != nil {
             DispatchQueue.main.async {
                 self.add(image: image!, text: text)
@@ -144,7 +144,7 @@ class LGWebImageDisplayController: UIViewController {
         contentView.addSubview(label)
         
         let imageView = LGAnimatedImageView(image: image)
-        imageView.contentMode = UIViewContentMode.scaleAspectFit
+        imageView.contentMode = UIView.ContentMode.scaleAspectFit
         imageView.frame = CGRect(x: originX, y: originY + 30.0, width: newSize.width, height: newSize.height)
         contentView.addSubview(imageView)
         

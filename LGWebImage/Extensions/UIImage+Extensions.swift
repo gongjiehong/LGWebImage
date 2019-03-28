@@ -12,21 +12,21 @@ import Accelerate
 
 
 extension CGRect {
-    func fitWithContentMode(_ mode: UIViewContentMode, size: CGSize) -> CGRect {
+    func fitWithContentMode(_ mode: UIView.ContentMode, size: CGSize) -> CGRect {
         var result = self.standardized
         var toCalcSize = size
         toCalcSize.width = toCalcSize.width < 0 ? -toCalcSize.width : toCalcSize.width
         toCalcSize.height = toCalcSize.height < 0 ? -toCalcSize.height : toCalcSize.height
         let center = CGPoint(x: result.midX, y: result.midY)
         switch mode {
-        case UIViewContentMode.scaleAspectFit, UIViewContentMode.scaleAspectFill:
+        case UIView.ContentMode.scaleAspectFit, UIView.ContentMode.scaleAspectFill:
             if  result.size.width < 0.01 || result.size.height < 0.01 ||
                 toCalcSize.width < 0.01 || toCalcSize.height < 0.01 {
                 result.origin = center
                 result.size = CGSize.zero
             } else {
                 var scale: CGFloat = 0.0
-                if mode == UIViewContentMode.scaleAspectFit {
+                if mode == UIView.ContentMode.scaleAspectFit {
                     if toCalcSize.width / toCalcSize.height < result.size.width / result.size.height {
                         scale = result.size.height / toCalcSize.height
                     } else {
@@ -46,40 +46,40 @@ extension CGRect {
             }
             break
             
-        case UIViewContentMode.center:
+        case UIView.ContentMode.center:
             result.size = toCalcSize
             result.origin = CGPoint(x: center.x - toCalcSize.width * 0.5, y: center.y - toCalcSize.height * 0.5)
             break
-        case UIViewContentMode.top:
+        case UIView.ContentMode.top:
             result.origin.x = center.x - toCalcSize.width * 0.5
             result.size = toCalcSize
             break
-        case UIViewContentMode.bottom:
+        case UIView.ContentMode.bottom:
             result.origin.x = center.x - toCalcSize.width * 0.5
             result.origin.y += result.size.height - toCalcSize.height
             result.size = toCalcSize
             break
-        case UIViewContentMode.left:
+        case UIView.ContentMode.left:
             result.origin.y = center.y - toCalcSize.height * 0.5
             result.size = toCalcSize
             break
-        case UIViewContentMode.right:
+        case UIView.ContentMode.right:
             result.origin.y = center.y - toCalcSize.height * 0.5
             result.origin.x += result.size.width - toCalcSize.width
             result.size = toCalcSize
             break
-        case UIViewContentMode.topLeft:
+        case UIView.ContentMode.topLeft:
             result.size = toCalcSize
             break
-        case UIViewContentMode.topRight:
+        case UIView.ContentMode.topRight:
             result.origin.x += result.size.width - toCalcSize.width
             result.size = toCalcSize
             break
-        case UIViewContentMode.bottomLeft:
+        case UIView.ContentMode.bottomLeft:
             result.origin.y += result.size.height - toCalcSize.height
             result.size = toCalcSize
             break
-        case UIViewContentMode.bottomRight:
+        case UIView.ContentMode.bottomRight:
             result.origin.x += result.size.width - toCalcSize.width
             result.origin.y += result.size.height - toCalcSize.height
             result.size = toCalcSize
@@ -208,7 +208,7 @@ extension UIImage {
             guard let decoded = context.makeImage() else {
                 return nil
             }
-            let image = UIImage(cgImage: decoded, scale: scale, orientation: UIImageOrientation.up)
+            let image = UIImage(cgImage: decoded, scale: scale, orientation: UIImage.Orientation.up)
             for _ in 0..<(frames[index] / gcdFrame) {
                 resultArray.append(image)
             }
@@ -372,7 +372,7 @@ extension UIImage {
         
         
         let hasBlur = blurRadius > CGFloat.ulpOfOne
-        let hasSaturation = fabs(saturation - 1.0) > CGFloat.ulpOfOne
+        let hasSaturation = abs(saturation - 1.0) > CGFloat.ulpOfOne
         
         let scale = self.scale
         
@@ -595,7 +595,7 @@ extension UIImage {
     }
     
     // MARK: -  修改图像数据获得新图
-    public func lg_draw(in rect: CGRect, withContentMode contentMode: UIViewContentMode, clipsToBounds clips: Bool) {
+    public func lg_draw(in rect: CGRect, withContentMode contentMode: UIView.ContentMode, clipsToBounds clips: Bool) {
         let drawRect = rect.fitWithContentMode(contentMode, size: self.size)
         if drawRect.width == 0 || drawRect.height == 0 {
             return
@@ -624,7 +624,7 @@ extension UIImage {
         return image
     }
     
-    public func lg_imageByResizeToSize(_ size: CGSize, contentMode: UIViewContentMode) -> UIImage? {
+    public func lg_imageByResizeToSize(_ size: CGSize, contentMode: UIView.ContentMode) -> UIImage? {
         if size.width <= 0 || size.height <= 0 {return nil}
         UIGraphicsBeginImageContextWithOptions(size, false, self.scale)
         self.lg_draw(in: CGRect(origin: CGPoint.zero, size: size),
@@ -825,37 +825,37 @@ extension UIImage {
     
     public func lg_fixedOrientation() -> UIImage? {
         
-        if imageOrientation == UIImageOrientation.up {
+        if imageOrientation == UIImage.Orientation.up {
             return self
         }
         
         var transform: CGAffineTransform = CGAffineTransform.identity
         
         switch imageOrientation {
-        case UIImageOrientation.down, UIImageOrientation.downMirrored:
+        case UIImage.Orientation.down, UIImage.Orientation.downMirrored:
             transform = transform.translatedBy(x: size.width, y: size.height)
             transform = transform.rotated(by: CGFloat.pi)
             break
-        case UIImageOrientation.left, UIImageOrientation.leftMirrored:
+        case UIImage.Orientation.left, UIImage.Orientation.leftMirrored:
             transform = transform.translatedBy(x: size.width, y: 0)
             transform = transform.rotated(by: CGFloat.pi / 2.0)
             break
-        case UIImageOrientation.right, UIImageOrientation.rightMirrored:
+        case UIImage.Orientation.right, UIImage.Orientation.rightMirrored:
             transform = transform.translatedBy(x: 0, y: size.height)
             transform = transform.rotated(by: CGFloat.pi / -2.0)
             break
-        case UIImageOrientation.up, UIImageOrientation.upMirrored:
+        case UIImage.Orientation.up, UIImage.Orientation.upMirrored:
             break
         }
         switch imageOrientation {
-        case UIImageOrientation.upMirrored, UIImageOrientation.downMirrored:
+        case UIImage.Orientation.upMirrored, UIImage.Orientation.downMirrored:
             transform.translatedBy(x: size.width, y: 0)
             transform.scaledBy(x: -1, y: 1)
             break
-        case UIImageOrientation.leftMirrored, UIImageOrientation.rightMirrored:
+        case UIImage.Orientation.leftMirrored, UIImage.Orientation.rightMirrored:
             transform.translatedBy(x: size.height, y: 0)
             transform.scaledBy(x: -1, y: 1)
-        case UIImageOrientation.up, UIImageOrientation.down, UIImageOrientation.left, UIImageOrientation.right:
+        case UIImage.Orientation.up, UIImage.Orientation.down, UIImage.Orientation.left, UIImage.Orientation.right:
             break
         }
         guard let cgImage = self.cgImage,
@@ -872,10 +872,10 @@ extension UIImage {
         ctx.concatenate(transform)
         
         switch imageOrientation {
-        case UIImageOrientation.left,
-             UIImageOrientation.leftMirrored,
-             UIImageOrientation.right,
-             UIImageOrientation.rightMirrored:
+        case UIImage.Orientation.left,
+             UIImage.Orientation.leftMirrored,
+             UIImage.Orientation.right,
+             UIImage.Orientation.rightMirrored:
             ctx.draw(cgImage, in: CGRect(origin: CGPoint.zero, size: size))
         default:
             ctx.draw(cgImage, in: CGRect(origin: CGPoint.zero, size: size))
@@ -889,6 +889,131 @@ extension UIImage {
         return nil
     }
     
+    /// 压缩图片到一个给定的文件大小
+    ///
+    /// - Parameter size: 给定文件大小，默认512KB
+    /// - Returns: 压缩后的图片压缩后的图片
+    public func lg_compress(_ toSize: Int = 524_288) -> UIImage? {
+        if let data = lg_compressToData(withSize: toSize) {
+            return UIImage(data: data)
+        } else {
+            return self
+        }
+    }
+    
+    /// 压缩图片到一个给定的文件大小
+    ///
+    /// - Parameter size: 给定文件大小，默认512KB
+    /// - Returns: 压缩后的图片jpeg data
+    public func lg_compressToData(withSize size: Int = 524_288) -> Data? {
+        var compression: CGFloat = 1.0
+        let minCompression: CGFloat = 0.2
+        let maxFileSize = size
+        
+        return autoreleasepool {
+            var imageData = self.jpegData(compressionQuality: compression)
+            while imageData != nil , imageData!.count > maxFileSize, compression > minCompression {
+                compression -= 0.1
+                imageData = self.jpegData(compressionQuality: compression)
+            }
+            return imageData
+        }
+    }
+    
+    public func lg_scaleImageTo(_ newSize: CGSize) -> UIImage? {
+        let imageSize = self.size
+        let width = self.size.width
+        let height = self.size.height
+        let targetWidth = newSize.width
+        let targetHeight = newSize.height
+        var scaleFactor: CGFloat = 0.0
+        var scaledWidth = targetWidth
+        var scaledHeight = targetHeight
+        var thumbnailPoint = CGPoint.zero
+        
+        if imageSize != newSize {
+            let widthFactor: CGFloat = targetWidth / width
+            let heightFactor: CGFloat = targetHeight / height
+            
+            if widthFactor > heightFactor {
+                scaleFactor = widthFactor // scale to fit height
+            } else {
+                scaleFactor = heightFactor // scale to fit width
+            }
+            
+            scaledWidth = width * scaleFactor
+            scaledHeight = height * scaleFactor
+            
+            if widthFactor > heightFactor {
+                thumbnailPoint.y = (targetHeight - scaledHeight) * 0.5
+            } else if widthFactor < heightFactor {
+                thumbnailPoint.x = (targetWidth - scaledWidth) * 0.5
+            }
+        }
+        
+        guard let cgImage = self.cgImage else { return self }
+        var bitmapInfo = cgImage.bitmapInfo
+        let colorSpace = cgImage.colorSpace
+        
+        if bitmapInfo == .none {
+            bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipLast.rawValue)
+        }
+        
+        var bitmapContext: CGContext?
+        
+        if self.imageOrientation == .up || self.imageOrientation == .down {
+            bitmapContext = CGContext(data: nil,
+                                      width: Int(targetWidth),
+                                      height: Int(targetHeight),
+                                      bitsPerComponent: cgImage.bitsPerComponent,
+                                      bytesPerRow: cgImage.bytesPerRow,
+                                      space: colorSpace ?? LGCGColorSpaceDeviceRGB,
+                                      bitmapInfo: bitmapInfo.rawValue)
+        } else {
+            bitmapContext = CGContext(data: nil,
+                                      width: Int(targetHeight),
+                                      height: Int(targetWidth),
+                                      bitsPerComponent: cgImage.bitsPerComponent,
+                                      bytesPerRow: cgImage.bytesPerRow,
+                                      space: colorSpace ?? LGCGColorSpaceDeviceRGB,
+                                      bitmapInfo: bitmapInfo.rawValue)
+        }
+        
+        // In the right or left cases, we need to switch scaledWidth and scaledHeight,
+        // and also the thumbnail point
+        if self.imageOrientation == .left {
+            thumbnailPoint = CGPoint(x: thumbnailPoint.y, y: thumbnailPoint.x)
+            let oldScaledWidth: CGFloat = scaledWidth
+            scaledWidth = scaledHeight
+            scaledHeight = oldScaledWidth
+            
+            bitmapContext?.rotate(by: CGFloat.pi / 2.0) // + 90 degrees
+            bitmapContext?.translateBy(x: 0, y: -targetHeight)
+        } else if self.imageOrientation == .right {
+            thumbnailPoint = CGPoint(x: thumbnailPoint.y, y: thumbnailPoint.x)
+            let oldScaledWidth: CGFloat = scaledWidth
+            scaledWidth = scaledHeight
+            scaledHeight = oldScaledWidth
+            
+            bitmapContext?.rotate(by: CGFloat.pi / -2.0) // - 90 degrees
+            bitmapContext?.translateBy(x: -targetWidth, y: 0)
+        } else if self.imageOrientation == .up {
+            // NOTHING
+        } else if self.imageOrientation == .down {
+            bitmapContext?.translateBy(x: targetWidth, y: targetHeight)
+            bitmapContext?.rotate(by: -CGFloat.pi) // - 180 degrees
+        }
+        
+        bitmapContext?.draw(cgImage, in: CGRect(x: thumbnailPoint.x,
+                                                y: thumbnailPoint.y,
+                                                width: scaledWidth,
+                                                height: scaledHeight))
+        
+        guard let resultCGImage = bitmapContext?.makeImage() else { return self }
+        let newImage = UIImage(cgImage: resultCGImage)
+        
+        return newImage
+    }
 }
 
 fileprivate func LGDegreesToRadians(degrees : CGFloat) -> CGFloat {

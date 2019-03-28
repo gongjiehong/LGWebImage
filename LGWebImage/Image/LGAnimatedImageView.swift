@@ -126,15 +126,15 @@ open class LGAnimatedImageView: UIImageView {
     
     
     /// runloop，用于例如滑动时停止播放
-    public var runloopMode: RunLoopMode = RunLoopMode.defaultRunLoopMode {
+    public var runLoopMode: RunLoop.Mode = RunLoop.Mode.default {
         willSet {
             if timer != nil {
-                timer?.remove(from: RunLoop.main, forMode: runloopMode)
+                timer?.remove(from: RunLoop.main, forMode: runLoopMode)
             }
         }
         didSet {
             if timer != nil {
-                timer?.add(to: RunLoop.main, forMode: runloopMode)
+                timer?.add(to: RunLoop.main, forMode: runLoopMode)
             }
         }
     }
@@ -214,10 +214,10 @@ open class LGAnimatedImageView: UIImageView {
     // MARK: -  coder
     required public init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
-        if let tempMode = aDecoder.decodeObject(forKey: "runloopMode") as? RunLoopMode {
-            runloopMode = tempMode
+        if let tempMode = aDecoder.decodeObject(forKey: "runLoopMode") as? RunLoop.Mode {
+            runLoopMode = tempMode
         } else {
-            runloopMode = RunLoopMode.commonModes
+            runLoopMode = RunLoop.Mode.common
         }
         // decode bool 默认值为false，所以需要判断处理
         if aDecoder.containsValue(forKey: "isAutoPlayAnimatedImage") {
@@ -239,7 +239,7 @@ open class LGAnimatedImageView: UIImageView {
     
     override open func encode(with aCoder: NSCoder) {
         super.encode(with: aCoder)
-        aCoder.encode(runloopMode, forKey: "runloopMode")
+        aCoder.encode(runLoopMode, forKey: "runLoopMode")
         aCoder.encode(isAutoPlayAnimatedImage, forKey: "isAutoPlayAnimatedImage")
 
         var ani: Bool = false, multi: Bool = false
@@ -299,13 +299,13 @@ open class LGAnimatedImageView: UIImageView {
             return
         }
         if bytesCount == 0 {
-            bytesCount = 1024
+            bytesCount = 1_024
         }
         
         let total = lg_totalSizeOfTheDeviceMemory
         let free = LGDeviceMemoryFree()
         var maxCount = min(Double(total) * 0.2, Double(free) * 0.6)
-        maxCount = max(maxCount, 10 * 1024 * 1024)
+        maxCount = max(maxCount, 10 * 1_024 * 1_024)
         if maxBufferSize != 0 {
             maxCount = maxCount > Double(maxBufferSize) ? Double(maxBufferSize) : maxCount
         }
@@ -403,15 +403,15 @@ extension LGAnimatedImageView {
             requestQueue = OperationQueue()
             requestQueue.maxConcurrentOperationCount = 1
             timer = CADisplayLink(target: LGImageWeakTarget(target: self), selector: #selector(step(_:)))
-            timer?.add(to: RunLoop.main, forMode: runloopMode)
+            timer?.add(to: RunLoop.main, forMode: runLoopMode)
             timer?.isPaused = true
             NotificationCenter.default.addObserver(self,
                                                    selector: #selector(didReceiveMemoryWarning(_:)),
-                                                   name: NSNotification.Name.UIApplicationDidReceiveMemoryWarning,
+                                                   name: UIApplication.didReceiveMemoryWarningNotification,
                                                    object: nil)
             NotificationCenter.default.addObserver(self,
                                                    selector: #selector(didEnterBackground(_:)),
-                                                   name: NSNotification.Name.UIApplicationDidEnterBackground,
+                                                   name: UIApplication.didEnterBackgroundNotification,
                                                    object: nil)
         }
         requestQueue.cancelAllOperations()

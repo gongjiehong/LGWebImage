@@ -23,19 +23,19 @@ public struct LGWebImageOptions: OptionSet {
     }
     
     /// 显示顶部状态栏的网络请求菊花
-    public static let showNetworkActivity: LGWebImageOptions = {
+    public static var showNetworkActivity: LGWebImageOptions {
         return LGWebImageOptions(rawValue: 1 << 0)
-    }()
+    }
     
     /// 渐进显示
-    public static let progressive: LGWebImageOptions = {
+    public static var progressive: LGWebImageOptions {
         return LGWebImageOptions(rawValue: 1 << 1)
-    }()
+    }
     
     /// 渐进模糊
-    public static let progressiveBlur: LGWebImageOptions = {
+    public static var progressiveBlur: LGWebImageOptions {
         return LGWebImageOptions(rawValue: 1 << 2)
-    }()
+    }
     
     /// 允许断点续传，注意：本库使用(Range: bytes = *-*)实现（["Range": "bytes=*-*"]），请确定服务器是否支持Range协议
     /// Range: bytes=0-499 表示第 0-499 字节范围的内容
@@ -44,79 +44,79 @@ public struct LGWebImageOptions: OptionSet {
     /// Range: bytes=500- 表示从第 500 字节开始到文件结束部分的内容
     /// Range: bytes=0-0,-1 表示第一个和最后一个字节
     /// Range: bytes=500-600,601-999 同时指定几个范围
-    public static let enableBreakpointPass: LGWebImageOptions = {
+    public static var enableBreakpointPass: LGWebImageOptions {
         return LGWebImageOptions(rawValue: 1 << 3)
-    }()
+    }
     
     /// 允许后台下载
-    public static let allowBackgroundTask: LGWebImageOptions = {
+    public static var allowBackgroundTask: LGWebImageOptions {
         return LGWebImageOptions(rawValue: 1 << 4)
-    }()
+    }
     
     /// 在SSL证书无效的情况下允许下载
-    public static let allowInvalidSSLCertificates: LGWebImageOptions = {
+    public static var allowInvalidSSLCertificates: LGWebImageOptions {
         return LGWebImageOptions(rawValue: 1 << 5)
-    }()
+    }
     
     /// 开启大图优化，图片在解压缩时需要消耗大量内存，开启后会将大于1MB的大图进行压缩处理后显示，支持JPG，PNG，ICO等，不支持WEBP，HEIF
-    public static let enableLargePictureOptimization: LGWebImageOptions = {
+    public static var enableLargePictureOptimization: LGWebImageOptions {
         return LGWebImageOptions(rawValue: 1 << 6)
-    }()
+    }
     
     /// 刷新图片缓存
-    public static let refreshImageCache: LGWebImageOptions = {
+    public static var refreshImageCache: LGWebImageOptions {
         return LGWebImageOptions(rawValue: 1 << 7)
-    }()
+    }
     
     /// 忽略磁盘缓存
-    public static let ignoreDiskCache: LGWebImageOptions = {
+    public static var ignoreDiskCache: LGWebImageOptions {
         return LGWebImageOptions(rawValue: 1 << 8)
-    }()
+    }
     
     /// 忽略占位图
-    public static let ignorePlaceHolder: LGWebImageOptions = {
+    public static var ignorePlaceHolder: LGWebImageOptions {
         return LGWebImageOptions(rawValue: 1 << 9)
-    }()
+    }
     
     /// 忽略图片解码，直接返回数据
-    public static let ignoreImageDecoding: LGWebImageOptions = {
+    public static var ignoreImageDecoding: LGWebImageOptions {
         return LGWebImageOptions(rawValue: 1 << 10)
-    }()
+    }
     
     /// 不处理动图
-    public static let ignoreAnimatedImage: LGWebImageOptions = {
+    public static var ignoreAnimatedImage: LGWebImageOptions {
         return LGWebImageOptions(rawValue: 1 << 11)
-    }()
+    }
     
     /// 显示图片的时候使用Fade动画
-    public static let setImageWithFadeAnimation: LGWebImageOptions = {
+    public static var setImageWithFadeAnimation: LGWebImageOptions {
         return LGWebImageOptions(rawValue: 1 << 12)
-    }()
+    }
     
     /// 避免设置图片
-    public static let avoidSetImage: LGWebImageOptions = {
+    public static var avoidSetImage: LGWebImageOptions {
         return LGWebImageOptions(rawValue: 1 << 13)
-    }()
+    }
     
     /// 忽略下载出错的URL
-    public static let ignoreFailedURL: LGWebImageOptions = {
+    public static var ignoreFailedURL: LGWebImageOptions {
         return LGWebImageOptions(rawValue: 1 << 14)
-    }()
+    }
     
     /// 自动开启图片圆角，需要设置UIView和CALayer的lg_cornerRadius属性
-    public static let autoTurnOnFillet: LGWebImageOptions = {
+    public static var autoTurnOnFillet: LGWebImageOptions {
         return LGWebImageOptions(rawValue: 1 << 15)
-    }()
+    }
     
     /// 默认，使用Fade动画，允许后台下载，开启渐进加载
-    public static let `default`: LGWebImageOptions = {
+    public static var `default`: LGWebImageOptions {
         return [LGWebImageOptions.setImageWithFadeAnimation,
                 LGWebImageOptions.allowBackgroundTask,
                 LGWebImageOptions.progressiveBlur,
                 LGWebImageOptions.enableBreakpointPass,
                 LGWebImageOptions.enableLargePictureOptimization,
                 LGWebImageOptions.autoTurnOnFillet]
-    }()
+    }
 }
 
 /// 图片处理状态
