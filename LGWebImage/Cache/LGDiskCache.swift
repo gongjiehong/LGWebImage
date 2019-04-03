@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import LGHTTPRequest
 
 fileprivate class LGDiskCacheContainer {
     let container: LGWeakValueDictionary<URL, AnyObject>
