@@ -16,7 +16,7 @@ public extension CALayer {
     }
     
     /// 图片URL
-    public var lg_imageURL: LGURLConvertible? {
+    var lg_imageURL: LGURLConvertible? {
         return lg_imageSetter.imageURL
     }
     
@@ -47,7 +47,7 @@ public extension CALayer {
     ///   - options: 属性配置，默认LGWebImageOptions.default
     ///   - progress: 进度回调
     ///   - completion: 请求完成回调
-    public func lg_setImageWithURL(_ imageURL: LGURLConvertible,
+    func lg_setImageWithURL(_ imageURL: LGURLConvertible,
                                    placeholder: UIImage? = nil,
                                    options: LGWebImageOptions = LGWebImageOptions.default,
                                    progressBlock: LGWebImageProgressBlock? = nil,
@@ -145,13 +145,13 @@ public extension CALayer {
     }
     
     /// 取消普通图片请求
-    public func lg_cancelCurrentImageRequest() {
+    func lg_cancelCurrentImageRequest() {
         lg_imageSetter.cancel()
     }
 }
 
 extension CALayer {
-    static func swizzleImplementations() {
+    internal static func swizzleImplementations() {
         CALayer.swizzleSetContentsImplementation()
     }
     
@@ -195,12 +195,12 @@ extension CALayer {
 
 public extension CALayer {
     
-    public var lg_needSetCornerRadius: Bool {
+    var lg_needSetCornerRadius: Bool {
         return self.lg_cornerRadius?.needSetCornerRadius == true
     }
     
     /// 在不设置layer圆角的情况下设置图片圆角
-    public var lg_cornerRadius: LGCornerRadiusConfig? {
+    var lg_cornerRadius: LGCornerRadiusConfig? {
         set {
             objc_setAssociatedObject(self,
                                      &AssociatedKeys.cornerRadiusKey,

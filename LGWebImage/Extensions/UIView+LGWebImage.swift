@@ -38,12 +38,12 @@ public extension UIView {
         static var cornerRadiusKey = "lg_cornerRadius"
     }
     
-    public var lg_needSetCornerRadius: Bool {
+    var lg_needSetCornerRadius: Bool {
         return self.lg_cornerRadius?.needSetCornerRadius == true
     }
     
     /// 在不设置layer圆角的情况下设置图片圆角
-    public var lg_cornerRadius: LGCornerRadiusConfig? {
+    var lg_cornerRadius: LGCornerRadiusConfig? {
         set {
             objc_setAssociatedObject(self,
                                      &AssociatedKeys.cornerRadiusKey,

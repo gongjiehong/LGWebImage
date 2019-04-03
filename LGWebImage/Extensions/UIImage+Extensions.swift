@@ -407,7 +407,7 @@ extension UIImage {
                                                  cgImage,
                                                  vImage_Flags(kvImagePrintDiagnosticsToConsole))
         if error != kvImageNoError {
-//            println("*** error: vImageBuffer_InitWithCGImage returned error code \(error) for inputImage: \(self)")
+            //            println("*** error: vImageBuffer_InitWithCGImage returned error code \(error) for inputImage: \(self)")
             return nil
         }
         
@@ -491,7 +491,7 @@ extension UIImage {
                 0.7152 - 0.7152 * s,  0.7152 + 0.2848 * s,  0.7152 - 0.7152 * s,  0,
                 0.2126 - 0.2126 * s,  0.2126 - 0.2126 * s,  0.2126 + 0.7873 * s,  0,
                 0,                    0,                    0,                    1,
-                ]
+            ]
             
             let divisor: Int = 256
             let matrixSize: Int = MemoryLayout.size(ofValue: matrixFloat) / MemoryLayout.size(ofValue: matrixFloat[0])
@@ -846,7 +846,10 @@ extension UIImage {
             break
         case UIImage.Orientation.up, UIImage.Orientation.upMirrored:
             break
+        @unknown default:
+            break
         }
+        
         switch imageOrientation {
         case UIImage.Orientation.upMirrored, UIImage.Orientation.downMirrored:
             transform.translatedBy(x: size.width, y: 0)
@@ -857,7 +860,10 @@ extension UIImage {
             transform.scaledBy(x: -1, y: 1)
         case UIImage.Orientation.up, UIImage.Orientation.down, UIImage.Orientation.left, UIImage.Orientation.right:
             break
+        @unknown default:
+            break
         }
+        
         guard let cgImage = self.cgImage,
             let colorSpace = cgImage.colorSpace,
             let ctx: CGContext = CGContext(data: nil,

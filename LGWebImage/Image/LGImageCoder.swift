@@ -258,7 +258,7 @@ public class LGImageDecoder {
     fileprivate var _blendCanvas: CGContext?
 }
 
-fileprivate extension LGImageDecoder {
+extension LGImageDecoder {
     fileprivate func _updateData(data: Data, final: Bool) -> Bool {
         if self.isFinalized {
             return false
@@ -408,13 +408,18 @@ fileprivate extension LGImageDecoder {
         _frames.removeAll()
         _ = _framesLock.signal()
         
+        guard let imageData = self.imageData else {
+            return
+        }
+        
         var demuxer: OpaquePointer?
         
-        
-        _ = self.imageData!.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) -> Void in
-            var webpData = WebPData(bytes: bytes, size: self.imageData!.count)
-            demuxer = WebPDemux(&webpData)
+        let pointer = imageData.withUnsafeBytes { (bytes) in
+            return bytes.baseAddress?.assumingMemoryBound(to: UInt8.self)
         }
+        
+        var webpData = WebPData(bytes: pointer, size: imageData.count)
+        demuxer = WebPDemux(&webpData)
         
         if demuxer == nil {
             return
@@ -1551,6 +1556,8 @@ public func LGUIImageOrientationFromCGImagePropertyOrientationValue(value: UInt3
         case CGImagePropertyOrientation.rightMirrored:
             result = UIImage.Orientation.rightMirrored
             break
+        @unknown default:
+            break
         }
         return result
     } else {
@@ -2219,28 +2226,28 @@ public func LGCGImageCreate(withImage image: CGImage,
     
 }
 
-fileprivate extension CGAffineTransform {
+extension CGAffineTransform {
     
     fileprivate var vImageAffinetransform: vImage_CGAffineTransform {
         #if arch(arm) || arch(i386)
-            return vImage_CGAffineTransform(a: self.a.floatValue,
-                                            b: self.b.floatValue,
-                                            c: self.c.floatValue,
-                                            d: self.d.floatValue,
-                                            tx: self.tx.floatValue,
-                                            ty: self.ty.floatValue)
+        return vImage_CGAffineTransform(a: self.a.floatValue,
+                                        b: self.b.floatValue,
+                                        c: self.c.floatValue,
+                                        d: self.d.floatValue,
+                                        tx: self.tx.floatValue,
+                                        ty: self.ty.floatValue)
         #else
-            return vImage_CGAffineTransform(a: self.a.doubleValue,
-                                            b: self.b.doubleValue,
-                                            c: self.c.doubleValue,
-                                            d: self.d.doubleValue,
-                                            tx: self.tx.doubleValue,
-                                            ty: self.ty.doubleValue)
+        return vImage_CGAffineTransform(a: self.a.doubleValue,
+                                        b: self.b.doubleValue,
+                                        c: self.c.doubleValue,
+                                        d: self.d.doubleValue,
+                                        tx: self.tx.doubleValue,
+                                        ty: self.ty.doubleValue)
         #endif
     }
 }
 
-fileprivate extension CGFloat {
+extension CGFloat {
     fileprivate var doubleValue: Double {
         return Double(self)
     }
@@ -2252,7 +2259,7 @@ fileprivate extension CGFloat {
 
 // MARK: - 增加一些个属性
 public extension UIImage {
-    public var lg_imageByDecoded: UIImage {
+    var lg_imageByDecoded: UIImage {
         if self.lg_isDecodedForDisplay {
             return self
         }
@@ -2272,7 +2279,7 @@ public extension UIImage {
         static var isDecodedForDisplay: String = "lg_isDecodedForDisplay"
     }
     
-    public var lg_isDecodedForDisplay: Bool {
+    var lg_isDecodedForDisplay: Bool {
         set {
             objc_setAssociatedObject(self,
                                      &AssociatedKeys.isDecodedForDisplay,
@@ -2291,7 +2298,7 @@ public extension UIImage {
         }
     }
     
-    public var lg_imageDataRepresentation: Data? {
+    var lg_imageDataRepresentation: Data? {
         return lg_dataRepresentation(forSystem: false)
     }
     
@@ -2346,7 +2353,7 @@ public extension UIImage {
         return result
     }
     
-    public func lg_savetoAlbumWith(completionBlock: @escaping (Bool, PHAsset?, Error?) -> Void) {
+    func lg_savetoAlbumWith(completionBlock: @escaping (Bool, PHAsset?, Error?) -> Void) {
         var localId: String?
         PHPhotoLibrary.shared().performChanges({
             let result = PHAssetChangeRequest.creationRequestForAsset(from: self)
@@ -2377,5 +2384,5 @@ public extension UIImage {
             }
         }
     }
-
+    
 }

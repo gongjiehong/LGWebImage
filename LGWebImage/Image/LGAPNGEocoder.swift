@@ -204,30 +204,30 @@ public struct LGPNGInfo {
     public var apngFirstFrameIsCover: Bool = false
     
     public init(data: [UInt8], length: Int) throws {
-        if length < 32 {
-            throw LGImageCoderError.pngDataLengthInvalid
-        }
-        
-        var magicNum = LGUint8ArrayToUInt32(data: data, startIndex: 0)
-        if magicNum != _four_cc(c1: 0x89, c2: 0x50, c3: 0x4E, c4: 0x47) {
-            throw LGImageCoderError.pngFormatInvalid
-        }
-        magicNum = LGUint8ArrayToUInt32(data: data, startIndex: 4)
-        if magicNum != _four_cc(c1: 0x0D, c2: 0x0A, c3: 0x1A, c4: 0x0A) {
-            throw LGImageCoderError.pngFormatInvalid
-        }
-        let chunkReallocNum: UInt32 = 16
-        var chunks = LGPNGChunkInfo()
-        var offset: UInt32 = 8
-        var chunkNum: UInt32 = 0
-        var chunkCapcity: UInt32 = 16
-        var apngLoopNum: UInt32 = 0
-        
-        var apngSequenceIndex: Int32 = -1
-        var apngFrameIndex: Int32 = 0
-        var apngFrameNumber: Int32 = -1
-        
-        var apngChunkError = false
+//        if length < 32 {
+//            throw LGImageCoderError.pngDataLengthInvalid
+//        }
+//        
+//        var magicNum = LGUint8ArrayToUInt32(data: data, startIndex: 0)
+//        if magicNum != _four_cc(c1: 0x89, c2: 0x50, c3: 0x4E, c4: 0x47) {
+//            throw LGImageCoderError.pngFormatInvalid
+//        }
+//        magicNum = LGUint8ArrayToUInt32(data: data, startIndex: 4)
+//        if magicNum != _four_cc(c1: 0x0D, c2: 0x0A, c3: 0x1A, c4: 0x0A) {
+//            throw LGImageCoderError.pngFormatInvalid
+//        }
+//        let chunkReallocNum: UInt32 = 16
+//        var chunks = LGPNGChunkInfo()
+//        var offset: UInt32 = 8
+//        var chunkNum: UInt32 = 0
+//        var chunkCapcity: UInt32 = 16
+//        var apngLoopNum: UInt32 = 0
+//        
+//        var apngSequenceIndex: Int32 = -1
+//        var apngFrameIndex: Int32 = 0
+//        var apngFrameNumber: Int32 = -1
+//        
+//        var apngChunkError = false
         
         
 //        repeat {

@@ -19,7 +19,7 @@ public extension UIImageView {
     
     // MARK: -  普通状态
     /// 普通状态图片URL
-    public var lg_imageURL: LGURLConvertible? {
+    var lg_imageURL: LGURLConvertible? {
         return lg_imageSetter.imageURL
     }
     
@@ -50,7 +50,7 @@ public extension UIImageView {
     ///   - options: 属性配置，默认LGWebImageOptions.default
     ///   - progress: 进度回调
     ///   - completion: 请求完成回调
-    public func lg_setImageWithURL(_ imageURL: LGURLConvertible,
+    func lg_setImageWithURL(_ imageURL: LGURLConvertible,
                                    placeholder: UIImage? = nil,
                                    options: LGWebImageOptions = LGWebImageOptions.default,
                                    progressBlock: LGWebImageProgressBlock? = nil,
@@ -147,14 +147,14 @@ public extension UIImageView {
     }
     
     /// 取消普通图片请求
-    public func lg_cancelCurrentNormalImageRequest() {
+    func lg_cancelCurrentNormalImageRequest() {
         lg_imageSetter.cancel()
     }
     
     // MARK: -  高亮状态
     
     /// 高亮状态图片URL
-    public var lg_highlightedImageURL: LGURLConvertible? {
+    var lg_highlightedImageURL: LGURLConvertible? {
         return lg_highlightedImageSetter.imageURL
     }
     
@@ -185,7 +185,7 @@ public extension UIImageView {
     ///   - options: 属性配置，默认LGWebImageOptions.default
     ///   - progress: 进度回调
     ///   - completion: 请求完成回调
-    public func lg_setHighlightedImageWithURL(_ imageURL: LGURLConvertible,
+    func lg_setHighlightedImageWithURL(_ imageURL: LGURLConvertible,
                                               placeholder: UIImage? = nil,
                                               options: LGWebImageOptions = LGWebImageOptions.default,
                                               progressBlock: LGWebImageProgressBlock? = nil,
@@ -288,13 +288,13 @@ public extension UIImageView {
     }
     
     /// 取消普通图片请求
-    public func lg_cancelCurrentHilightedImageRequest() {
+    func lg_cancelCurrentHilightedImageRequest() {
         lg_highlightedImageSetter.cancel()
     }
 }
 
 extension UIImageView {
-    static func swizzleImplementations() {
+    internal static func swizzleImplementations() {
         UIImageView.swizzleSetImageImplementation()
         UIImageView.swizzleSetHighlightedImageImplementation()
     }

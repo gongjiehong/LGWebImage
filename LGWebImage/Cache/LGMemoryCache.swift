@@ -207,7 +207,7 @@ public class LGMemoryCache<KeyType: Hashable, ValueType: LGMemoryCost> {
     }
 }
 
-fileprivate extension LGMemoryCache {
+extension LGMemoryCache {
     fileprivate func _trimRecursively() {
         _workQueue.asyncAfter(deadline: DispatchTime.now() + config.autoTrimInterval) { [weak self] in
             guard let weakSelf = self else {

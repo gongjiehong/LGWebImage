@@ -16,7 +16,7 @@ public extension MKAnnotationView {
     }
     
     /// 图片URL
-    public var lg_imageURL: LGURLConvertible? {
+    var lg_imageURL: LGURLConvertible? {
         return lg_imageSetter.imageURL
     }
     
@@ -47,7 +47,7 @@ public extension MKAnnotationView {
     ///   - options: 属性配置，默认LGWebImageOptions.default
     ///   - progress: 进度回调
     ///   - completion: 请求完成回调
-    public func lg_setImageWithURL(_ imageURL: LGURLConvertible,
+    func lg_setImageWithURL(_ imageURL: LGURLConvertible,
                                    placeholder: UIImage? = nil,
                                    options: LGWebImageOptions = LGWebImageOptions.default,
                                    progressBlock: LGWebImageProgressBlock? = nil,
@@ -145,13 +145,13 @@ public extension MKAnnotationView {
     }
     
     /// 取消普通图片请求
-    public func lg_cancelCurrentImageRequest() {
+    func lg_cancelCurrentImageRequest() {
         lg_imageSetter.cancel()
     }
 }
 
 extension MKAnnotationView {
-    static func swizzleImplementations() {
+    internal static func swizzleImplementations() {
         MKAnnotationView.swizzleSetImageImplementation()
     }
     

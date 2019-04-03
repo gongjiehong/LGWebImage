@@ -33,8 +33,6 @@ extension LGDataStorageError: CustomDebugStringConvertible {
             return "执行SQL语句失败: \(sql)"
         case let .invalidPath(reson):
             return "无效的文件路径: \(reson)"
-        default:
-            return ""
         }
     }
 }
@@ -86,7 +84,7 @@ public class LGDataStorage {
             return "trash"
         }
     }
-
+    
     
     fileprivate var _trashQueue: DispatchQueue
     fileprivate var _path: String
@@ -109,7 +107,7 @@ public class LGDataStorage {
         guard path.count > 0 && path.count < Config.pathLengthMax else {
             throw LGDataStorageError.invalidPath(path)
         }
-
+        
         self.path = path
         self.type = type
         
@@ -439,8 +437,7 @@ public class LGDataStorage {
             if endBlock != nil {
                 endBlock!(total < 0)
             }
-        }
-        else {
+        } else {
             var left = total
             let perCount = 32
             var items = [LGDataStorageItem]()
@@ -489,8 +486,7 @@ public class LGDataStorage {
         if item?.fileName != nil {
             if let value = _fileRead(with: item!.fileName!) {
                 item!.data = value
-            }
-            else {
+            } else {
                 _ = _dbDeleteItemWith(key: key)
                 item = nil
             }
@@ -526,8 +522,7 @@ public class LGDataStorage {
                     _ = _dbDeleteItemWith(key: key)
                     value = nil
                 }
-            }
-            else {
+            } else {
                 value = nil
             }
             break
@@ -535,8 +530,7 @@ public class LGDataStorage {
             if let filename = _dbGetFileName(withKey: key) {
                 if let tempValue = _fileRead(with: filename) {
                     value = tempValue
-                }
-                else {
+                } else {
                     _ = _dbDeleteItemWith(key: key)
                     value = nil
                 }
@@ -629,7 +623,7 @@ public class LGDataStorage {
 
 
 // MARK: - 数据库私有操作
-fileprivate extension LGDataStorage {
+extension LGDataStorage {
     fileprivate func _dbOpen() -> Bool {
         if _db != nil {
             return true
@@ -690,8 +684,7 @@ fileprivate extension LGDataStorage {
                     sqlite3_finalize(stmt) // ??
                 }
                 
-            }
-            else if result != SQLITE_OK {
+            } else if result != SQLITE_OK {
                 println("关闭数据库连接失败", #file, #function, #line, #column)
             }
         } while retry
@@ -702,10 +695,10 @@ fileprivate extension LGDataStorage {
     
     fileprivate func _dbInitlalize() -> Bool {
         let sql = "pragma journal_mode = wal; pragma synchronous = normal; create table if not exists manifest" +
-                  " (key text, filename text, size integer, inline_data blob, modification_time integer," +
-                  " last_access_time integer, extended_data blob, primary key(key)); " +
-                  "create index if not exists last_access_time_idx on manifest(last_access_time);" +
-                  "create index if not exists key_idx on manifest(key);"
+            " (key text, filename text, size integer, inline_data blob, modification_time integer," +
+            " last_access_time integer, extended_data blob, primary key(key)); " +
+            "create index if not exists last_access_time_idx on manifest(last_access_time);" +
+        "create index if not exists key_idx on manifest(key);"
         
         return _dbExecute(sql: sql)
     }
@@ -715,12 +708,10 @@ fileprivate extension LGDataStorage {
             if _dbOpenErrorCount < Config.maxErrorRetryCount &&
                 CACurrentMediaTime() - _dbLastOpenErrorTime > Config.minRetryTimeInterval {
                 return self._dbOpen() && self._dbInitlalize()
-            }
-            else {
+            } else {
                 return false
             }
-        }
-        else {
+        } else {
             return true
         }
     }
@@ -798,7 +789,7 @@ fileprivate extension LGDataStorage {
                                  extendedData: Data? = nil) -> Bool
     {
         let sql =   "insert or replace into manifest (key, filename, size, inline_data," +
-                    " modification_time, last_access_time, extended_data) values (?1, ?2, ?3, ?4, ?5, ?6, ?7);"
+        " modification_time, last_access_time, extended_data) values (?1, ?2, ?3, ?4, ?5, ?6, ?7);"
         
         let stmt = _dbPrepareStmt(sql: sql)
         if stmt == nil {
@@ -810,21 +801,22 @@ fileprivate extension LGDataStorage {
         sqlite3_bind_text(stmt, 2, fileName, -1, SQLITE_TRANSIENT)
         sqlite3_bind_int(stmt, 3, Int32(value.count))
         if fileName == nil || fileName?.count == 0 {
-            _ = value.withUnsafeBytes { bytes in
-                sqlite3_bind_blob(stmt, 4, bytes, Int32(value.count), SQLITE_TRANSIENT)
+            let pointer = value.withUnsafeBytes { (bytes) in
+                return bytes.baseAddress
             }
+            sqlite3_bind_blob(stmt, 4, pointer, Int32(value.count), SQLITE_TRANSIENT)
         } else {
             sqlite3_bind_blob(stmt, 4, nil, 0, SQLITE_TRANSIENT)
         }
         sqlite3_bind_int(stmt, 5, timestmap)
         sqlite3_bind_int(stmt, 6, timestmap)
         
-        if extendedData != nil {
-            _ = extendedData!.withUnsafeBytes { bytes in
-                sqlite3_bind_blob(stmt, 7, bytes, Int32(extendedData!.count), SQLITE_TRANSIENT)
+        if let extendedData = extendedData {
+            let pointer = extendedData.withUnsafeBytes { bytes in
+                return bytes.baseAddress
             }
-        }
-        else {
+            sqlite3_bind_blob(stmt, 7, pointer, Int32(extendedData.count), SQLITE_TRANSIENT)
+        } else {
             sqlite3_bind_blob(stmt, 7, nil, 0, SQLITE_TRANSIENT)
         }
         
@@ -1022,10 +1014,10 @@ fileprivate extension LGDataStorage {
         var sql: String
         if excludeInlineData {
             sql =   "select key, filename, size, modification_time, last_access_time," +
-                    " extended_data from manifest where key = ?1;"
+            " extended_data from manifest where key = ?1;"
         } else {
             sql =   "select key, filename, size, inline_data, modification_time, last_access_time," +
-                    " extended_data from manifest where key = ?1;"
+            " extended_data from manifest where key = ?1;"
         }
         
         let stmt = _dbPrepareStmt(sql: sql)
@@ -1056,11 +1048,11 @@ fileprivate extension LGDataStorage {
         let sql: String
         if excludeInlineData {
             sql = String(format: "select key, filename, size, modification_time, last_access_time," +
-                                 " extended_data from manifest where key in (%@);",
+                " extended_data from manifest where key in (%@);",
                          _dbJoinedKeys(keys: keys))
         } else {
             sql = String(format: "select key, filename, size, inline_data, modification_time, " +
-                                 "last_access_time, extended_data from manifest where key in (%@);",
+                "last_access_time, extended_data from manifest where key in (%@);",
                          _dbJoinedKeys(keys: keys))
         }
         
@@ -1076,11 +1068,9 @@ fileprivate extension LGDataStorage {
             if result == SQLITE_ROW {
                 let item = _dbGetItem(from: stmt!, excludeInlineData: excludeInlineData)
                 resultArray.append(item)
-            }
-            else if result == SQLITE_DONE {
+            } else if result == SQLITE_DONE {
                 break
-            }
-            else {
+            } else {
                 break
             }
             
@@ -1107,14 +1097,12 @@ fileprivate extension LGDataStorage {
             
             if inline_data == nil || inline_data_bytes <= 0 {
                 return nil
-            }
-            else {
+            } else {
                 return Data(bytesNoCopy: UnsafeMutableRawPointer(mutating: inline_data!),
                             count: Int(inline_data_bytes),
                             deallocator: .none)
             }
-        }
-        else {
+        } else {
             return nil
         }
         
@@ -1135,12 +1123,10 @@ fileprivate extension LGDataStorage {
             
             if filename != nil {
                 return String(cString: filename!)
-            }
-            else {
+            } else {
                 return nil
             }
-        }
-        else {
+        } else {
             return nil
         }
         
@@ -1167,8 +1153,7 @@ fileprivate extension LGDataStorage {
                 if filename != nil {
                     resultArray.append(String(cString: filename!))
                 }
-            }
-            else {
+            } else {
                 break
             }
         } while true
@@ -1192,12 +1177,10 @@ fileprivate extension LGDataStorage {
                 if filename != nil {
                     let name = String(cString: filename!)
                     resultArray.append(name)
-                }
-                else {
+                } else {
                     break
                 }
-            }
-            else {
+            } else {
                 break
             }
         } while true
@@ -1221,12 +1204,10 @@ fileprivate extension LGDataStorage {
                 if filename != nil {
                     let name = String(cString: filename!)
                     resultArray.append(name)
-                }
-                else {
+                } else {
                     break
                 }
-            }
-            else {
+            } else {
                 break
             }
         } while true
@@ -1264,12 +1245,10 @@ fileprivate extension LGDataStorage {
                     item.fileName = filenameStr
                     item.size = Int(size)
                     resultArray.append(item)
-                }
-                else {
+                } else {
                     break
                 }
-            }
-            else {
+            } else {
                 break
             }
         } while true
@@ -1325,15 +1304,14 @@ fileprivate extension LGDataStorage {
 }
 
 // MARK: -  文件私有操作
-fileprivate extension LGDataStorage {
+extension LGDataStorage {
     
     
     fileprivate func _fileWrite(with fileName: String, data: Data) -> Bool {
         let path = _dataPath + "/" + fileName
         do {
             try data.write(to: URL(fileURLWithPath: path))
-        }
-        catch {
+        } catch {
             return false
         }
         return true
@@ -1344,8 +1322,7 @@ fileprivate extension LGDataStorage {
         do {
             let data = try Data(contentsOf: URL(fileURLWithPath: path))
             return data
-        }
-        catch {
+        } catch {
             return nil
         }
     }
@@ -1355,8 +1332,7 @@ fileprivate extension LGDataStorage {
         do {
             try FileManager.default.removeItem(atPath: path)
             return true
-        }
-        catch {
+        } catch {
             return false
         }
     }
@@ -1411,8 +1387,7 @@ fileprivate extension LGDataStorage {
                                                     withIntermediateDirectories: true,
                                                     attributes: nil)
             return true
-        }
-        catch {
+        } catch {
             return false
         }
     }
@@ -1428,8 +1403,7 @@ fileprivate extension LGDataStorage {
                     let fullPath = trashPath + "/" + tempPath
                     try fileManager.removeItem(atPath: fullPath)
                 }
-            }
-            catch {
+            } catch {
                 
             }
         }
@@ -1446,8 +1420,7 @@ fileprivate extension LGDataStorage {
             try fileManager.removeItem(atPath: _path + "/" + Config.dbWalFileName)
             _ = _fileMoveAllToTrash()
             _fileEmptyTrashInBackground()
-        }
-        catch {
+        } catch {
             
         }
     }

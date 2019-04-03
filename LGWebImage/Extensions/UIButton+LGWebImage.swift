@@ -58,15 +58,15 @@ public extension UIButton {
     
     // MARK: - public functions
     // MARK: - 普通Image
-    public func lg_imageURLForState(_ state: UIControl.State) -> LGURLConvertible? {
+    func lg_imageURLForState(_ state: UIControl.State) -> LGURLConvertible? {
         return self.imageSetterContainer[state.rawValue]?.imageURL
     }
     
-    public func lg_cancelImageRequestForState(_ state: UIControl.State) {
+    func lg_cancelImageRequestForState(_ state: UIControl.State) {
         self.imageSetterContainer[state.rawValue]?.cancel()
     }
     
-    public func lg_setImageWithURL(_ imageURL: LGURLConvertible,
+    func lg_setImageWithURL(_ imageURL: LGURLConvertible,
                                    forState state: UIControl.State,
                                    placeholder: UIImage? = nil,
                                    options: LGWebImageOptions = LGWebImageOptions.default,
@@ -161,15 +161,15 @@ public extension UIButton {
     
     // MARK: -  backgroundImage
     
-    public func lg_backgroundImageURLForState(_ state: UIControl.State) -> LGURLConvertible? {
+    func lg_backgroundImageURLForState(_ state: UIControl.State) -> LGURLConvertible? {
         return self.backgroundImageSetterContainer[state.rawValue]?.imageURL
     }
     
-    public func lg_cancelBackgroundImageRequestForState(_ state: UIControl.State) {
+    func lg_cancelBackgroundImageRequestForState(_ state: UIControl.State) {
         self.backgroundImageSetterContainer[state.rawValue]?.cancel()
     }
     
-    public func lg_setBackgroundImageWithURL(_ imageURL: LGURLConvertible,
+    func lg_setBackgroundImageWithURL(_ imageURL: LGURLConvertible,
                                              forState state: UIControl.State,
                                              placeholder: UIImage? = nil,
                                              options: LGWebImageOptions = LGWebImageOptions.default,
@@ -264,7 +264,7 @@ public extension UIButton {
 }
 
 extension UIButton {
-    static func swizzleImplementations() {
+    internal static func swizzleImplementations() {
         UIButton.swizzleSetImageImplementation()
         UIButton.swizzleSetBackgroundImageImplementation()
     }

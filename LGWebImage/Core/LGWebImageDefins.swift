@@ -149,12 +149,12 @@ public enum LGWebImageStage {
 public extension TimeInterval {
     
     /// 渐进加载最短0.2S
-    public static var minProgressiveTimeInterval: TimeInterval {
+    static var minProgressiveTimeInterval: TimeInterval {
         return 0.2
     }
     
     /// 渐进模糊加载最短0.4S
-    public static var minProgressiveBlurTimeInterval: TimeInterval {
+    static var minProgressiveBlurTimeInterval: TimeInterval {
         return 0.4
     }
 
@@ -162,18 +162,18 @@ public extension TimeInterval {
 
 public extension CFTimeInterval {
     
-    public static var lg_imageFadeAnimationTime: CFTimeInterval {
+    static var lg_imageFadeAnimationTime: CFTimeInterval {
         return 0.2
     }
     
-    public static var lg_imageProgressiveFadeAnimationTime: CFTimeInterval {
+    static var lg_imageProgressiveFadeAnimationTime: CFTimeInterval {
         return 0.4
     }
 }
 
 /// Returns JPEG SOS (Start Of Scan) Marker
 public var JPEGSOSMarker: Data {
-    return Data(bytes: [0xFF, 0xDA])
+    return Data([0xFF, 0xDA])
 }
 
 /// 对图片进行一些附加操作的回调，比如进行缩放，圆角等操作

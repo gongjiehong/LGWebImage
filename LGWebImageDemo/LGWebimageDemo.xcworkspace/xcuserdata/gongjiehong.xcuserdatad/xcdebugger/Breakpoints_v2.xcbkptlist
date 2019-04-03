@@ -42,7 +42,7 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "../LGWebImage/Extensions/UIImage+Extensions.swift"
-            timestampString = "554007549.4515851"
+            timestampString = "575983047.02911"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "600"
@@ -58,7 +58,7 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "../LGWebImage/Extensions/UIImage+Extensions.swift"
-            timestampString = "554007549.4516619"
+            timestampString = "575983047.0291851"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "606"
@@ -190,9 +190,7 @@
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "283"
-            endingLineNumber = "283"
-            landmarkName = "downloadImageWith(url:options:progress:transform:completion:)"
-            landmarkType = "7">
+            endingLineNumber = "283">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -206,9 +204,7 @@
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "654"
-            endingLineNumber = "654"
-            landmarkName = "decodeDataToUIImageIfNeeded(_:options:targetRequest:transform:)"
-            landmarkType = "7">
+            endingLineNumber = "654">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -266,7 +262,7 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "../LGWebImage/Cache/LGMemoryCache.swift"
-            timestampString = "573983333.035141"
+            timestampString = "575983047.029403"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "102"
