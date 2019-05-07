@@ -895,7 +895,7 @@ extension UIImage {
         return nil
     }
     
-    /// 压缩图片到一个给定的文件大小
+    /// 压缩图片到一个给定的文件大小，默认512KB
     ///
     /// - Parameter size: 给定文件大小，默认512KB
     /// - Returns: 压缩后的图片压缩后的图片

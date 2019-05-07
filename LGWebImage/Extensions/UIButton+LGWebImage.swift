@@ -50,7 +50,7 @@ public extension UIButton {
                 return setters
             } else {
                 let setters = ImageSetterContainer()
-                self.imageSetterContainer = setters
+                self.backgroundImageSetterContainer = setters
                 return setters
             }
         }
@@ -233,7 +233,7 @@ public extension UIButton {
                 { (progress) in
                     progressBlock?(progress)
             }, completion: { [weak self] (resultImage, url, sourceType, imageStage, error) in
-                guard let strongSelf = self, strongSelf.imageSetterContainer[state.rawValue]?.sentinel == newSentinel else {
+                guard let strongSelf = self, strongSelf.backgroundImageSetterContainer[state.rawValue]?.sentinel == newSentinel else {
                     completionBlock?(resultImage, url, sourceType, imageStage, error)
                     return
                 }
