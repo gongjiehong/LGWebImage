@@ -119,10 +119,9 @@ extension CGFloat: LGDataConvertible {
     }
     
     public static func createWith(convertedData data: Data) -> CGFloat? {
-        let value = data.withUnsafeBytes { (pointer) in
-            return pointer.baseAddress?.assumingMemoryBound(to: CGFloat.self)
-        }
-        return value?.pointee
+        return data.withUnsafeBytes({ (pointer) -> CGFloat in
+            pointer.load(as: CGFloat.self)
+        })
     }
     
     public func asData() -> Data {
@@ -140,10 +139,9 @@ extension Double: LGDataConvertible {
     }
     
     public static func createWith(convertedData data: Data) -> Double? {
-        let value = data.withUnsafeBytes { (pointer) in
-            return pointer.baseAddress?.assumingMemoryBound(to: Double.self)
-        }
-        return value?.pointee
+        return data.withUnsafeBytes({ (pointer) -> Double in
+            pointer.load(as: Double.self)
+        })
     }
     
     public func asData() -> Data {
@@ -161,10 +159,9 @@ extension Int: LGDataConvertible {
     }
     
     public static func createWith(convertedData data: Data) -> Int? {
-        let value = data.withUnsafeBytes { (pointer) in
-            return pointer.baseAddress?.assumingMemoryBound(to: Int.self)
-        }
-        return value?.pointee
+        return data.withUnsafeBytes({ (pointer) -> Int in
+            pointer.load(as: Int.self)
+        })
     }
     
     public func asData() -> Data {
@@ -182,10 +179,9 @@ extension Float: LGDataConvertible {
     }
     
     public static func createWith(convertedData data: Data) -> Float? {
-        let value = data.withUnsafeBytes { (pointer) in
-            return pointer.baseAddress?.assumingMemoryBound(to: Float.self)
-        }
-        return value?.pointee
+        return data.withUnsafeBytes({ (pointer) -> Float in
+            pointer.load(as: Float.self)
+        })
     }
     
     public func asData() -> Data {

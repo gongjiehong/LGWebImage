@@ -801,21 +801,16 @@ extension LGDataStorage {
         sqlite3_bind_text(stmt, 2, fileName, -1, SQLITE_TRANSIENT)
         sqlite3_bind_int(stmt, 3, Int32(value.count))
         if fileName == nil || fileName?.count == 0 {
-            let pointer = value.withUnsafeBytes { (bytes) in
-                return bytes.baseAddress
-            }
-            sqlite3_bind_blob(stmt, 4, pointer, Int32(value.count), SQLITE_TRANSIENT)
+            var valueCopy = value
+            sqlite3_bind_blob(stmt, 4, &valueCopy, Int32(value.count), SQLITE_TRANSIENT)
         } else {
             sqlite3_bind_blob(stmt, 4, nil, 0, SQLITE_TRANSIENT)
         }
         sqlite3_bind_int(stmt, 5, timestmap)
         sqlite3_bind_int(stmt, 6, timestmap)
         
-        if let extendedData = extendedData {
-            let pointer = extendedData.withUnsafeBytes { bytes in
-                return bytes.baseAddress
-            }
-            sqlite3_bind_blob(stmt, 7, pointer, Int32(extendedData.count), SQLITE_TRANSIENT)
+        if var extendedData = extendedData {
+            sqlite3_bind_blob(stmt, 7, &extendedData, Int32(extendedData.count), SQLITE_TRANSIENT)
         } else {
             sqlite3_bind_blob(stmt, 7, nil, 0, SQLITE_TRANSIENT)
         }
@@ -987,16 +982,12 @@ extension LGDataStorage {
         let fileNameString = (fileName != nil) ? String(cString: fileName!) : nil
         var valueData = Data()
         if inline_data != nil && inline_data_bytes > 0 {
-            valueData = Data(bytesNoCopy: UnsafeMutableRawPointer(mutating: inline_data!),
-                             count: Int(inline_data_bytes),
-                             deallocator: .none)
+            valueData = Data(bytes: inline_data!, count: Int(inline_data_bytes))
         }
         
         var extendedData: Data? = nil
         if extended_data != nil && extended_data_bytes > 0 {
-            extendedData = Data(bytesNoCopy: UnsafeMutableRawPointer(mutating: extended_data!),
-                                count: Int(extended_data_bytes),
-                                deallocator: .none)
+            extendedData = Data(bytes: extended_data!, count: Int(extended_data_bytes))
         }
         
         let item = LGDataStorageItem(key: keyString,
