@@ -93,9 +93,9 @@ fileprivate class LGAnimatedImageViewFetchOperation: Operation {
             if isCancelled {
                 break
             }
-            _ = view.lock.wait(timeout: DispatchTime.distantFuture)
+            view.lock.lg_lock()
             let miss = view.buffer[index] == nil
-            _ = view.lock.signal()
+            view.lock.lg_unlock()
             
             if miss {
                 var img = currentImage?.animatedImageFrame(atIndex: index)
@@ -103,9 +103,9 @@ fileprivate class LGAnimatedImageViewFetchOperation: Operation {
                 if isCancelled {
                     break
                 }
-                _ = view.lock.wait(timeout: DispatchTime.distantFuture)
+                view.lock.lg_lock()
                 view.buffer[index] = img ?? NSNull()
-                _ = view.lock.signal()
+                view.lock.lg_unlock()
             }
             index += 1
         }
@@ -416,9 +416,9 @@ extension LGAnimatedImageView {
         }
         requestQueue.cancelAllOperations()
         
-        _ = lock.wait(timeout: DispatchTime.distantFuture)
+        lock.lg_lock()
         buffer.removeAll()
-        _ = lock.signal()
+        lock.lg_unlock()
         timer?.isPaused = true
         time = 0
         
@@ -517,7 +517,7 @@ extension LGAnimatedImageView {
             }
         }
         
-        _ = lock.wait(timeout: DispatchTime.distantFuture)
+        lock.lg_lock()
         bufferedImage = buffer[nextIndex] as? UIImage
         if bufferedImage != nil {
             if incrBufferCount < totalFrameCount {
@@ -539,7 +539,7 @@ extension LGAnimatedImageView {
         } else {
             isBufferMiss = true
         }
-        _ = lock.signal()
+        lock.lg_unlock()
         
         if !isBufferMiss {
             layer.setNeedsDisplay()
@@ -562,28 +562,28 @@ extension LGAnimatedImageView {
             }
             weakSelf.incrBufferCount = -60 - (Int)(arc4random() % 120)
             let next = (weakSelf.currentAnimatedImageIndex + 1) % weakSelf.totalFrameCount
-            _ = weakSelf.lock.wait(timeout: DispatchTime.distantFuture)
+            weakSelf.lock.lg_lock()
             let keys = weakSelf.buffer.keys
             for key in keys {
                 if key != next {
                     _ = weakSelf.buffer.removeValue(forKey: key)
                 }
             }
-            _ = weakSelf.lock.signal()
+            weakSelf.lock.lg_unlock()
         }
     }
     
     @objc func didEnterBackground(_ noti: Notification) {
         requestQueue.cancelAllOperations()
         let next = (currentAnimatedImageIndex + 1) % totalFrameCount
-        _ = self.lock.wait(timeout: DispatchTime.distantFuture)
+        self.lock.lg_lock()
         let keys = buffer.keys
         for key in keys {
             if key != next {
                 _ = buffer.removeValue(forKey: key)
             }
         }
-        _ = self.lock.signal()
+        self.lock.lg_unlock()
     }
     
     override open func didMoveToWindow() {
@@ -672,7 +672,7 @@ extension LGAnimatedImageView {
         }
         
         func featureFunction() {
-            _ = lock.wait(timeout: DispatchTime.distantFuture)
+            lock.lg_lock()
             requestQueue.cancelAllOperations()
             self.buffer.removeAll()
             currentFrame = currentAnimatedImage?.animatedImageFrame(atIndex: index)
@@ -683,7 +683,7 @@ extension LGAnimatedImageView {
             isLoopEnd = false
             isBufferMiss = false
             layer.setNeedsDisplay()
-            _ = lock.signal()
+            lock.lg_unlock()
         }
         
         if Thread.current.isMainThread {

@@ -198,14 +198,14 @@ public final class LGImage: UIImage {
                         frames.append(NSNull())
                     }
                 }
-                _ = preloadedLock.wait(timeout: DispatchTime.distantFuture)
+                preloadedLock.lg_lock()
                 self.preloadedFrames.removeAll()
                 self.preloadedFrames += frames
-                _ = preloadedLock.signal()
+                preloadedLock.lg_unlock()
             } else {
-                _ = preloadedLock.wait(timeout: DispatchTime.distantFuture)
+                preloadedLock.lg_lock()
                 self.preloadedFrames.removeAll()
-                _ = preloadedLock.signal()
+                preloadedLock.lg_unlock()
             }
         }
     }
@@ -237,9 +237,9 @@ extension LGImage: LGAnimatedImage {
             return decoder.frameAtIndex(index: index, decodeForDisplay: true)?.image
         }
         
-        _ = preloadedLock.wait(timeout: DispatchTime.distantFuture)
+        preloadedLock.lg_lock()
         let image = preloadedFrames[index] as? UIImage
-        _ = preloadedLock.signal()
+        preloadedLock.lg_unlock()
         if image != nil {
             return image
         } else {

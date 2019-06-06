@@ -672,9 +672,9 @@ fileprivate class LGURLBlackList {
     func isContains(url: LGURLConvertible) -> Bool {
         do {
             let tempUrl = try url.asURL()
-            _ = blackListContainerLock.wait(timeout: DispatchTime.distantFuture)
+            blackListContainerLock.lg_lock()
             let contains = self.blackListContainer.contains(tempUrl)
-            _ = blackListContainerLock.signal()
+            blackListContainerLock.lg_unlock()
             return contains
         } catch {
             return false
@@ -684,9 +684,9 @@ fileprivate class LGURLBlackList {
     func addURL(_ url: LGURLConvertible) {
         do {
             let tempUrl = try url.asURL()
-            _ = blackListContainerLock.wait(timeout: DispatchTime.distantFuture)
+            blackListContainerLock.lg_lock()
             self.blackListContainer.insert(tempUrl)
-            _ = blackListContainerLock.signal()
+            blackListContainerLock.lg_unlock()
         } catch {
             // do nothing
         }

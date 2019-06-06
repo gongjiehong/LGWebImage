@@ -31,8 +31,8 @@ extension LGDataStorageError: CustomDebugStringConvertible {
         switch self {
         case let .execSqlFailed(sql):
             return "执行SQL语句失败: \(sql)"
-        case let .invalidPath(reson):
-            return "无效的文件路径: \(reson)"
+        case let .invalidPath(path):
+            return "无效的文件路径: \(path)"
         }
     }
 }
@@ -60,7 +60,7 @@ public class LGDataStorage {
             return 2.0
         }
         
-        static var pathLengthMax: Int32 {
+        static var maxPathLength: Int32 {
             return PATH_MAX - 64
         }
         
@@ -86,7 +86,7 @@ public class LGDataStorage {
     }
     
     
-    fileprivate var _trashQueue: DispatchQueue
+    fileprivate var _trashQueue: DispatchQueue = DispatchQueue(label: "com.LGDataStorage.cache.disk.trash")
     fileprivate var _path: String
     fileprivate var _dbPath: String
     fileprivate var _dataPath: String
@@ -104,7 +104,7 @@ public class LGDataStorage {
     public private(set) var type: LGDataStorage.StorageType
     
     public init(path: String, type: LGDataStorage.StorageType) throws {
-        guard path.count > 0 && path.count < Config.pathLengthMax else {
+        guard path.count > 0 && path.count < Config.maxPathLength else {
             throw LGDataStorageError.invalidPath(path)
         }
         
@@ -115,7 +115,6 @@ public class LGDataStorage {
         _trashPath = path + "/" + Config.trashDirectoryName
         _dataPath = path + "/" + Config.dataDirectoryName
         _dbPath = path + "/" + Config.dbFileName
-        _trashQueue = DispatchQueue(label: "com.LGDataStorage.cache.disk.trash")
         
         let fileManager = FileManager.default
         var isDirectory: ObjCBool = false
@@ -136,11 +135,11 @@ public class LGDataStorage {
         }
         
         if !_dbOpen() || !_dbInitlalize() {
-            _ = _dbClose()
+            _dbClose()
             _reset()
             if !_dbOpen() || !_dbInitlalize() {
                 println("初始化失败", #file, #function, #line, #column)
-                _ = _dbClose()
+                _dbClose()
                 return
             }
         }
@@ -156,11 +155,12 @@ public class LGDataStorage {
         return _dbSaveWith(key: item.key,
                            value: item.data,
                            fileName: item.fileName,
-                           extendedData: item.extendedData)
+                           extendedData: item.extendedData,
+                           fileSize: Int32(item.data.count))
     }
     
     public func saveItem(with key: String, value: Data, filename: String? = nil, extendedData: Data? = nil) -> Bool {
-        if key.lg_length == 0 || value.count == 0 {
+        guard key.count > 0, value.count > 0 else {
             return false
         }
         
@@ -168,25 +168,34 @@ public class LGDataStorage {
             return false
         }
         
-        if filename != nil && filename!.lg_length > 0 {
-            if !_fileWrite(with: filename!, data: value) {
+        if let filename = filename, filename.count > 0 {
+            if !_fileWrite(with: filename, data: value) {
                 return false
             }
             
-            if !_dbSaveWith(key: key, value: value, fileName: filename, extendedData: extendedData) {
-                _ = _fileDelete(with: filename!)
+            if !_dbSaveWith(key: key,
+                            value: value,
+                            fileName: filename,
+                            extendedData: extendedData,
+                            fileSize: Int32(value.count))
+            {
+                _fileDelete(with: filename)
                 return false
             }
+            
             return true
         } else {
             if type != LGDataStorage.StorageType.SQLite {
-                let tempFileName = _dbGetFileName(withKey: key)
-                if tempFileName != nil {
-                    _ = _fileDelete(with: tempFileName!)
+                if let tempFileName = _dbGetFileName(withKey: key) {
+                    _fileDelete(with: tempFileName)
                 }
             }
             
-            return _dbSaveWith(key: key, value: value, fileName: filename, extendedData: extendedData)
+            return _dbSaveWith(key: key,
+                               value: value,
+                               fileName: filename,
+                               extendedData: extendedData,
+                               fileSize: Int32(value.count))
         }
     }
     
@@ -195,7 +204,7 @@ public class LGDataStorage {
                          filename: String? = nil,
                          extendedData: Data? = nil) -> Bool
     {
-        if key.lg_length == 0 {
+        guard key.count > 0 else {
             return false
         }
         
@@ -203,30 +212,45 @@ public class LGDataStorage {
             return false
         }
         
-        if filename != nil && filename!.lg_length > 0 {
-            if !_fileMove(with: filename!, originURL: fileURL) {
+        var fileSize: Int32 = 0
+        do {
+            let attributes = try FileManager.default.attributesOfItem(atPath: fileURL.path)
+            fileSize = (attributes[FileAttributeKey.size] as? Int32) ?? 0
+        } catch {
+        }
+        
+        if let filename = filename, filename.lg_length > 0 {
+            if !_fileMove(with: filename, originURL: fileURL) {
                 return false
             }
             
-            if !_dbSaveWith(key: key, value: Data(), fileName: filename, extendedData: extendedData) {
-                _ = _fileDelete(with: filename!)
+            if !_dbSaveWith(key: key,
+                            value: Data(),
+                            fileName: filename,
+                            extendedData: extendedData,
+                            fileSize: fileSize)
+            {
+                _fileDelete(with: filename)
                 return false
             }
             return true
         } else {
             if type != LGDataStorage.StorageType.SQLite {
-                let tempFileName = _dbGetFileName(withKey: key)
-                if tempFileName != nil {
-                    _ = _fileDelete(with: tempFileName!)
+                if let tempFileName = _dbGetFileName(withKey: key) {
+                    _fileDelete(with: tempFileName)
                 }
             }
             
-            return _dbSaveWith(key: key, value: Data(), fileName: filename, extendedData: extendedData)
+            return _dbSaveWith(key: key,
+                               value: Data(),
+                               fileName: filename,
+                               extendedData: extendedData,
+                               fileSize: fileSize)
         }
     }
     
     public func removeItem(forKey key: String) -> Bool {
-        if key.lg_length == 0 {
+        guard key.lg_length > 0 else {
             return false
         }
         
@@ -235,7 +259,7 @@ public class LGDataStorage {
         switch type {
         case .file, .mixed:
             if let filename = _dbGetFileName(withKey: key) {
-                _ = _fileDelete(with: filename)
+                _fileDelete(with: filename)
             }
             reslut = _dbDeleteItemWith(key: key)
             break
@@ -248,7 +272,7 @@ public class LGDataStorage {
     }
     
     public func removeItem(forKeys keys: [String]) -> Bool {
-        if keys.count == 0 {
+        guard keys.count > 0 else {
             return false
         }
         
@@ -258,7 +282,7 @@ public class LGDataStorage {
         case .file, .mixed:
             let filenames = _dbGetFileName(withKeys: keys)
             for filename in filenames {
-                _ = _fileDelete(with: filename)
+                _fileDelete(with: filename)
             }
             reslut = _dbDeleteItemWith(keys: keys)
             break
@@ -271,6 +295,7 @@ public class LGDataStorage {
     }
     
     public func removeItems(lagerThanSize size: Int) -> Bool {
+        // 不做任何删除
         if size == Int.max {
             return true
         }
@@ -289,7 +314,7 @@ public class LGDataStorage {
         default:
             let filenames = _dbGetFilenames(withSizeLargerThan: size)
             for filename in filenames {
-                _ = _fileDelete(with: filename)
+                _fileDelete(with: filename)
             }
             if _dbDeleteItemsWith(sizeLargerThan: size) {
                 _dbCheckpoint()
@@ -318,7 +343,7 @@ public class LGDataStorage {
         default:
             let filenames = _dbGetFilenames(withTimeEarlierThan: time)
             for filename in filenames {
-                _ = _fileDelete(with: filename)
+                _fileDelete(with: filename)
             }
             if _dbDeleteItemsWith(timeEarlierThan: time) {
                 _dbCheckpoint()
@@ -341,9 +366,11 @@ public class LGDataStorage {
         var total = _dbGetTotalItemSize()
         var items = [LGDataStorageItem]()
         var success: Bool = false
+        
         if total < 0 {
             return false
         }
+        
         if total <= maxSize {
             return true
         }
@@ -354,7 +381,7 @@ public class LGDataStorage {
             for item in items {
                 if total > maxSize {
                     if item.fileName != nil {
-                        _ = _fileDelete(with: item.fileName!)
+                        _fileDelete(with: item.fileName!)
                     }
                     success = _dbDeleteItemWith(key: item.key)
                     total -= item.size
@@ -397,7 +424,7 @@ public class LGDataStorage {
             for item in items {
                 if total > maxCount {
                     if item.fileName != nil {
-                        _ = _fileDelete(with: item.fileName!)
+                        _fileDelete(with: item.fileName!)
                     }
                     success = _dbDeleteItemWith(key: item.key)
                     total -= item.size
@@ -448,7 +475,7 @@ public class LGDataStorage {
                 for item in items {
                     if left > 0 {
                         if item.fileName != nil {
-                            _ = _fileDelete(with: item.fileName!)
+                            _fileDelete(with: item.fileName!)
                         }
                         success = _dbDeleteItemWith(key: item.key)
                         left -= 1
@@ -786,7 +813,8 @@ extension LGDataStorage {
     fileprivate func _dbSaveWith(key: String,
                                  value: Data,
                                  fileName: String? = nil,
-                                 extendedData: Data? = nil) -> Bool
+                                 extendedData: Data? = nil,
+                                 fileSize: Int32 = 0) -> Bool
     {
         let sql =   "insert or replace into manifest (key, filename, size, inline_data," +
         " modification_time, last_access_time, extended_data) values (?1, ?2, ?3, ?4, ?5, ?6, ?7);"
@@ -799,7 +827,8 @@ extension LGDataStorage {
         let timestmap = Int32(time(nil))
         sqlite3_bind_text(stmt, 1, key, -1, SQLITE_TRANSIENT)
         sqlite3_bind_text(stmt, 2, fileName, -1, SQLITE_TRANSIENT)
-        sqlite3_bind_int(stmt, 3, Int32(value.count))
+        sqlite3_bind_int(stmt, 3, fileSize)
+        
         if fileName == nil || fileName?.count == 0 {
             var valueCopy = value
             sqlite3_bind_blob(stmt, 4, &valueCopy, Int32(value.count), SQLITE_TRANSIENT)
@@ -1318,6 +1347,7 @@ extension LGDataStorage {
         }
     }
     
+    @discardableResult
     fileprivate func _fileDelete(with fileName: String) -> Bool {
         let path = _dataPath + "/" + fileName
         do {

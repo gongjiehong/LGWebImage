@@ -15,9 +15,9 @@ internal class LGWebImageOperationSetter {
     
     private var _imageURL: LGURLConvertible?
     var imageURL: LGURLConvertible? {
-        _ = lock.wait(timeout: DispatchTime.distantFuture)
+        lock.lg_lock()
         defer {
-            _ = lock.signal()
+            lock.lg_unlock()
         }
         return _imageURL
     }
@@ -54,9 +54,9 @@ internal class LGWebImageOperationSetter {
                                                options: options,
                                                progress: progress,
                                                completion: completion)
-        _ = lock.wait(timeout: DispatchTime.distantFuture)
+        lock.lg_lock()
         defer {
-            _ = lock.signal()
+            lock.lg_unlock()
         }
         
         if tempSentinel == _sentinel {
@@ -76,9 +76,9 @@ internal class LGWebImageOperationSetter {
         task?.cancel()
         
         var tempSentinel: Sentinel
-        _ = lock.wait(timeout: DispatchTime.distantFuture)
+        lock.lg_lock()
         defer {
-            _ = lock.signal()
+            lock.lg_unlock()
         }
         
         if self.operation != nil {

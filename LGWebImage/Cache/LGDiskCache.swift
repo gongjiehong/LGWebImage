@@ -11,11 +11,11 @@ import LGHTTPRequest
 
 fileprivate class LGDiskCacheContainer {
     let container: LGWeakValueDictionary<URL, AnyObject>
-    let lock: NSLock
+    let lock: DispatchSemaphore
     
     init() {
         container = LGWeakValueDictionary<URL, AnyObject>()
-        lock = NSLock()
+        lock = DispatchSemaphore(value: 1)
     }
     
     static let `default`: LGDiskCacheContainer = {
@@ -23,18 +23,18 @@ fileprivate class LGDiskCacheContainer {
     }()
     
     func setCache(_ cache: AnyObject, forKey key: URL) {
-        lock.lock()
+        _ = lock.lg_lock()
         defer {
-            lock.unlock()
+            lock.lg_unlock()
         }
         self.container.setValue(cache, forKey: key)
         
     }
     
     func getCache(forKey key: URL) -> AnyObject? {
-        lock.lock()
+        lock.lg_lock()
         defer {
-            lock.unlock()
+            lock.lg_unlock()
         }
         return self.container.value(forKey: key)
     }
@@ -105,9 +105,9 @@ public class LGDiskCache<KeyType: Hashable, ValueType: LGCacheItem> {
     }
 
     public func containsObject(forKey key: KeyType) -> Bool {
-        _ = _lock.wait(timeout: DispatchTime.distantFuture)
+        _lock.lg_lock()
         let contains = _storage.itemExists(forKey: self.keyTypeToString(key))
-        _ = _lock.signal()
+        _lock.lg_unlock()
         return contains
     }
     
@@ -124,9 +124,9 @@ public class LGDiskCache<KeyType: Hashable, ValueType: LGCacheItem> {
     }
     
     public func object(forKey key: KeyType) -> ValueType? {
-        _ = _lock.wait(timeout: DispatchTime.distantFuture)
+        _lock.lg_lock()
         let item = _storage.getItem(forKey: self.keyTypeToString(key))
-        _ = _lock.signal()
+        _lock.lg_unlock()
         if item?.data == nil {
             return nil
         }
@@ -154,9 +154,9 @@ public class LGDiskCache<KeyType: Hashable, ValueType: LGCacheItem> {
             return
         }
         let filename: String = _filename(for: key)
-        _ = _lock.wait(timeout: DispatchTime.distantFuture)
+        _lock.lg_lock()
         _ = _storage.saveItem(with: key, fileURL: fileURL, filename: filename, extendedData: nil)
-        _ = _lock.signal()
+        _lock.lg_unlock()
     }
     
     public func setObject(_ object: ValueType?, forKey key: KeyType) {
@@ -193,9 +193,9 @@ public class LGDiskCache<KeyType: Hashable, ValueType: LGCacheItem> {
             }
         }
         
-        _ = _lock.wait(timeout: DispatchTime.distantFuture)
+        _lock.lg_lock()
         _ = _storage.saveItem(with: key, value: value!, filename: filename, extendedData: extendedData?.asData())
-        _ = _lock.signal()
+        _lock.lg_unlock()
     }
 
     public func setObject(_ object: ValueType?, forKey key: KeyType, withBlock block: (() -> Void)?) {
@@ -215,9 +215,9 @@ public class LGDiskCache<KeyType: Hashable, ValueType: LGCacheItem> {
         if key.lg_length == 0 {
             return
         }
-        _ = _lock.wait(timeout: DispatchTime.distantFuture)
+        _lock.lg_lock()
         _ = _storage.removeItem(forKey: key)
-        _ = _lock.signal()
+        _lock.lg_unlock()
     }
 
     public func removeObject(forKey key: KeyType, withBlock block: ((KeyType) -> Void)?) {
@@ -233,9 +233,9 @@ public class LGDiskCache<KeyType: Hashable, ValueType: LGCacheItem> {
     }
     
     public func removeAllObjects() {
-        _ = _lock.wait(timeout: DispatchTime.distantFuture)
+        _lock.lg_lock()
         _ = _storage.removeAllItems()
-        _ = _lock.signal()
+        _lock.lg_unlock()
     }
     
     public func removeAllObjects(withBlock block: (() -> Void)?) {
@@ -259,16 +259,16 @@ public class LGDiskCache<KeyType: Hashable, ValueType: LGCacheItem> {
                 }
                 return
             }
-            _ = weakSelf._lock.wait(timeout: DispatchTime.distantFuture)
+            weakSelf._lock.lg_lock()
             _ = weakSelf._storage.removeAllItems(with: progressBlock, endBlock: endBlock)
-            _ = weakSelf._lock.signal()
+            weakSelf._lock.lg_unlock()
         }
     }
     
     public var totalCount: Int {
-        _ = _lock.wait(timeout: DispatchTime.distantFuture)
+        _lock.lg_lock()
         let count = _storage.getItemsCount()
-        _ = _lock.signal()
+        _lock.lg_unlock()
         return count
     }
     
@@ -283,9 +283,9 @@ public class LGDiskCache<KeyType: Hashable, ValueType: LGCacheItem> {
     }
     
     public var totalCost: Int {
-        _ = _lock.wait(timeout: DispatchTime.distantFuture)
+        _lock.lg_lock()
         let count = _storage.getItemsSize()
-        _ = _lock.signal()
+        _lock.lg_unlock()
         return count
     }
     
@@ -300,9 +300,9 @@ public class LGDiskCache<KeyType: Hashable, ValueType: LGCacheItem> {
     }
     
     public func trimToCount(_ count: UInt64) {
-        _ = _lock.wait(timeout: DispatchTime.distantFuture)
+        _lock.lg_lock()
         _trimToCount(countLimit: count)
-        _ = _lock.signal()
+        _lock.lg_unlock()
     }
     
     public func trimToCount(_ count: UInt64, withBlock block: @escaping (() -> Void)) {
@@ -316,9 +316,9 @@ public class LGDiskCache<KeyType: Hashable, ValueType: LGCacheItem> {
     }
     
     public func trimToCost(_ cost: UInt64) {
-        _ = _lock.wait(timeout: DispatchTime.distantFuture)
+        _lock.lg_lock()
         _trimToCost(costLimit: cost)
-        _ = _lock.signal()
+        _lock.lg_unlock()
     }
     
     public func trimToCost(_ cost: UInt64, withBlock block: @escaping (() -> Void)) {
@@ -332,9 +332,9 @@ public class LGDiskCache<KeyType: Hashable, ValueType: LGCacheItem> {
     }
     
     public func trimToAge(_ age: Int) {
-        _ = _lock.wait(timeout: DispatchTime.distantFuture)
+        _lock.lg_lock()
         _trimToAge(ageLimit: age)
-        _ = _lock.signal()
+        _lock.lg_unlock()
     }
     
     public func trimToAge(_ age: Int, withBlock block: @escaping (() -> Void)) {
@@ -355,9 +355,9 @@ public class LGDiskCache<KeyType: Hashable, ValueType: LGCacheItem> {
     
     /// App将要被终止的时候关闭数据库连接，防止数据库损坏导致数据丢失
     @objc fileprivate func _appWillBeTerminated() {
-        _ = self._lock.wait(timeout: DispatchTime.distantFuture)
+        _lock.lg_lock()
         _storage = nil
-        _ = self._lock.signal()
+        _lock.lg_unlock()
     }
 
     deinit {
@@ -395,7 +395,7 @@ extension LGDiskCache {
             guard let weakSelf = self else {
                 return
             }
-            _ = weakSelf._lock.wait(timeout: DispatchTime.distantFuture)
+            weakSelf._lock.lg_lock()
             
             switch weakSelf.config.totalCostLimit {
             case .unlimited, .zero:
@@ -427,7 +427,7 @@ extension LGDiskCache {
                 weakSelf._trimToFreeDiskSpace(freeDiskSpaceLimit)
                 break
             }
-            _ = weakSelf._lock.signal()
+            weakSelf._lock.lg_unlock()
         }
     }
     

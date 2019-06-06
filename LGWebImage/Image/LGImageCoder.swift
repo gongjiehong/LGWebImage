@@ -210,11 +210,11 @@ public class LGImageDecoder {
     
     public func frameDuration(atIndex index: Int) -> TimeInterval {
         var result: TimeInterval = 0.0
-        _ = _framesLock.wait(timeout: DispatchTime.distantFuture)
+        _framesLock.lg_lock()
         if index < _frames.count {
             result = _frames[index].duration
         }
-        _ = _framesLock.signal()
+        _framesLock.lg_unlock()
         return result
     }
     
@@ -307,9 +307,9 @@ extension LGImageDecoder {
         height = 0
         _orientation = UIImage.Orientation.up
         loopCount = 0
-        _ = _framesLock.wait(timeout: DispatchTime.distantFuture)
+        _framesLock.lg_lock()
         _frames.removeAll()
-        _ = _framesLock.signal()
+        _framesLock.lg_unlock()
         
         if _source != nil {
             CGImageSourceUpdateData(_source!, self.imageData! as CFData, isFinalized)
@@ -388,9 +388,9 @@ extension LGImageDecoder {
                 }
             }
         }
-        _ = _framesLock.wait(timeout: DispatchTime.distantFuture)
+        _framesLock.lg_lock()
         _frames += frames
-        _ = _framesLock.signal()
+        _framesLock.lg_unlock()
         
     }
     
@@ -404,9 +404,9 @@ extension LGImageDecoder {
         }
         _webpSource = nil
         
-        _ = _framesLock.wait(timeout: DispatchTime.distantFuture)
+        _framesLock.lg_lock()
         _frames.removeAll()
-        _ = _framesLock.signal()
+        _framesLock.lg_unlock()
         
         guard let imageData = self.imageData else {
             return
@@ -505,9 +505,9 @@ extension LGImageDecoder {
         self.loopCount = Int(webpLoopCount)
         _needBlend = needBlend
         _webpSource = demuxer
-        _ = _framesLock.wait(timeout: DispatchTime.distantFuture)
+        _framesLock.lg_lock()
         _frames += frames
-        _ = _framesLock.signal()
+        _framesLock.lg_unlock()
     }
     
     fileprivate func _newBlendedImageWith(frame: LGImageDecoderFrame) -> CGImage? {
