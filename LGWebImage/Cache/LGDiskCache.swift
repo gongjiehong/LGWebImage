@@ -23,7 +23,7 @@ fileprivate class LGDiskCacheContainer {
     }()
     
     func setCache(_ cache: AnyObject, forKey key: URL) {
-        _ = lock.lg_lock()
+        lock.lg_lock()
         defer {
             lock.lg_unlock()
         }
