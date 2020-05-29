@@ -863,8 +863,11 @@ extension LGImageDecoder {
             let bitmapInfo = CGBitmapInfo(rawValue: LGCGBitmapByteOrder32Host.rawValue | CGImageAlphaInfo.premultipliedFirst.rawValue)
             config.output.colorspace = MODE_bgrA
             config.output.is_external_memory = 1 // 使用外部buffer
+            
             var pixels = [UInt8](repeating: 0, count: length) // 数据buffer
-            config.output.u.RGBA.rgba = UnsafeMutablePointer(mutating: &pixels)
+            let buffer = pixels.withUnsafeMutableBufferPointer({ pointerValue in return pointerValue.baseAddress })
+            config.output.u.RGBA.rgba = buffer
+            
             config.output.u.RGBA.stride = Int32(bytesPerRow)
             config.output.u.RGBA.size = length
             
@@ -877,12 +880,15 @@ extension LGImageDecoder {
             
             if extendToCanvas && (iter.x_offset != 0 || iter.y_offset != 0) {
                 var temp = [UInt8](repeating: 0, count: length)
-                var src: vImage_Buffer = vImage_Buffer(data: UnsafeMutablePointer(mutating: &pixels),
+                let tempBuffer = pixels.withUnsafeMutableBufferPointer({
+                    pointerValue in return pointerValue.baseAddress
+                })
+                var src: vImage_Buffer = vImage_Buffer(data: buffer,
                                                        height: vImagePixelCount(height),
                                                        width: vImagePixelCount(width),
                                                        rowBytes: bytesPerRow)
                 
-                var dest: vImage_Buffer = vImage_Buffer(data: UnsafeMutablePointer(mutating: &temp),
+                var dest: vImage_Buffer = vImage_Buffer(data: tempBuffer,
                                                         height: vImagePixelCount(height),
                                                         width: vImagePixelCount(width),
                                                         rowBytes: bytesPerRow)
@@ -946,7 +952,7 @@ public class LGImageEncoder {
     }
     public var loopCount: Int = 0
     
-    // MARK: -  private varibales 
+    // MARK: -  private varibales
     fileprivate var _images: [Any] = [Any]()
     fileprivate var _durations: [TimeInterval] = [TimeInterval]()
     
@@ -1556,8 +1562,6 @@ public func LGUIImageOrientationFromCGImagePropertyOrientationValue(value: UInt3
         case CGImagePropertyOrientation.rightMirrored:
             result = UIImage.Orientation.rightMirrored
             break
-        @unknown default:
-            break
         }
         return result
     } else {
@@ -1744,11 +1748,12 @@ func LGCGImageDecodeToBitmapBufferWithAnyFormat(srcImage: CGImage?,
     srcFormat.bitmapInfo = safeImage.bitmapInfo
     
     
-    convertor = vImageConverter_CreateWithCGImageFormat(&srcFormat,
-                                                        &safeDestFormat,
-                                                        nil,
-                                                        vImage_Flags(kvImageNoFlags),
-                                                        nil).takeUnretainedValue()
+    let convertorUnmanaged = vImageConverter_CreateWithCGImageFormat(&srcFormat,
+                                                                     &safeDestFormat,
+                                                                     nil,
+                                                                     vImage_Flags(kvImageNoFlags),
+                                                                     nil)
+    convertor = convertorUnmanaged?.takeUnretainedValue()
     if convertor == nil {
         return false
     }
@@ -1763,7 +1768,7 @@ func LGCGImageDecodeToBitmapBufferWithAnyFormat(srcImage: CGImage?,
     }
     
     var src = vImage_Buffer()
-    src.data = UnsafeMutableRawPointer(&srcBytes)
+    src.data = UnsafeMutableRawPointer(mutating: &srcBytes)
     src.width = vImagePixelCount(width)
     src.height = vImagePixelCount(height)
     src.rowBytes = safeImage.bytesPerRow

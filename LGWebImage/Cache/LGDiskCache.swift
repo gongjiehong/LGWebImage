@@ -171,7 +171,7 @@ public class LGDiskCache<KeyType: Hashable, ValueType: LGCacheItem> {
             return
         }
         let extendedData = object?.extendedData
-        var value: Data? = object?.data.asData()
+        let value: Data? = object?.data.asData()
         
         if value == nil {
             return

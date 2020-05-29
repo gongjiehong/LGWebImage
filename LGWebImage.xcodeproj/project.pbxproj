@@ -28,7 +28,6 @@
 		FEB7BAA02073602E00639C13 /* FileManager+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA852073602D00639C13 /* FileManager+Extensions.swift */; };
 		FEB7BAA12073602E00639C13 /* DebugLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA872073602D00639C13 /* DebugLog.swift */; };
 		FEB7BAA32073602E00639C13 /* LGImageCoderError.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA8A2073602D00639C13 /* LGImageCoderError.swift */; };
-		FEB7BAA42073602E00639C13 /* LGAPNGEocoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA8B2073602D00639C13 /* LGAPNGEocoder.swift */; };
 		FEB7BAA52073602E00639C13 /* LGSpriteSheetImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA8C2073602D00639C13 /* LGSpriteSheetImage.swift */; };
 		FEB7BAA62073602E00639C13 /* LGImageCoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA8D2073602D00639C13 /* LGImageCoder.swift */; };
 		FEB7BAA72073602E00639C13 /* LGFrameImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA8E2073602D00639C13 /* LGFrameImage.swift */; };
@@ -98,7 +97,6 @@
 		FEB7BA872073602D00639C13 /* DebugLog.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DebugLog.swift; sourceTree = "<group>"; };
 		FEB7BA892073602D00639C13 /* LGImage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGImage.swift; sourceTree = "<group>"; };
 		FEB7BA8A2073602D00639C13 /* LGImageCoderError.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGImageCoderError.swift; sourceTree = "<group>"; };
-		FEB7BA8B2073602D00639C13 /* LGAPNGEocoder.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGAPNGEocoder.swift; sourceTree = "<group>"; };
 		FEB7BA8C2073602D00639C13 /* LGSpriteSheetImage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGSpriteSheetImage.swift; sourceTree = "<group>"; };
 		FEB7BA8D2073602D00639C13 /* LGImageCoder.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGImageCoder.swift; sourceTree = "<group>"; };
 		FEB7BA8E2073602D00639C13 /* LGFrameImage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGFrameImage.swift; sourceTree = "<group>"; };
@@ -234,7 +232,6 @@
 			children = (
 				FEB7BA892073602D00639C13 /* LGImage.swift */,
 				FEB7BA8A2073602D00639C13 /* LGImageCoderError.swift */,
-				FEB7BA8B2073602D00639C13 /* LGAPNGEocoder.swift */,
 				FEB7BA8C2073602D00639C13 /* LGSpriteSheetImage.swift */,
 				FEB7BA8D2073602D00639C13 /* LGImageCoder.swift */,
 				FEB7BA8E2073602D00639C13 /* LGFrameImage.swift */,
@@ -400,7 +397,6 @@
 				FE91954A214B6CAA00E340F5 /* LGWebImageOperation.swift in Sources */,
 				FE3976F0222E855C00334601 /* LGImage.swift in Sources */,
 				FEB7BAA82073602E00639C13 /* LGAnimatedImageView.swift in Sources */,
-				FEB7BAA42073602E00639C13 /* LGAPNGEocoder.swift in Sources */,
 				FE1F7964208D77DC005189A1 /* MKAnnotationView+LGWebImage.swift in Sources */,
 				FEB7BAA72073602E00639C13 /* LGFrameImage.swift in Sources */,
 				FEB7BAA52073602E00639C13 /* LGSpriteSheetImage.swift in Sources */,
@@ -549,7 +545,7 @@
 				);
 				INFOPLIST_FILE = LGWebImage/Info.plist;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 12.2;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -592,7 +588,7 @@
 				);
 				INFOPLIST_FILE = LGWebImage/Info.plist;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 12.2;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
