@@ -12,9 +12,7 @@ import ImageIO
 import MapKit
 
 
-internal var lg_setImageQueue: DispatchQueue {
-    return DispatchQueue.userInteractive
-}
+internal let lg_setImageQueue: DispatchQueue = DispatchQueue.userInteractive
 
 /// 标识请求回调的Token类型定义，用于取消回调，但不取消下载
 public typealias LGWebImageCallbackToken = String
@@ -37,7 +35,7 @@ public class LGWebImageManager {
     
     /// 大图的最大字节数，这里设置为1MB，超过1MB不处理渐进显示，在显示的时候根据屏幕大小生成缩略图进行展示
     fileprivate let maxFileSize: UInt64 = 1_024 * 1_024
-
+    
     
     /// 根据一些选项设置和信任的host进行初始化
     ///
@@ -61,8 +59,8 @@ public class LGWebImageManager {
         let sslTrust = LGServerTrustPolicyManager(policies: policies)
         
         sessionManager = LGURLSessionManager(configuration: sessionConfig,
-                                              delegate: LGURLSessionDelegate(),
-                                              serverTrustPolicyManager: sslTrust)
+                                             delegate: LGURLSessionDelegate(),
+                                             serverTrustPolicyManager: sslTrust)
         
         
         if options.contains(LGWebImageOptions.autoTurnOnFillet) {
@@ -96,10 +94,10 @@ public class LGWebImageManager {
                                   completion: LGWebImageCompletionBlock? = nil) -> DownloadResult
     {
         let operation = LGWebImageOperation(withURL: url,
-                                                options: options,
-                                                imageCache: self.cache,
-                                                progress: progress,
-                                                completion: completion)
+                                            options: options,
+                                            imageCache: self.cache,
+                                            progress: progress,
+                                            completion: completion)
         let token = UUID().uuidString + "\(CACurrentMediaTime())"
         operation.name = token
         workQueue.addOperation(operation)
@@ -133,9 +131,3 @@ public class LGWebImageManager {
     }
 }
 
-
-fileprivate extension UIDevice {
-    static var physicalMemory: UInt64 {
-        return ProcessInfo().physicalMemory
-    }
-}

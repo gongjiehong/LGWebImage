@@ -174,7 +174,7 @@ public struct LGMemoryConfig {
     public init(name: String,
                 expiry: LGExpiry = .ageLimit(43_200),
                 countLimit: LGCountLimit = .unlimited,
-                totalCostLimit: LGSpaceCost = .byte(ProcessInfo().physicalMemory / 100 * 5),
+                totalCostLimit: LGSpaceCost = .byte(UIDevice.physicalMemory / 100 * 5),
                 autoTrimInterval: TimeInterval = 5.0,
                 shouldRemoveAllObjectsOnMemoryWarning: Bool = true,
                 shouldRemoveAllObjectsWhenEnteringBackground: Bool = true,

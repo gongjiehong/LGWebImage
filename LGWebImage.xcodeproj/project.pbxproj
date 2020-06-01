@@ -36,6 +36,7 @@
 		FEB7BAAA2073602E00639C13 /* LGWebImageDefins.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA922073602D00639C13 /* LGWebImageDefins.swift */; };
 		FEB7BAAC2073602E00639C13 /* LGImageCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA942073602D00639C13 /* LGImageCache.swift */; };
 		FEB7BAAF2073602E00639C13 /* LGWebImageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB7BA972073602D00639C13 /* LGWebImageManager.swift */; };
+		FEC6C89A2484A15600E69B1C /* UIDevice+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEC6C8992484A15600E69B1C /* UIDevice+Extensions.swift */; };
 		FED3EAC2207B4BDA00AA224F /* WebP.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FED3EAC1207B4BDA00AA224F /* WebP.framework */; };
 /* End PBXBuildFile section */
 
@@ -105,6 +106,7 @@
 		FEB7BA922073602D00639C13 /* LGWebImageDefins.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGWebImageDefins.swift; sourceTree = "<group>"; };
 		FEB7BA942073602D00639C13 /* LGImageCache.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGImageCache.swift; sourceTree = "<group>"; };
 		FEB7BA972073602D00639C13 /* LGWebImageManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGWebImageManager.swift; sourceTree = "<group>"; };
+		FEC6C8992484A15600E69B1C /* UIDevice+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UIDevice+Extensions.swift"; sourceTree = "<group>"; };
 		FED3EAC1207B4BDA00AA224F /* WebP.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = WebP.framework; sourceTree = "<group>"; };
 		FEE49F112073760300EAC3F3 /* Package.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Package.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -215,6 +217,7 @@
 				FE77F8102089A0F800DC1A83 /* UIButton+LGWebImage.swift */,
 				FE1F795D208D7117005189A1 /* CALayer+LGWebImage.swift */,
 				FE1F7963208D77DC005189A1 /* MKAnnotationView+LGWebImage.swift */,
+				FEC6C8992484A15600E69B1C /* UIDevice+Extensions.swift */,
 			);
 			path = Extensions;
 			sourceTree = "<group>";
@@ -387,6 +390,7 @@
 				FEB7BA992073602D00639C13 /* LGDataStorage.swift in Sources */,
 				FEB7BA9B2073602D00639C13 /* LGCacheItem.swift in Sources */,
 				FE1F795E208D7117005189A1 /* CALayer+LGWebImage.swift in Sources */,
+				FEC6C89A2484A15600E69B1C /* UIDevice+Extensions.swift in Sources */,
 				FEB7BA982073602D00639C13 /* LGDiskCache.swift in Sources */,
 				FEB7BAAC2073602E00639C13 /* LGImageCache.swift in Sources */,
 				FEB7BAAA2073602E00639C13 /* LGWebImageDefins.swift in Sources */,
