@@ -709,7 +709,6 @@ fileprivate enum LGImageDownloadError: Error {
 
 fileprivate var currentActiveRequestCount: Int = 0 {
     didSet {
-        UIApplication.shared.isNetworkActivityIndicatorVisible = currentActiveRequestCount > 0
     }
 }
 
