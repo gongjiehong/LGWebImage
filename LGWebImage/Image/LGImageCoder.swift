@@ -865,7 +865,8 @@ extension LGImageDecoder {
             config.output.is_external_memory = 1 // 使用外部buffer
             var pixels = [UInt8](repeating: 0, count: length) // 数据buffer
             
-            // 为什么会有这么丑陋的代码？因为强迫症要解决悬指针警告啊，沁
+            // 为什么会有这么丑陋的代码？因为强迫症要解决悬指针警告啊，沁，纯属脱裤儿放屁啊
+            // UnsafeMutablePointer(mutating: &pixels) 它不香吗？直接&pixels它不香吗？嗯嗯嗯？
             @inline(__always) func setConfigsRGBA( _ tempConfig: inout WebPDecoderConfig,
                                                    pointer: UnsafeMutablePointer<UInt8>)
             {
