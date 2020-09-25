@@ -864,9 +864,19 @@ extension LGImageDecoder {
             config.output.colorspace = MODE_bgrA
             config.output.is_external_memory = 1 // 使用外部buffer
             var pixels = [UInt8](repeating: 0, count: length) // 数据buffer
-            config.output.u.RGBA.rgba = UnsafeMutablePointer<UInt8>(mutating: &pixels)
+            
+            // 为什么会有这么丑陋的代码？因为强迫症要解决悬指针警告啊，沁
+            @inline(__always) func setConfigsRGBA( _ tempConfig: inout WebPDecoderConfig,
+                                                   pointer: UnsafeMutablePointer<UInt8>)
+            {
+                tempConfig.output.u.RGBA.rgba = pointer
+            }
+            setConfigsRGBA(&config, pointer: &pixels)
+            
             config.output.u.RGBA.stride = Int32(bytesPerRow)
             config.output.u.RGBA.size = length
+            
+            
             
             let result = WebPDecode(payload, payloadSize, &config)
             if result != VP8_STATUS_OK && result != VP8_STATUS_NOT_ENOUGH_DATA {
