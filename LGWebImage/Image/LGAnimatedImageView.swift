@@ -659,6 +659,8 @@ extension LGAnimatedImageView {
     override open func display(_ layer: CALayer) {
         if currentFrame != nil {
             layer.contents = currentFrame?.cgImage
+        } else if #available(iOS 14.0, *) {
+            super.display(layer)
         }
     }
     
