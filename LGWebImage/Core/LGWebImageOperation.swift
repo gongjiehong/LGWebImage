@@ -596,10 +596,10 @@ public class LGWebImageOperation: Operation {
         autoreleasepool { () -> Void in            
             endBackgroundTask()
             
-            // 物理内存小于1GB，取消下载，大于1GB，只是取消当前工作，不取消下载
-            if UIDevice.physicalMemory <= 1_073_741_824 {
+//            // 物理内存小于1GB，取消下载，大于1GB，只是取消当前工作，不取消下载
+//            if UIDevice.physicalMemory <= 1_073_741_824 {
                 self.request?.cancel()
-            }
+//            }
         }
     }
     
