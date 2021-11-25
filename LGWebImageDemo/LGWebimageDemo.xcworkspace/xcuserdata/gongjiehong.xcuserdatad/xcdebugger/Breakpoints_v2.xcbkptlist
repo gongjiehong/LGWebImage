@@ -1,13 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Bucket
+<<<<<<< HEAD
    uuid = "03E70BBB-E37B-4468-B2A6-B321AF85E709"
+=======
+   uuid = "6ABE59EF-4DC5-4C7F-B589-BD71B70C5E7E"
+>>>>>>> Swift5.3
    type = "0"
    version = "2.0">
    <Breakpoints>
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
+<<<<<<< HEAD
             uuid = "56B0C099-77F9-4859-8ABA-649928A2F64B"
+=======
+            uuid = "BBF94D60-C73A-4535-9D70-BE7EC1BDFA50"
+>>>>>>> Swift5.3
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
@@ -24,7 +32,11 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
+<<<<<<< HEAD
             uuid = "AEABE9EC-0F0C-479A-A6EB-1391736602CD"
+=======
+            uuid = "C1B4F5B9-FFDC-41E8-B96A-A6A9FDA80813"
+>>>>>>> Swift5.3
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
@@ -41,7 +53,11 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
+<<<<<<< HEAD
             uuid = "68D2B5AB-B90D-4609-BCEB-B9F380F4EFAA"
+=======
+            uuid = "8D12D792-BFB1-4D8C-A1B0-8CCAE2045B67"
+>>>>>>> Swift5.3
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
@@ -58,7 +74,11 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
+<<<<<<< HEAD
             uuid = "A149171A-3BF4-4FE0-B65E-6882EA9E878D"
+=======
+            uuid = "E8A5FA09-E532-42E4-980C-117115550FC4"
+>>>>>>> Swift5.3
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
@@ -75,7 +95,11 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
+<<<<<<< HEAD
             uuid = "E271456E-0676-4372-B2E8-3BFAE73A2DF5"
+=======
+            uuid = "23E30AAE-A0FE-43C1-AB57-C8DAEC2F4C49"
+>>>>>>> Swift5.3
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
@@ -92,7 +116,11 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
+<<<<<<< HEAD
             uuid = "BBD2110E-6D68-4A21-979F-6156FF647552"
+=======
+            uuid = "197616A4-0F23-464A-847D-248F83DABFBD"
+>>>>>>> Swift5.3
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
@@ -109,7 +137,11 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
+<<<<<<< HEAD
             uuid = "C7E5C7B6-194C-45D1-83AF-BA29DAA5390B"
+=======
+            uuid = "BF19210B-41C2-4006-863C-5DA53E5591A9"
+>>>>>>> Swift5.3
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
@@ -126,7 +158,11 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
+<<<<<<< HEAD
             uuid = "C92921D3-C3C2-4D3F-AB0E-970E28E934C9"
+=======
+            uuid = "60F1F0BC-5BC4-474B-BA79-FF2DFEAB510C"
+>>>>>>> Swift5.3
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
@@ -143,7 +179,11 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
+<<<<<<< HEAD
             uuid = "B00F2E82-FDE7-4447-9453-DB22A39AC17D"
+=======
+            uuid = "A6B8A288-D601-495A-8833-E6141A95FE83"
+>>>>>>> Swift5.3
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
@@ -160,7 +200,11 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
+<<<<<<< HEAD
             uuid = "3219FE8F-25AE-4A0C-AB34-A4F27602011C"
+=======
+            uuid = "FB97E3A8-5485-468B-9608-DC0F73F5958E"
+>>>>>>> Swift5.3
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
@@ -177,7 +221,11 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
+<<<<<<< HEAD
             uuid = "AA564222-97EF-40CC-B2FB-571407990320"
+=======
+            uuid = "14329736-4FDB-4ED2-8568-2D698FEA9534"
+>>>>>>> Swift5.3
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
@@ -194,7 +242,11 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
+<<<<<<< HEAD
             uuid = "C55EDFE8-40D5-4464-94A5-7F948133FE6B"
+=======
+            uuid = "8B16983C-9057-4A77-9713-4156493A4FAB"
+>>>>>>> Swift5.3
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
@@ -210,7 +262,11 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
+<<<<<<< HEAD
             uuid = "4317C561-77D4-427A-B0D7-79E2D6FD0B3C"
+=======
+            uuid = "0BDD1812-CACC-4B87-A84D-568BDD24BCC6"
+>>>>>>> Swift5.3
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
@@ -226,7 +282,11 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
+<<<<<<< HEAD
             uuid = "001A559E-B902-4FD4-9B6F-7C27A575F4F6"
+=======
+            uuid = "2C82CBAA-B6BD-4425-AE37-2DC3542C6914"
+>>>>>>> Swift5.3
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
@@ -242,7 +302,11 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
+<<<<<<< HEAD
             uuid = "81CC0FBA-E3DF-46C6-9809-6457950C336C"
+=======
+            uuid = "0270BBF7-CCFC-4C80-8747-425243ABF82F"
+>>>>>>> Swift5.3
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
@@ -258,7 +322,11 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
+<<<<<<< HEAD
             uuid = "BC42F9F3-EDDA-4F0D-BDC2-C650EA1921EC"
+=======
+            uuid = "4F67A061-E5E0-4474-BEBB-A8E27C7C8A68"
+>>>>>>> Swift5.3
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
@@ -274,7 +342,11 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
+<<<<<<< HEAD
             uuid = "49E35891-C434-4FDC-888E-CAE4075222EB"
+=======
+            uuid = "942893AE-35B3-4104-9007-72CC96EC16DE"
+>>>>>>> Swift5.3
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"

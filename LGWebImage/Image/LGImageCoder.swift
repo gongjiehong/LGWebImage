@@ -865,11 +865,25 @@ extension LGImageDecoder {
             config.output.is_external_memory = 1 // 使用外部buffer
             
             var pixels = [UInt8](repeating: 0, count: length) // 数据buffer
-            let buffer = pixels.withUnsafeMutableBufferPointer({ pointerValue in return pointerValue.baseAddress })
-            config.output.u.RGBA.rgba = buffer
+//<<<<<<< HEAD
+//            let buffer = pixels.withUnsafeMutableBufferPointer({ pointerValue in return pointerValue.baseAddress })
+//            config.output.u.RGBA.rgba = buffer
+//=======
+            
+            // 为什么会有这么丑陋的代码？因为强迫症要解决悬指针警告啊，沁，纯属脱裤儿放屁啊
+            // UnsafeMutablePointer(mutating: &pixels) 它不香吗？直接&pixels它不香吗？嗯嗯嗯？
+            @inline(__always) func setConfigsRGBA( _ tempConfig: inout WebPDecoderConfig,
+                                                   pointer: UnsafeMutablePointer<UInt8>)
+            {
+                tempConfig.output.u.RGBA.rgba = pointer
+            }
+            setConfigsRGBA(&config, pointer: &pixels)
+//>>>>>>> Swift5.3
             
             config.output.u.RGBA.stride = Int32(bytesPerRow)
             config.output.u.RGBA.size = length
+            
+            
             
             let result = WebPDecode(payload, payloadSize, &config)
             if result != VP8_STATUS_OK && result != VP8_STATUS_NOT_ENOUGH_DATA {
@@ -880,15 +894,24 @@ extension LGImageDecoder {
             
             if extendToCanvas && (iter.x_offset != 0 || iter.y_offset != 0) {
                 var temp = [UInt8](repeating: 0, count: length)
-                let tempBuffer = pixels.withUnsafeMutableBufferPointer({
-                    pointerValue in return pointerValue.baseAddress
-                })
-                var src: vImage_Buffer = vImage_Buffer(data: buffer,
+
+                var pixelsAddress: UnsafeMutableRawPointer?
+                withUnsafeMutableBytes(of: &pixels) { (pointer) in
+                    pixelsAddress = pointer.baseAddress
+                }
+                
+                var tempAddress: UnsafeMutableRawPointer?
+                withUnsafeMutableBytes(of: &temp) { (pointer) in
+                    tempAddress = pointer.baseAddress
+                }
+                
+                var src: vImage_Buffer = vImage_Buffer(data: pixelsAddress,
                                                        height: vImagePixelCount(height),
                                                        width: vImagePixelCount(width),
                                                        rowBytes: bytesPerRow)
                 
-                var dest: vImage_Buffer = vImage_Buffer(data: tempBuffer,
+
+                var dest: vImage_Buffer = vImage_Buffer(data: tempAddress,
                                                         height: vImagePixelCount(height),
                                                         width: vImagePixelCount(width),
                                                         rowBytes: bytesPerRow)
@@ -1067,242 +1090,6 @@ extension LGImageEncoder {
         }
         
         return cgImage
-    }
-    
-    
-    fileprivate func _encodeAPNG() -> Data? {
-        //        var pngDatas: [CFData] = [CFData]()
-        //        var pngSizes: [CGSize] = [CGSize]()
-        //        var canvasWidth: Int = 0
-        //        var canvasHeight: Int = 0
-        //
-        //        for index in 0..<_images.count {
-        //            guard let decoded = _newCGImage(fromIndex: index, decode: true) else {
-        //                return nil
-        //            }
-        //
-        //            let size = CGSize(width: decoded.width, height: decoded.height)
-        //            pngSizes.append(size)
-        //            if canvasWidth < Int(size.width) {
-        //                canvasWidth = Int(size.width)
-        //            }
-        //            if canvasHeight < Int(size.height) {
-        //                canvasHeight = Int(size.height)
-        //            }
-        //
-        //            guard let frameData = LGCGImageCreateEncodedData(image: decoded,
-        //                                                             imageType: LGImageType.png,
-        //                                                             quality: 1) else {
-        //                return nil
-        //            }
-        //
-        //            pngDatas.append(frameData)
-        //
-        //            if size.width < 1 || size.height < 1 {
-        //                return nil
-        //            }
-        //        }
-        //
-        //        guard let firstFrameSize = pngSizes.first else {
-        //            return nil
-        //        }
-        //        if Int(firstFrameSize.width) < canvasWidth || Int(firstFrameSize.height) < canvasHeight {
-        //            guard let decoded = _newCGImage(fromIndex: 0, decode: true) else {
-        //                return nil
-        //            }
-        //            let bitmapInfoValue = LGCGBitmapByteOrder32Host.rawValue | CGImageAlphaInfo.premultipliedFirst.rawValue
-        //            guard let context = CGContext(data: nil,
-        //                                          width: canvasWidth,
-        //                                          height: canvasHeight,
-        //                                          bitsPerComponent: 8,
-        //                                          bytesPerRow: 0,
-        //                                          space: LGCGColorSpaceDeviceRGB,
-        //                                          bitmapInfo: bitmapInfoValue) else
-        //            {
-        //                return nil
-        //            }
-        //
-        //            context.draw(decoded, in: CGRect(x: 0,
-        //                                             y: CGFloat(canvasHeight) - firstFrameSize.height,
-        //                                             width: firstFrameSize.width,
-        //                                             height: firstFrameSize.height))
-        //            guard let extendedImage = context.makeImage() else {
-        //                return nil
-        //            }
-        //            guard let frameData = LGCGImageCreateEncodedData(image: extendedImage,
-        //                                                             imageType: LGImageType.png,
-        //                                                             quality: 1) else {
-        //                return nil
-        //            }
-        //            pngDatas[0] = frameData
-        //        }
-        //
-        //        let firstFrameData = pngDatas[0]
-        //        let info = LGPNGInfo(
-        //        guard let infoPointer = yy_png_info_create(CFDataGetBytePtr(firstFrameData),
-        //                                            UInt32(CFDataGetLength(firstFrameData))) else
-        //        {
-        //            return nil
-        //        }
-        //
-        //        var result = Data()
-        //        var insertBefore = false, insertAfter = false
-        //        var apngSequenceIndex: UInt32 = 0
-        //
-        //        // apng 文件格式的头数据
-        //        var pngHeader: [UInt8] = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
-        //
-        //        // 写入头
-        //        result.append(&pngHeader, count: 8)
-        //
-        //        let info = infoPointer.pointee
-        //
-        //        for index in 0..<info.chunk_num {
-        //            let chunk = info.chunks + Int(index)
-        //            //                                                      'I',       'D',      'A',      'T'
-        //            if !insertBefore && chunk.pointee.fourcc == _four_cc(c1: 0x49, c2: 0x44, c3: 0x41, c4: 0x54) {
-        //                insertBefore = true
-        //                var acTL: [UInt32] = [UInt32]()
-        //                acTL[0] = yy_swap_endian_uint32(8)
-        //                //                     'a',     'c',       'T',      'L'
-        //                acTL[1] = _four_cc(c1: 0x61, c2: 0x63, c3: 0x74, c4: 0x6C)
-        //                acTL[2] = yy_swap_endian_uint32(UInt32(pngDatas.count)) // num frames
-        //                acTL[3] = yy_swap_endian_uint32(UInt32(self.loopCount)) // num plays
-        //                let uint32Pointer: UnsafePointer<[UInt32]> = &acTL
-        //                let pointer: UnsafePointer<UInt8> = UnsafePointer(uint32Pointer)
-        //                acTL[4] = yy_swap_endian_uint32(UInt32(crc32(0, pointer + 1, 12))) //crc32
-        //
-        //                result.append(pointer, count: 20)
-        //
-        //                var chunk_fcTL = yy_png_chunk_fcTL()
-        //                chunk_fcTL.sequence_number = apngSequenceIndex
-        //                chunk_fcTL.width = UInt32(firstFrameSize.width)
-        //                chunk_fcTL.height = UInt32(firstFrameSize.height)
-        //                yy_png_delay_to_fraction(_durations[0], &chunk_fcTL.delay_num, &chunk_fcTL.delay_den)
-        //                chunk_fcTL.dispose_op = UInt8(YY_PNG_DISPOSE_OP_BACKGROUND.rawValue)
-        //                chunk_fcTL.blend_op = UInt8(YY_PNG_BLEND_OP_SOURCE.rawValue)
-        //
-        //                var fcTL: [UInt8] = [UInt8](repeating: 0, count: 38)
-        //
-        //
-        //                *((uint32_t *)fcTL) = yy_swap_endian_uint32(26); //length
-        //                *((uint32_t *)(fcTL + 4)) = YY_FOUR_CC('f', 'c', 'T', 'L'); // fourcc
-        //                yy_png_chunk_fcTL_write(&chunk_fcTL, fcTL + 8);
-        //                *((uint32_t *)(fcTL + 34)) = yy_swap_endian_uint32((uint32_t)crc32(0, (const Bytef *)(fcTL + 4), 30));
-        //                [result appendBytes:fcTL length:38];
-        //
-        //                apngSequenceIndex++;
-        //            }
-        //        }
-        //        return nil
-        //
-        //        NSData *firstFrameData = pngDatas[0];
-        //        yy_png_info *info = yy_png_info_create(firstFrameData.bytes, (uint32_t)firstFrameData.length);
-        //        if (!info) return nil;
-        //        NSMutableData *result = [NSMutableData new];
-        //        BOOL insertBefore = NO, insertAfter = NO;
-        //        uint32_t apngSequenceIndex = 0;
-        //
-        //        uint32_t png_header[2];
-        //        png_header[0] = YY_FOUR_CC(0x89, 0x50, 0x4E, 0x47);
-        //        png_header[1] = YY_FOUR_CC(0x0D, 0x0A, 0x1A, 0x0A);
-        //
-        //        [result appendBytes:png_header length:8];
-        //
-        //        for (int i = 0; i < info->chunk_num; i++) {
-        //            yy_png_chunk_info *chunk = info->chunks + i;
-        //
-        //            if (!insertBefore && chunk->fourcc == YY_FOUR_CC('I', 'D', 'A', 'T')) {
-        //                insertBefore = YES;
-        //                // insert acTL (APNG Control)
-        //                uint32_t acTL[5] = {0};
-        //                acTL[0] = yy_swap_endian_uint32(8); //length
-        //                acTL[1] = YY_FOUR_CC('a', 'c', 'T', 'L'); // fourcc
-        //                acTL[2] = yy_swap_endian_uint32((uint32_t)pngDatas.count); // num frames
-        //                acTL[3] = yy_swap_endian_uint32((uint32_t)_loopCount); // num plays
-        //                acTL[4] = yy_swap_endian_uint32((uint32_t)crc32(0, (const Bytef *)(acTL + 1), 12)); //crc32
-        //                [result appendBytes:acTL length:20];
-        //
-        //                // insert fcTL (first frame control)
-        //                yy_png_chunk_fcTL chunk_fcTL = {0};
-        //                chunk_fcTL.sequence_number = apngSequenceIndex;
-        //                chunk_fcTL.width = (uint32_t)firstFrameSize.width;
-        //                chunk_fcTL.height = (uint32_t)firstFrameSize.height;
-        //                yy_png_delay_to_fraction([(NSNumber *)_durations[0] doubleValue], &chunk_fcTL.delay_num, &chunk_fcTL.delay_den);
-        //                chunk_fcTL.delay_num = chunk_fcTL.delay_num;
-        //                chunk_fcTL.delay_den = chunk_fcTL.delay_den;
-        //                chunk_fcTL.dispose_op = YY_PNG_DISPOSE_OP_BACKGROUND;
-        //                chunk_fcTL.blend_op = YY_PNG_BLEND_OP_SOURCE;
-        //
-        //                uint8_t fcTL[38] = {0};
-        //                *((uint32_t *)fcTL) = yy_swap_endian_uint32(26); //length
-        //                *((uint32_t *)(fcTL + 4)) = YY_FOUR_CC('f', 'c', 'T', 'L'); // fourcc
-        //                yy_png_chunk_fcTL_write(&chunk_fcTL, fcTL + 8);
-        //                *((uint32_t *)(fcTL + 34)) = yy_swap_endian_uint32((uint32_t)crc32(0, (const Bytef *)(fcTL + 4), 30));
-        //                [result appendBytes:fcTL length:38];
-        //
-        //                apngSequenceIndex++;
-        //            }
-        //
-        //            if (!insertAfter && insertBefore && chunk->fourcc != YY_FOUR_CC('I', 'D', 'A', 'T')) {
-        //                insertAfter = YES;
-        //                // insert fcTL and fdAT (APNG frame control and data)
-        //
-        //                for (int i = 1; i < pngDatas.count; i++) {
-        //                    NSData *frameData = pngDatas[i];
-        //                    yy_png_info *frame = yy_png_info_create(frameData.bytes, (uint32_t)frameData.length);
-        //                    if (!frame) {
-        //                        yy_png_info_release(info);
-        //                        return nil;
-        //                    }
-        //
-        //                    // insert fcTL (first frame control)
-        //                    yy_png_chunk_fcTL chunk_fcTL = {0};
-        //                    chunk_fcTL.sequence_number = apngSequenceIndex;
-        //                    chunk_fcTL.width = frame->header.width;
-        //                    chunk_fcTL.height = frame->header.height;
-        //                    yy_png_delay_to_fraction([(NSNumber *)_durations[i] doubleValue], &chunk_fcTL.delay_num, &chunk_fcTL.delay_den);
-        //                    chunk_fcTL.delay_num = chunk_fcTL.delay_num;
-        //                    chunk_fcTL.delay_den = chunk_fcTL.delay_den;
-        //                    chunk_fcTL.dispose_op = YY_PNG_DISPOSE_OP_BACKGROUND;
-        //                    chunk_fcTL.blend_op = YY_PNG_BLEND_OP_SOURCE;
-        //
-        //                    uint8_t fcTL[38] = {0};
-        //                    *((uint32_t *)fcTL) = yy_swap_endian_uint32(26); //length
-        //                    *((uint32_t *)(fcTL + 4)) = YY_FOUR_CC('f', 'c', 'T', 'L'); // fourcc
-        //                    yy_png_chunk_fcTL_write(&chunk_fcTL, fcTL + 8);
-        //                    *((uint32_t *)(fcTL + 34)) = yy_swap_endian_uint32((uint32_t)crc32(0, (const Bytef *)(fcTL + 4), 30));
-        //                    [result appendBytes:fcTL length:38];
-        //
-        //                    apngSequenceIndex++;
-        //
-        //                    // insert fdAT (frame data)
-        //                    for (int d = 0; d < frame->chunk_num; d++) {
-        //                        yy_png_chunk_info *dchunk = frame->chunks + d;
-        //                        if (dchunk->fourcc == YY_FOUR_CC('I', 'D', 'A', 'T')) {
-        //                            uint32_t length = yy_swap_endian_uint32(dchunk->length + 4);
-        //                            [result appendBytes:&length length:4]; //length
-        //                            uint32_t fourcc = YY_FOUR_CC('f', 'd', 'A', 'T');
-        //                            [result appendBytes:&fourcc length:4]; //fourcc
-        //                            uint32_t sq = yy_swap_endian_uint32(apngSequenceIndex);
-        //                            [result appendBytes:&sq length:4]; //data (sq)
-        //                            [result appendBytes:(((uint8_t *)frameData.bytes) + dchunk->offset + 8) length:dchunk->length]; //data
-        //                            uint8_t *bytes = ((uint8_t *)result.bytes) + result.length - dchunk->length - 8;
-        //                            uint32_t crc = yy_swap_endian_uint32((uint32_t)crc32(0, bytes, dchunk->length + 8));
-        //                            [result appendBytes:&crc length:4]; //crc
-        //
-        //                            apngSequenceIndex++;
-        //                        }
-        //                    }
-        //                    yy_png_info_release(frame);
-        //                }
-        //            }
-        //
-        //            [result appendBytes:((uint8_t *)firstFrameData.bytes) + chunk->offset length:chunk->length + 12];
-        //        }
-        //        yy_png_info_release(info);
-        //        return result;
-        return nil
     }
 }
 
@@ -1768,7 +1555,9 @@ func LGCGImageDecodeToBitmapBufferWithAnyFormat(srcImage: CGImage?,
     }
     
     var src = vImage_Buffer()
-    src.data = UnsafeMutableRawPointer(mutating: &srcBytes)
+    withUnsafeMutableBytes(of: &srcBytes) { (pointer) in
+        src.data = pointer.baseAddress
+    }
     src.width = vImagePixelCount(width)
     src.height = vImagePixelCount(height)
     src.rowBytes = safeImage.bytesPerRow
@@ -2024,7 +1813,9 @@ public func LGCGImageCreateEncodedWebPData(image: CGImage?,
     
     WebPMemoryWriterInit(&writter)
     picture.writer = WebPMemoryWrite
-    picture.custom_ptr = UnsafeMutableRawPointer(&writter)
+    withUnsafeMutableBytes(of: &writter) { (pointer) in
+        picture.custom_ptr = pointer.baseAddress
+    }
     
     if WebPEncode(&config, &picture) == 0 {
         WebPPictureFree(&picture)
