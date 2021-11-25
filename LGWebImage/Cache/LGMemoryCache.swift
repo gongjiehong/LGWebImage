@@ -556,6 +556,8 @@ extension LGLinkedList {
                     self.removeNode(node)
                 }
             }
+            println(self.cache.count)
+            println(self.totalCost)
         }
     }
 }

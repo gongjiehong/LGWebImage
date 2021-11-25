@@ -44,6 +44,7 @@
 		FE805A78207B1A4200EC1DD1 /* LGWebImage.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = FE805A75207B1A3800EC1DD1 /* LGWebImage.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		FE805A79207B1A4200EC1DD1 /* LGHTTPRequest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE805A73207B1A3800EC1DD1 /* LGHTTPRequest.framework */; };
 		FE805A7A207B1A4200EC1DD1 /* LGHTTPRequest.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = FE805A73207B1A3800EC1DD1 /* LGHTTPRequest.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		FEC6C8A62486312D00E69B1C /* LGRemoteImageWallController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEC6C8A52486312D00E69B1C /* LGRemoteImageWallController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -103,6 +104,7 @@
 		FE805A73207B1A3800EC1DD1 /* LGHTTPRequest.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = LGHTTPRequest.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		FE805A75207B1A3800EC1DD1 /* LGWebImage.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = LGWebImage.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		FEBA5445207F7F2300FB30DE /* Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Bridging-Header.h"; sourceTree = "<group>"; };
+		FEC6C8A52486312D00E69B1C /* LGRemoteImageWallController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LGRemoteImageWallController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -176,6 +178,7 @@
 				FE805A5E207B19E900EC1DD1 /* AppDelegate.swift */,
 				FE7208BC2086F1240046F0C2 /* LGWebImageDisplayController.swift */,
 				FE7208E1208748E40046F0C2 /* LGWebImageRemoteDownloadController.swift */,
+				FEC6C8A52486312D00E69B1C /* LGRemoteImageWallController.swift */,
 				FE805A62207B19E900EC1DD1 /* Main.storyboard */,
 				FE805A65207B19EA00EC1DD1 /* Assets.xcassets */,
 				FE805A67207B19EA00EC1DD1 /* LaunchScreen.storyboard */,
@@ -296,6 +299,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				FE7208BD2086F1240046F0C2 /* LGWebImageDisplayController.swift in Sources */,
+				FEC6C8A62486312D00E69B1C /* LGRemoteImageWallController.swift in Sources */,
 				FE805A5F207B19E900EC1DD1 /* AppDelegate.swift in Sources */,
 				FE7208E2208748E40046F0C2 /* LGWebImageRemoteDownloadController.swift in Sources */,
 			);
@@ -450,7 +454,7 @@
 				CODE_SIGN_STYLE = Manual;
 				DEVELOPMENT_TEAM = UNA78PWBGB;
 				INFOPLIST_FILE = LGWebImageDemo/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -472,7 +476,7 @@
 				CODE_SIGN_STYLE = Manual;
 				DEVELOPMENT_TEAM = UNA78PWBGB;
 				INFOPLIST_FILE = LGWebImageDemo/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

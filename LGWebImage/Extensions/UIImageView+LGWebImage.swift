@@ -57,7 +57,7 @@ public extension UIImageView {
                                    completionBlock: LGWebImageCompletionBlock? = nil)
     {
         let sentinel: LGWebImageOperationSetter.Sentinel = self.lg_imageSetter.cancel(withNewURL: imageURL)
-        
+
         do {
             let newURL = try imageURL.asURL()
             if  let image = LGImageCache.default.getImage(forKey: newURL.absoluteString,
@@ -107,7 +107,7 @@ public extension UIImageView {
                     return
                 }
                 
-                if resultImage != nil && error == nil {
+                if let result = resultImage, error == nil {
                     let needFadeAnimation = options.contains(LGWebImageOptions.setImageWithFadeAnimation)
                     let avoidSetImage = options.contains(LGWebImageOptions.avoidSetImage)
                     if  needFadeAnimation && !avoidSetImage {
@@ -118,8 +118,6 @@ public extension UIImageView {
                     
                     let imageIsValid = (imageStage == .finished || imageStage == .progress)
                     let canSetImage = (!avoidSetImage && imageIsValid)
-                    
-                    let result = resultImage
                     
                     if canSetImage {
                         if needFadeAnimation && !strongSelf.isHighlighted {

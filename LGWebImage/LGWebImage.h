@@ -7,6 +7,7 @@
 //
 
 #import <UIKit/UIKit.h>
+#import <stdatomic.h>
 
 //! Project version number for LGWebImage.
 FOUNDATION_EXPORT double LGWebImageVersionNumber;

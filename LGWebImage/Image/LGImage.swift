@@ -154,10 +154,10 @@ public final class LGImage: UIImage {
             result.animatedImageType = decoder.imageType
             if decoder.frameCount > 1 {
                 result.decoder = decoder
-                result.bytesPerFrame = cgImage.bytesPerRow * cgImage.height
+                result.bytesPerFrame = CFDataGetLength(cgImage.dataProvider?.data)
                 result.animatedImageMemorySize = result.bytesPerFrame * decoder.frameCount
             } else {
-                result.bytesPerFrame = cgImage.bytesPerRow * cgImage.height
+                result.bytesPerFrame = CFDataGetLength(cgImage.dataProvider?.data)
                 result.animatedImageMemorySize = result.bytesPerFrame
             }
             result.lg_isDecodedForDisplay = true

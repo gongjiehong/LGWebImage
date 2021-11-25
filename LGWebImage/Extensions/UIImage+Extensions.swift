@@ -518,22 +518,29 @@ extension UIImage {
         
         var outputImage: UIImage? = nil
         var effectCGImage: CGImage? = nil
-        effectCGImage = vImageCreateCGImageFromBuffer(inputBuffer,
-                                                      &format,
-                                                      { (oriPointer, newPointer) in
-                                                        free(newPointer)
-                                                        return
-        },
-                                                      nil,
-                                                      vImage_Flags(kvImageNoAllocate),
-                                                      &error).takeRetainedValue()
+        var unmanagedEffect = vImageCreateCGImageFromBuffer(inputBuffer,
+                                                            &format,
+                                                            { (oriPointer, newPointer) in
+                                                                free(newPointer)
+                                                                return
+                                                            },
+                                                            nil,
+                                                            vImage_Flags(kvImageNoAllocate),
+                                                            &error)
+        if unmanagedEffect != nil {
+            effectCGImage = unmanagedEffect?.takeRetainedValue()
+            unmanagedEffect?.release()
+        }
+        
         if effectCGImage == nil {
-            effectCGImage = vImageCreateCGImageFromBuffer(inputBuffer,
-                                                          &format,
-                                                          nil,
-                                                          nil,
-                                                          vImage_Flags(kvImageNoFlags),
-                                                          &error).takeRetainedValue()
+            unmanagedEffect = vImageCreateCGImageFromBuffer(inputBuffer,
+                                                                &format,
+                                                                nil,
+                                                                nil,
+                                                                vImage_Flags(kvImageNoFlags),
+                                                                &error)
+            effectCGImage = unmanagedEffect?.takeRetainedValue()
+            unmanagedEffect?.release()
             free(inputBuffer.pointee.data)
         }
         free(outputBuffer.pointee.data)

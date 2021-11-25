@@ -171,7 +171,7 @@ public class LGDiskCache<KeyType: Hashable, ValueType: LGCacheItem> {
             return
         }
         let extendedData = object?.extendedData
-        var value: Data? = object?.data.asData()
+        let value: Data? = object?.data.asData()
         
         if value == nil {
             return
@@ -260,7 +260,7 @@ public class LGDiskCache<KeyType: Hashable, ValueType: LGCacheItem> {
                 return
             }
             weakSelf._lock.lg_lock()
-            _ = weakSelf._storage.removeAllItems(with: progressBlock, endBlock: endBlock)
+            weakSelf._storage.removeAllItems(with: progressBlock, endBlock: endBlock)
             weakSelf._lock.lg_unlock()
         }
     }

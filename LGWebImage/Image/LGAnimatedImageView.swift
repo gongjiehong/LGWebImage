@@ -8,12 +8,6 @@
 
 import UIKit
 
-
-/// 物理内存大小
-fileprivate var lg_totalSizeOfTheDeviceMemory: UInt64 {
-    return ProcessInfo().physicalMemory
-}
-
 /// 获取剩余内存大小，用总内存减去已经使用的内存大小，（并不准确）
 ///
 /// - Returns: 可用内存大小
@@ -39,7 +33,7 @@ public func LGDeviceMemoryFree() -> UInt64 {
         return 0
     }
     let used = UInt64(vmStat.active_count + vmStat.inactive_count + vmStat.wire_count) * UInt64(pageSize)
-    return lg_totalSizeOfTheDeviceMemory - used
+    return UIDevice.physicalMemory - used
 }
 
 
@@ -302,7 +296,7 @@ open class LGAnimatedImageView: UIImageView {
             bytesCount = 1_024
         }
         
-        let total = lg_totalSizeOfTheDeviceMemory
+        let total = UIDevice.physicalMemory
         let free = LGDeviceMemoryFree()
         var maxCount = min(Double(total) * 0.2, Double(free) * 0.6)
         maxCount = max(maxCount, 10 * 1_024 * 1_024)

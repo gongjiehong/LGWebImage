@@ -222,21 +222,18 @@ public class LGWebImageOperation: Operation {
                                                                      to: nil)
             weakSelf.request = request
             
-            request.validate().downloadProgress(queue: DispatchQueue.utility) { [weak self] (progress) in
+            request.validate().downloadProgress(queue: DispatchQueue.main) { [weak self] (progress) in
                 guard let weakSelf = self  else {return}
                 if weakSelf.isCancelled || weakSelf.isFinished {
                     return
                 }
                 
-                DispatchQueue.main.async { [weak self] in
-                    guard let weakSelf = self  else {return}
-                    if let progressBlock = weakSelf.progress {
-                        progressBlock(progress)
-                    }
+                if let progressBlock = weakSelf.progress {
+                    progressBlock(progress)
                 }
             }
             
-            request.validate().responseData(queue: DispatchQueue.utility) { [weak self] (response) in
+            request.validate().responseData(queue: DispatchQueue.userInitiated) { [weak self] (response) in
                 guard let weakSelf = self  else {return}
                 if weakSelf.isCancelled || weakSelf.isFinished {
                     return
@@ -350,7 +347,6 @@ public class LGWebImageOperation: Operation {
                                                   imageStage: .finished,
                                                   error: error)
             }
-
         } else {
             successProcessor()
         }
@@ -600,10 +596,10 @@ public class LGWebImageOperation: Operation {
         autoreleasepool { () -> Void in            
             endBackgroundTask()
             
-            // 物理内存小于1GB，取消下载，大于1GB，只是取消当前工作，不取消下载
-            if UIDevice.physicalMemory <= 1_073_741_824 {
+//            // 物理内存小于1GB，取消下载，大于1GB，只是取消当前工作，不取消下载
+//            if UIDevice.physicalMemory <= 1_073_741_824 {
                 self.request?.cancel()
-            }
+//            }
         }
     }
     
@@ -632,12 +628,6 @@ public class LGWebImageOperation: Operation {
             isFinished = true
         }
     }
-}
-
-fileprivate extension UIDevice {
-    static let physicalMemory: UInt64 = {
-        return ProcessInfo().physicalMemory
-    }()
 }
 
 // MARK: - 填充最后个像素

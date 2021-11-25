@@ -11,15 +11,13 @@ import LGHTTPRequest
 
 internal class LGWebImageOperationSetter {
     
-    weak var task: DispatchWorkItem?
+    var task: DispatchWorkItem?
     
     private var _imageURL: LGURLConvertible?
     var imageURL: LGURLConvertible? {
-        lock.lg_lock()
-        defer {
-            lock.lg_unlock()
+        return LGWebImageOperationSetter.setterQueue.sync {
+            return _imageURL
         }
-        return _imageURL
     }
     
     typealias Sentinel = Int64
@@ -54,16 +52,15 @@ internal class LGWebImageOperationSetter {
                                                options: options,
                                                progress: progress,
                                                completion: completion)
-        lock.lg_lock()
-        defer {
-            lock.lg_unlock()
-        }
-        
         if tempSentinel == _sentinel {
-            if self.operation != nil {
-                self.operation?.cancel()
+            LGWebImageOperationSetter.setterQueue.async { [weak self] in
+                guard let strongSelf = self else {return}
+                if strongSelf.operation != nil {
+                    strongSelf.operation?.cancel()
+                }
+                strongSelf.operation = result.operation
+                strongSelf._imageURL = url
             }
-            self.operation = result.operation
             tempSentinel = OSAtomicIncrement64Barrier(&_sentinel)
         } else {
             result.operation.cancel()
@@ -75,18 +72,16 @@ internal class LGWebImageOperationSetter {
     func cancel(withNewURL url: LGURLConvertible? = nil) -> Sentinel {
         task?.cancel()
         
+        LGWebImageOperationSetter.setterQueue.async { [weak self] in
+            guard let strongSelf = self else {return}
+            if strongSelf.operation != nil {
+                strongSelf.operation?.cancel()
+                strongSelf.operation = nil
+            }
+            strongSelf._imageURL = url
+        }
+        
         var tempSentinel: Sentinel
-        lock.lg_lock()
-        defer {
-            lock.lg_unlock()
-        }
-        
-        if self.operation != nil {
-            self.operation?.cancel()
-            self.operation = nil
-        }
-        
-        _imageURL = url
         tempSentinel = OSAtomicIncrement64Barrier(&_sentinel)
         return tempSentinel
     }
@@ -98,6 +93,7 @@ internal class LGWebImageOperationSetter {
     
     func runTask(_ task: DispatchWorkItem) {
         self.task = task
+        
         LGWebImageOperationSetter.setterQueue.async(execute: task)
     }
     
@@ -107,6 +103,7 @@ internal class LGWebImageOperationSetter {
             operation.cancel()
         }
         task?.cancel()
+        task = nil
     }
 }
 
